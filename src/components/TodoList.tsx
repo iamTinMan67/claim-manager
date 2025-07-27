@@ -241,7 +241,8 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
                           {todo.priority}
                         </span>
                         {isOverdue && <span className="text-red-600 font-medium text-xs">OVERDUE</span>}
-                          {isOverdue && <span className="text-red-600 font-medium text-xs">OVERDUE</span>}
+                      </div>
+                    </div>
                     <button
                       onClick={() => toggleTodoMutation.mutate({ 
                         id: todo.id, 
@@ -318,8 +319,8 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
               <div>
                 <label className="block text-sm font-medium mb-1">Priority</label>
                 <select
-                  value={selectedClaim || newTodo.case_number || ''}
-                  onChange={(e) => setNewTodo({ ...newTodo, case_number: e.target.value || null })}
+                  value={newTodo.priority}
+                  onChange={(e) => setNewTodo({ ...newTodo, priority: e.target.value as 'low' | 'medium' | 'high' })}
                   className="w-full border rounded-lg px-3 py-2"
                 >
                   <option value="low">Low</option>
@@ -385,94 +386,96 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
           }
           groups[claimKey].push(todo)
           return groups
-        }, {}) || {}).map(([claimKey, claimTodos]) => (
+        }, {}) || {}).map(([claimKey, claimTodos]) => {
           const claimData = claims?.find(c => c.case_number === claimKey)
           const claimColor = claimData?.color || '#6B7280'
           
-          <div key={claimKey} className="space-y-3">
-            <div className="flex items-center space-x-2 pb-2 border-b border-gray-200">
-              <div 
-                className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: claimColor }}
-              />
-              <h3 className="text-lg font-semibold" style={{ color: claimColor }}>
-                {claimKey === 'No Claim' ? 'General Tasks' : `${claimKey}`}
-              </h3>
-              {claimKey !== 'No Claim' && claimTodos[0]?.claims?.title && (
-                <span className="text-sm text-gray-600">- {claimTodos[0].claims.title}</span>
-              )}
-              <span className="text-sm text-gray-500">({claimTodos.length} tasks)</span>
-            </div>
-            {claimTodos.map((todo) => (
-          <div
-            key={todo.id}
-            className={`bg-white p-4 rounded-lg shadow border-l-4 ${
-              todo.completed ? 'opacity-75' : ''
-            }`}
-            style={{ borderLeftColor: claimColor }}
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex items-start space-x-3 flex-1">
-                <button
-                  onClick={() => toggleTodoMutation.mutate({ 
-                    id: todo.id, 
-                    completed: !todo.completed 
-                  })}
-                  className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center ${
-                    todo.completed 
-                      ? 'text-white' 
-                      : 'border-gray-300'
+          return (
+            <div key={claimKey} className="space-y-3">
+              <div className="flex items-center space-x-2 pb-2 border-b border-gray-200">
+                <div 
+                  className="w-4 h-4 rounded-full"
+                  style={{ backgroundColor: claimColor }}
+                />
+                <h3 className="text-lg font-semibold" style={{ color: claimColor }}>
+                  {claimKey === 'No Claim' ? 'General Tasks' : `${claimKey}`}
+                </h3>
+                {claimKey !== 'No Claim' && claimTodos[0]?.claims?.title && (
+                  <span className="text-sm text-gray-600">- {claimTodos[0].claims.title}</span>
+                )}
+                <span className="text-sm text-gray-500">({claimTodos.length} tasks)</span>
+              </div>
+              {claimTodos.map((todo) => (
+                <div
+                  key={todo.id}
+                  className={`bg-white p-4 rounded-lg shadow border-l-4 ${
+                    todo.completed ? 'opacity-75' : ''
                   }`}
-                  style={todo.completed ? { 
-                    backgroundColor: claimColor, 
-                    borderColor: claimColor 
-                  } : { 
-                    borderColor: `${claimColor}50` 
-                  }}
+                  style={{ borderLeftColor: claimColor }}
                 >
-                  {todo.completed && <Check className="w-3 h-3" />}
-                </button>
-                <div className="flex-1">
-                  <h3 className={`font-medium ${todo.completed ? 'line-through text-gray-500' : ''}`}>
-                    {todo.title}
-                  </h3>
-                  {todo.description && (
-                    <p className={`text-sm mt-1 ${todo.completed ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {todo.description}
-                    </p>
-                  )}
-                  <div className="flex items-center space-x-4 mt-2 text-sm">
-                    <div className="flex items-center space-x-1">
-                      <Clock className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-700">{format(new Date(todo.due_date), 'MMM d, yyyy h:mm a')}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <User className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-700">By: {todo.profiles?.email || 'Unknown user'}</span>
-                    </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(todo.priority)}`}>
-                      {todo.priority}
-                    </span>
-                    {todo.alarm_enabled && (
-                      <div className="flex items-center space-x-1">
-                        <AlertCircle className="w-4 h-4" style={{ color: claimColor }} />
-                        <span className="text-gray-700">Alarm set</span>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start space-x-3 flex-1">
+                      <button
+                        onClick={() => toggleTodoMutation.mutate({ 
+                          id: todo.id, 
+                          completed: !todo.completed 
+                        })}
+                        className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center ${
+                          todo.completed 
+                            ? 'text-white' 
+                            : 'border-gray-300'
+                        }`}
+                        style={todo.completed ? { 
+                          backgroundColor: claimColor, 
+                          borderColor: claimColor 
+                        } : { 
+                          borderColor: `${claimColor}50` 
+                        }}
+                      >
+                        {todo.completed && <Check className="w-3 h-3" />}
+                      </button>
+                      <div className="flex-1">
+                        <h3 className={`font-medium ${todo.completed ? 'line-through text-gray-500' : ''}`}>
+                          {todo.title}
+                        </h3>
+                        {todo.description && (
+                          <p className={`text-sm mt-1 ${todo.completed ? 'text-gray-400' : 'text-gray-600'}`}>
+                            {todo.description}
+                          </p>
+                        )}
+                        <div className="flex items-center space-x-4 mt-2 text-sm">
+                          <div className="flex items-center space-x-1">
+                            <Clock className="w-4 h-4 text-gray-400" />
+                            <span className="text-gray-700">{format(new Date(todo.due_date), 'MMM d, yyyy h:mm a')}</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <User className="w-4 h-4 text-gray-400" />
+                            <span className="text-gray-700">By: {todo.profiles?.email || 'Unknown user'}</span>
+                          </div>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(todo.priority)}`}>
+                            {todo.priority}
+                          </span>
+                          {todo.alarm_enabled && (
+                            <div className="flex items-center space-x-1">
+                              <AlertCircle className="w-4 h-4" style={{ color: claimColor }} />
+                              <span className="text-gray-700">Alarm set</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    )}
+                    </div>
+                    <button
+                      onClick={() => deleteTodoMutation.mutate(todo.id)}
+                      className="text-red-500 hover:text-red-700 p-1"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-              </div>
-              <button
-                onClick={() => deleteTodoMutation.mutate(todo.id)}
-                className="text-red-500 hover:text-red-700 p-1"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              ))}
             </div>
-          </div>
-            ))}
-          </div>
-        ))}
+          )
+        })}
         {(!todos || todos.length === 0) && (
           <div className="text-center py-8 text-gray-500">
             No todos yet. Create your first todo to get started!
