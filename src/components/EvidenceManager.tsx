@@ -15,6 +15,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
   const [editingEvidence, setEditingEvidence] = useState<Evidence | null>(null)
   const [editMode, setEditMode] = useState(false)
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
+  const [showClaimSwitcher, setShowClaimSwitcher] = useState(false)
   const [newEvidence, setNewEvidence] = useState({
     file_name: '',
     file_url: '',
@@ -102,6 +103,27 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
       
       if (error) throw error
       return data
+    }
+  })
+
+  // Get evidence counts per claim
+  const { data: evidenceCounts } = useQuery({
+    queryKey: ['evidence-counts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('evidence')
+        .select('case_number')
+      
+      if (error) throw error
+      
+      // Count evidence per claim
+      const counts: { [key: string]: number } = {}
+      data.forEach(item => {
+        const key = item.case_number || 'unassociated'
+        counts[key] = (counts[key] || 0) + 1
+      })
+      
+      return counts
     }
   })
 
@@ -450,6 +472,64 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
           <strong>ALL evidence in DB:</strong> {JSON.stringify(allEvidence?.slice(0, 3), null, 2)}
           <br />
           <strong>Case numbers in DB:</strong> {allEvidence?.map(e => e.case_number).join(', ') || 'none'}
+          <br />
+          <strong>Evidence counts:</strong> {JSON.stringify(evidenceCounts, null, 2)}
+        </div>
+      )}
+      
+      {/* Claim Evidence Summary */}
+      {evidenceCounts && Object.keys(evidenceCounts).length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="font-semibold text-blue-900">Evidence Distribution by Claim</h3>
+            <button
+              onClick={() => setShowClaimSwitcher(!showClaimSwitcher)}
+              className="text-blue-600 hover:text-blue-800 text-sm"
+            >
+              {showClaimSwitcher ? 'Hide' : 'Show'} Details
+            </button>
+          </div>
+          {showClaimSwitcher && (
+            <div className="space-y-2">
+              {Object.entries(evidenceCounts).map(([caseNumber, count]) => {
+                const claimInfo = claims?.find(c => c.case_number === caseNumber)
+                const isCurrentClaim = caseNumber === selectedClaim
+                
+                return (
+                  <div
+                    key={caseNumber}
+                    className={`flex justify-between items-center p-2 rounded ${
+                      isCurrentClaim ? 'bg-blue-100 border border-blue-300' : 'bg-white'
+                    }`}
+                  >
+                    <div>
+                      <span className="font-medium">
+                        {caseNumber === 'unassociated' ? 'Unassociated Evidence' : caseNumber}
+                      </span>
+                      {claimInfo && (
+                        <span className="text-sm text-gray-600 ml-2">- {claimInfo.title}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        {count} items
+                      </span>
+                      {caseNumber !== 'unassociated' && caseNumber !== selectedClaim && (
+                        <span className="text-xs text-orange-600 font-medium">
+                          Switch to this claim to view
+                        </span>
+                      )}
+                      {isCurrentClaim && (
+                        <span className="text-xs text-green-600 font-medium">
+                          Currently viewing
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
       
@@ -477,6 +557,25 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
               }
             </span>
           </button>
+        </div>
+      )}
+      
+      {/* Show info about evidence in other claims */}
+      {selectedClaim && evidenceCounts && evidenceCounts['60EF0083825'] && selectedClaim !== '60EF0083825' && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="text-orange-800 font-medium">
+                Found {evidenceCounts['60EF0083825']} evidence items in claim "60EF0083825"
+              </p>
+              <p className="text-orange-700 text-sm mt-1">
+                These items are not showing because you're currently viewing a different claim.
+              </p>
+            </div>
+            <div className="text-sm text-orange-600">
+              Switch to claim "60EF0083825" in the Claims tab to view these items
+            </div>
+          </div>
         </div>
       )}
       
