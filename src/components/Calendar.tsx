@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday } from 'date-fns'
-import { Plus, Clock, X } from 'lucide-react'
+import { Plus, Clock, X, Check, User, AlertCircle, Trash2 } from 'lucide-react'
 
 interface CalendarEvent {
   id: string
@@ -26,6 +26,26 @@ interface CalendarEventWithUser extends CalendarEvent {
 interface CalendarProps {
   selectedClaim: string | null
   claimColor?: string
+}
+
+interface Todo {
+  id: string
+  user_id: string
+  title: string
+  description?: string
+  due_date: string
+  completed: boolean
+  completed_at?: string
+  priority: 'low' | 'medium' | 'high'
+  alarm_enabled: boolean
+  alarm_time?: string
+  created_at: string
+}
+
+interface TodoWithUser extends Todo {
+  profiles?: {
+    email: string
+  }
 }
 
 const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
@@ -67,6 +87,34 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
       
       if (error) throw error
       return data as CalendarEventWithUser[]
+    }
+  })
+
+  const { data: todayTodos } = useQuery({
+    queryKey: ['today-todos-calendar', selectedClaim],
+    queryFn: async () => {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const todayString = today.toISOString().split('T')[0]
+      
+      let query = supabase
+        .from('todos')
+        .select(`
+          *,
+          profiles!user_id(email)
+        `)
+        .gte('due_date', todayString)
+        .eq('completed', false)
+      
+      if (selectedClaim) {
+        query = query.eq('case_number', selectedClaim)
+      }
+      
+      const { data, error } = await query
+        .order('due_date', { ascending: true })
+      
+      if (error) throw error
+      return data as TodoWithUser[]
     }
   })
 
@@ -112,6 +160,40 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
     }
   })
 
+  const toggleTodoMutation = useMutation({
+    mutationFn: async ({ id, completed }: { id: string, completed: boolean }) => {
+      const { data, error } = await supabase
+        .from('todos')
+        .update({ 
+          completed,
+          completed_at: completed ? new Date().toISOString() : null
+        })
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['today-todos-calendar'] })
+    }
+  })
+
+  const deleteTodoMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('todos')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['today-todos-calendar'] })
+    }
+  })
+
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(currentDate)
   const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd })
@@ -141,6 +223,15 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
       end_time: format(date, "yyyy-MM-dd'T'HH:mm")
     }))
     setShowAddForm(true)
+  }
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high': return 'text-red-600 bg-red-100'
+      case 'medium': return 'text-yellow-600 bg-yellow-100'
+      case 'low': return 'text-green-600 bg-green-100'
+      default: return 'text-gray-600 bg-gray-100'
+    }
   }
 
   if (isLoading) {
@@ -280,49 +371,162 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow">
-        <div className="grid grid-cols-7 gap-px bg-gray-200">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-            <div key={day} className="bg-gray-50 p-2 text-center text-sm font-medium text-gray-700">
-              {day}
-            </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7 gap-px bg-gray-200">
-          {monthDays.map(date => {
-            const dayEvents = getEventsForDay(date)
-            return (
-              <div
-                key={date.toISOString()}
-                onClick={() => handleDateClick(date)}
-                className={`bg-white p-2 min-h-[100px] cursor-pointer hover:bg-gray-50 ${
-                  isToday(date) ? 'bg-blue-50' : ''
-                }`}
-              >
-                <div className={`text-sm font-medium mb-1 ${
-                  isToday(date) ? 'text-blue-600' : 'text-gray-900'
-                }`}>
-                  {format(date, 'd')}
-                </div>
-                <div className="space-y-1">
-                  {dayEvents.slice(0, 3).map(event => (
+      {/* Daily View with To-Do List and Calendar */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* To-Do List Section */}
+        <div className="lg:col-span-1">
+          <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
+            <h3 className="text-lg font-semibold mb-4" style={{ color: claimColor }}>
+              Today's Tasks & Upcoming
+            </h3>
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {todayTodos && todayTodos.length > 0 ? (
+                todayTodos.map((todo) => {
+                  const dueDate = new Date(todo.due_date)
+                  const today = new Date()
+                  today.setHours(0, 0, 0, 0)
+                  const isToday = dueDate.toDateString() === today.toDateString()
+                  const isOverdue = dueDate < today
+                  
+                  return (
                     <div
-                      key={event.id}
-                      className="text-xs p-1 rounded truncate text-white relative group"
-                     style={{ backgroundColor: event.color || claimColor }}
+                      key={todo.id}
+                      className={`p-3 rounded border-l-2 ${
+                        isOverdue ? 'bg-red-50 border-red-400' : 
+                        isToday ? 'bg-yellow-50 border-yellow-400' : 
+                        'bg-blue-50 border-blue-400'
+                      }`}
                     >
-                      <div>{event.title}</div>
-                      {event.profiles?.email && (
-                        <div className="text-xs opacity-75">
-                          by {event.profiles.email.split('@')[0]}
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-start space-x-2 flex-1">
+                          <button
+                            onClick={() => toggleTodoMutation.mutate({ 
+                              id: todo.id, 
+                              completed: !todo.completed 
+                            })}
+                            className={`mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center ${
+                              todo.completed 
+                                ? 'text-white' 
+                                : 'border-gray-300'
+                            }`}
+                            style={todo.completed ? { 
+                              backgroundColor: claimColor, 
+                              borderColor: claimColor 
+                            } : { 
+                              borderColor: `${claimColor}50` 
+                            }}
+                          >
+                            {todo.completed && <Check className="w-2 h-2" />}
+                          </button>
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm">{todo.title}</h4>
+                            <div className="flex flex-col space-y-1 mt-1 text-xs text-gray-600">
+                              <div className="flex items-center space-x-1">
+                                <User className="w-3 h-3" />
+                                <span>{todo.profiles?.email || 'Unknown user'}</span>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <Clock className="w-3 h-3" />
+                                <span>{format(dueDate, 'MMM d, h:mm a')}</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className={`px-2 py-1 rounded-full text-xs ${getPriorityColor(todo.priority)}`}>
+                                  {todo.priority}
+                                </span>
+                                {isOverdue && <span className="text-red-600 font-medium">OVERDUE</span>}
+                                {isToday && <span className="text-yellow-600 font-medium">DUE TODAY</span>}
+                                {todo.alarm_enabled && (
+                                  <AlertCircle className="w-3 h-3" style={{ color: claimColor }} />
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => deleteTodoMutation.mutate(todo.id)}
+                          className="text-red-500 hover:text-red-700 p-1"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })
+              ) : (
+                <div className="text-center py-4 text-gray-500 text-sm">
+                  No upcoming tasks
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Calendar Section */}
+        <div className="lg:col-span-2">
+          <div className="bg-white rounded-lg shadow">
+            <div className="grid grid-cols-7 gap-px bg-gray-200">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                <div key={day} className="bg-gray-50 p-2 text-center text-sm font-medium text-gray-700">
+                  {day}
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-px bg-gray-200">
+              {monthDays.map(date => {
+                const dayEvents = getEventsForDay(date)
+                return (
+                  <div
+                    key={date.toISOString()}
+                    onClick={() => handleDateClick(date)}
+                    className={`bg-white p-2 min-h-[100px] cursor-pointer hover:bg-gray-50 ${
+                      isToday(date) ? 'bg-blue-50' : ''
+                    }`}
+                  >
+                    <div className={`text-sm font-medium mb-1 ${
+                      isToday(date) ? 'text-blue-600' : 'text-gray-900'
+                    }`}>
+                      {format(date, 'd')}
+                    </div>
+                    <div className="space-y-1">
+                      {dayEvents.slice(0, 3).map(event => (
+                        <div
+                          key={event.id}
+                          className="text-xs p-1 rounded truncate text-white relative group"
+                         style={{ backgroundColor: event.color || claimColor }}
+                        >
+                          <div>{event.title}</div>
+                          {event.profiles?.email && (
+                            <div className="text-xs opacity-75">
+                              by {event.profiles.email.split('@')[0]}
+                            </div>
+                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              deleteEventMutation.mutate(event.id)
+                            }}
+                            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center"
+                          >
+                            <X className="w-2 h-2" />
+                          </button>
+                        </div>
+                      ))}
+                      {dayEvents.length > 3 && (
+                        <div className="text-xs text-gray-500">
+                          +{dayEvents.length - 3} more
                         </div>
                       )}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          deleteEventMutation.mutate(event.id)
-                        }}
-                        className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center"
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
                       >
                         <X className="w-2 h-2" />
                       </button>
