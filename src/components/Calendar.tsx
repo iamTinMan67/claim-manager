@@ -210,11 +210,13 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
     e.preventDefault()
     if (!newEvent.title.trim() || !newEvent.start_time) return
     
-    if (!newEvent.end_time) {
-      setNewEvent(prev => ({ ...prev, end_time: prev.start_time }))
+    // Ensure end_time is set to start_time if empty
+    const eventToSubmit = {
+      ...newEvent,
+      end_time: newEvent.end_time || newEvent.start_time
     }
     
-    addEventMutation.mutate(newEvent)
+    addEventMutation.mutate(eventToSubmit)
   }
 
   const handleDateClick = (date: Date) => {
