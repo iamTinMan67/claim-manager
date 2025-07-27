@@ -32,17 +32,22 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
   const { data: evidence, isLoading } = useQuery({
     queryKey: ['evidence', selectedClaim],
     queryFn: async () => {
+      console.log('Evidence query - selectedClaim:', selectedClaim)
+      
       let query = supabase
         .from('evidence')
         .select('*')
       
       if (selectedClaim) {
+        console.log('Filtering by case_number:', selectedClaim)
         query = query.eq('case_number', selectedClaim)
       }
       
       const { data, error } = await query
         .order('display_order', { ascending: true, nullsLast: true })
         .order('created_at', { ascending: false })
+      
+      console.log('Evidence query result:', { data, error, count: data?.length })
       
       if (error) throw error
       return data as Evidence[]
@@ -349,6 +354,8 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
           <strong>Debug:</strong> Evidence count: {evidence?.length || 0}, 
           Selected claim: {selectedClaim || 'none'}, 
           Loading: {isLoading ? 'yes' : 'no'}
+          <br />
+          <strong>Raw evidence data:</strong> {JSON.stringify(evidence?.slice(0, 2), null, 2)}
         </div>
       )}
       
