@@ -36,19 +36,39 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
   const { data: todos, isLoading } = useQuery({
     queryKey: ['todos', selectedClaim],
     queryFn: async () => {
-      const query = supabase
+      let query = supabase
         .from('todos')
         .select(`
           *,
           profiles(email),
           claims(title, status)
         `)
+      
+      if (selectedClaim) {
+        query = query.eq('case_number', selectedClaim)
+      }
+      
+      const { data, error } = await query
         .order('case_number', { ascending: true, nullsLast: true })
         .order('priority', { ascending: false })
         .order('due_date', { ascending: true })
       
       if (error) throw error
       return data as TodoWithUser[]
+    }
+  })
+
+  const { data: claims } = useQuery({
+    queryKey: ['claims-for-todos'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('claims')
+        .select('case_number, title, color')
+        .eq('status', 'Active')
+        .order('title')
+      
+      if (error) throw error
+      return data
     }
   })
 
@@ -220,10 +240,8 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
                         <span className={`px-2 py-1 rounded-full text-xs ${getPriorityColor(todo.priority)}`}>
                           {todo.priority}
                         </span>
-                        {isOverdue && <span className="text-red-600 font-medium">OVERDUE</span>}
-                        {isToday && <span className="text-yellow-600 font-medium">DUE TODAY</span>}
-                      </div>
-                    </div>
+                        {isOverdue && <span className="text-red-600 font-medium text-xs">OVERDUE</span>}
+                          {isOverdue && <span className="text-red-600 font-medium text-xs">OVERDUE</span>}
                     <button
                       onClick={() => toggleTodoMutation.mutate({ 
                         id: todo.id, 
@@ -300,8 +318,8 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
               <div>
                 <label className="block text-sm font-medium mb-1">Priority</label>
                 <select
-                  value={newTodo.priority}
-                  onChange={(e) => setNewTodo({ ...newTodo, priority: e.target.value as any })}
+                  value={selectedClaim || newTodo.case_number || ''}
+                  onChange={(e) => setNewTodo({ ...newTodo, case_number: e.target.value || null })}
                   className="w-full border rounded-lg px-3 py-2"
                 >
                   <option value="low">Low</option>
@@ -368,8 +386,15 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
           groups[claimKey].push(todo)
           return groups
         }, {}) || {}).map(([claimKey, claimTodos]) => (
+          const claimData = claims?.find(c => c.case_number === claimKey)
+          const claimColor = claimData?.color || '#6B7280'
+          
           <div key={claimKey} className="space-y-3">
             <div className="flex items-center space-x-2 pb-2 border-b border-gray-200">
+              <div 
+                className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: claimColor }}
+              />
               <h3 className="text-lg font-semibold" style={{ color: claimColor }}>
                 {claimKey === 'No Claim' ? 'General Tasks' : `${claimKey}`}
               </h3>
@@ -416,22 +441,22 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
                       {todo.description}
                     </p>
                   )}
-                  <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
+                  <div className="flex items-center space-x-4 mt-2 text-sm">
                     <div className="flex items-center space-x-1">
-                      <Clock className="w-4 h-4" />
-                      <span>Due: {format(new Date(todo.due_date), 'MMM d, yyyy h:mm a')}</span>
+                      <Clock className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-700">{format(new Date(todo.due_date), 'MMM d, yyyy h:mm a')}</span>
                     </div>
                     <div className="flex items-center space-x-1">
-                      <User className="w-4 h-4" />
-                      <span>By: {todo.profiles?.email || 'Unknown user'}</span>
+                      <User className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-700">By: {todo.profiles?.email || 'Unknown user'}</span>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-xs ${getPriorityColor(todo.priority)}`}>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(todo.priority)}`}>
                       {todo.priority}
                     </span>
                     {todo.alarm_enabled && (
                       <div className="flex items-center space-x-1">
                         <AlertCircle className="w-4 h-4" style={{ color: claimColor }} />
-                        <span>Alarm set</span>
+                        <span className="text-gray-700">Alarm set</span>
                       </div>
                     )}
                   </div>
