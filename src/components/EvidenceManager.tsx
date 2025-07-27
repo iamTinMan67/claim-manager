@@ -6,9 +6,10 @@ import { Evidence } from '@/types/database'
 
 interface EvidenceManagerProps {
   selectedClaim: string | null
+  claimColor?: string
 }
 
-const EvidenceManager = ({ selectedClaim }: EvidenceManagerProps) => {
+const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceManagerProps) => {
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingEvidence, setEditingEvidence] = useState<Evidence | null>(null)
   const [editMode, setEditMode] = useState(false)
@@ -254,13 +255,6 @@ const EvidenceManager = ({ selectedClaim }: EvidenceManagerProps) => {
 
   return (
     <div className="space-y-6">
-      {selectedClaim && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-blue-800">
-            Showing evidence for selected claim: <strong>{selectedClaim}</strong>
-          </p>
-        </div>
-      )}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Evidence Management</h2>
         <div className="flex items-center space-x-3">
@@ -268,16 +262,18 @@ const EvidenceManager = ({ selectedClaim }: EvidenceManagerProps) => {
             onClick={() => setEditMode(!editMode)}
             className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
               editMode 
-                ? 'bg-gray-600 text-white hover:bg-gray-700' 
+                ? 'text-white hover:opacity-90' 
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
+            style={editMode ? { backgroundColor: claimColor } : {}}
           >
             <Settings className="w-4 h-4" />
             <span>{editMode ? 'Exit Edit' : 'Edit Mode'}</span>
           </button>
           <button
             onClick={() => setShowAddForm(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+            className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
+            style={{ backgroundColor: claimColor }}
           >
             <Plus className="w-4 h-4" />
             <span>Add Evidence</span>
@@ -286,7 +282,7 @@ const EvidenceManager = ({ selectedClaim }: EvidenceManagerProps) => {
       </div>
 
       {showAddForm && (
-        <div className="bg-white p-6 rounded-lg shadow border">
+        <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4">Add New Evidence</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -392,7 +388,8 @@ const EvidenceManager = ({ selectedClaim }: EvidenceManagerProps) => {
               <button
                 type="submit"
                 disabled={addEvidenceMutation.isPending}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50"
+                style={{ backgroundColor: claimColor }}
               >
                 {addEvidenceMutation.isPending ? 'Adding...' : 'Add Evidence'}
               </button>
@@ -409,7 +406,7 @@ const EvidenceManager = ({ selectedClaim }: EvidenceManagerProps) => {
       )}
 
       {editingEvidence && (
-        <div className="bg-white p-6 rounded-lg shadow border">
+        <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4">Edit Evidence</h3>
           <form onSubmit={handleUpdate} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -437,7 +434,8 @@ const EvidenceManager = ({ selectedClaim }: EvidenceManagerProps) => {
               <button
                 type="submit"
                 disabled={updateEvidenceMutation.isPending}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50"
+                style={{ backgroundColor: claimColor }}
               >
                 {updateEvidenceMutation.isPending ? 'Updating...' : 'Update Evidence'}
               </button>
@@ -457,9 +455,10 @@ const EvidenceManager = ({ selectedClaim }: EvidenceManagerProps) => {
         {evidence?.map((item) => (
           <div 
             key={item.id} 
-            className={`bg-white p-6 rounded-lg shadow border transition-all ${
+            className={`bg-white p-6 rounded-lg shadow border-l-4 transition-all ${
               editMode ? 'cursor-move hover:shadow-lg' : ''
             } ${draggedItem === item.id ? 'opacity-50' : ''}`}
+            style={{ borderLeftColor: claimColor }}
             draggable={editMode}
             onDragStart={(e) => handleDragStart(e, item.id)}
             onDragOver={handleDragOver}
@@ -483,7 +482,8 @@ const EvidenceManager = ({ selectedClaim }: EvidenceManagerProps) => {
                         href={item.file_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-bold text-blue-600 hover:text-blue-800 underline"
+                        className="font-bold underline hover:opacity-80"
+                        style={{ color: claimColor }}
                       >
                         Exhibit {item.exhibit_id || 'N/A'}
                       </a>
@@ -534,7 +534,8 @@ const EvidenceManager = ({ selectedClaim }: EvidenceManagerProps) => {
                     href={item.file_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800 p-2"
+                    className="p-2 hover:opacity-80"
+                    style={{ color: claimColor }}
                   >
                     <Eye className="w-4 h-4" />
                   </a>

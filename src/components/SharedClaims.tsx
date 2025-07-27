@@ -26,9 +26,10 @@ interface ClaimShare {
 
 interface SharedClaimsProps {
   selectedClaim: string | null
+  claimColor?: string
 }
 
-const SharedClaims = ({ selectedClaim }: SharedClaimsProps) => {
+const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsProps) => {
   const [showShareForm, setShowShareForm] = useState(false)
   const [claimToShare, setClaimToShare] = useState('')
   const [shareData, setShareData] = useState({
@@ -151,8 +152,11 @@ const SharedClaims = ({ selectedClaim }: SharedClaimsProps) => {
   return (
     <div className="space-y-6">
       {selectedClaim && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-blue-800">
+        <div className="border-l-4 rounded-lg p-4" style={{ 
+          borderLeftColor: claimColor,
+          backgroundColor: `${claimColor}10`
+        }}>
+          <p style={{ color: claimColor }}>
             Showing shared access for selected claim: <strong>{selectedClaim}</strong>
           </p>
         </div>
@@ -161,7 +165,8 @@ const SharedClaims = ({ selectedClaim }: SharedClaimsProps) => {
         <h2 className="text-2xl font-bold">Shared Claims Collaboration</h2>
         <button
           onClick={() => setShowShareForm(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+          className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
+          style={{ backgroundColor: claimColor }}
         >
           <Plus className="w-4 h-4" />
           <span>Share Claim</span>
@@ -169,7 +174,7 @@ const SharedClaims = ({ selectedClaim }: SharedClaimsProps) => {
       </div>
 
       {showShareForm && (
-        <div className="bg-white p-6 rounded-lg shadow border">
+        <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4">Share a Claim</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -247,7 +252,8 @@ const SharedClaims = ({ selectedClaim }: SharedClaimsProps) => {
               <button
                 type="submit"
                 disabled={shareClaimMutation.isPending}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50"
+                style={{ backgroundColor: claimColor }}
               >
                 {shareClaimMutation.isPending ? 'Sharing...' : 'Share Claim'}
               </button>
@@ -265,11 +271,11 @@ const SharedClaims = ({ selectedClaim }: SharedClaimsProps) => {
 
       <div className="space-y-4">
         {sharedClaims?.map((share) => (
-          <div key={share.id} className="bg-white p-6 rounded-lg shadow border">
+          <div key={share.id} className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
             <div className="flex justify-between items-start">
               <div className="flex-1">
                 <div className="flex items-center space-x-2 mb-2">
-                  <Users className="w-5 h-5 text-blue-600" />
+                  <Users className="w-5 h-5" style={{ color: claimColor }} />
                   <h3 className="text-lg font-semibold">
                     {share.claims.case_number} - {share.claims.title}
                   </h3>

@@ -17,6 +17,7 @@ function App() {
   const [user, setUser] = useState<User | null>(null)
   const [activeTab, setActiveTab] = useState('claims')
   const [selectedClaim, setSelectedClaim] = useState<string | null>(null)
+  const [selectedClaimColor, setSelectedClaimColor] = useState<string>('#3B82F6')
 
   if (!user) {
     return (
@@ -29,19 +30,19 @@ function App() {
   const renderContent = () => {
     switch (activeTab) {
       case 'claims':
-        return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} />
+        return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} onClaimColorChange={setSelectedClaimColor} />
       case 'evidence':
-        return <EvidenceManager selectedClaim={selectedClaim} />
+        return <EvidenceManager selectedClaim={selectedClaim} claimColor={selectedClaimColor} />
       case 'todos':
-        return <TodoList selectedClaim={selectedClaim} />
+        return <TodoList selectedClaim={selectedClaim} claimColor={selectedClaimColor} />
       case 'calendar':
-        return <Calendar selectedClaim={selectedClaim} />
+        return <Calendar selectedClaim={selectedClaim} claimColor={selectedClaimColor} />
       case 'collaboration':
-        return <SharedClaims selectedClaim={selectedClaim} />
+        return <SharedClaims selectedClaim={selectedClaim} claimColor={selectedClaimColor} />
       case 'export':
-        return <ExportFeatures selectedClaim={selectedClaim} />
+        return <ExportFeatures selectedClaim={selectedClaim} claimColor={selectedClaimColor} />
       default:
-        return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} />
+        return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} onClaimColorChange={setSelectedClaimColor} />
     }
   }
 

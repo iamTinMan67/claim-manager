@@ -19,9 +19,10 @@ interface Todo {
 
 interface TodoListProps {
   selectedClaim: string | null
+  claimColor?: string
 }
 
-const TodoList = ({ selectedClaim }: TodoListProps) => {
+const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
   const [showAddForm, setShowAddForm] = useState(false)
   const [newTodo, setNewTodo] = useState({
     title: '',
@@ -137,8 +138,11 @@ const TodoList = ({ selectedClaim }: TodoListProps) => {
   return (
     <div className="space-y-6">
       {selectedClaim && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-blue-800">
+        <div className="border-l-4 rounded-lg p-4" style={{ 
+          borderLeftColor: claimColor,
+          backgroundColor: `${claimColor}10`
+        }}>
+          <p style={{ color: claimColor }}>
             Showing todos for selected claim: <strong>{selectedClaim}</strong>
           </p>
         </div>
@@ -147,7 +151,8 @@ const TodoList = ({ selectedClaim }: TodoListProps) => {
         <h2 className="text-2xl font-bold">To-Do Lists</h2>
         <button
           onClick={() => setShowAddForm(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+          className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
+          style={{ backgroundColor: claimColor }}
         >
           <Plus className="w-4 h-4" />
           <span>Add Todo</span>
@@ -155,7 +160,7 @@ const TodoList = ({ selectedClaim }: TodoListProps) => {
       </div>
 
       {showAddForm && (
-        <div className="bg-white p-6 rounded-lg shadow border">
+        <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4">Add New Todo</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -226,7 +231,8 @@ const TodoList = ({ selectedClaim }: TodoListProps) => {
               <button
                 type="submit"
                 disabled={addTodoMutation.isPending}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50"
+                style={{ backgroundColor: claimColor }}
               >
                 {addTodoMutation.isPending ? 'Adding...' : 'Add Todo'}
               </button>
@@ -246,9 +252,10 @@ const TodoList = ({ selectedClaim }: TodoListProps) => {
         {todos?.map((todo) => (
           <div
             key={todo.id}
-            className={`bg-white p-4 rounded-lg shadow border ${
+            className={`bg-white p-4 rounded-lg shadow border-l-4 ${
               todo.completed ? 'opacity-75' : ''
             }`}
+            style={{ borderLeftColor: claimColor }}
           >
             <div className="flex items-start justify-between">
               <div className="flex items-start space-x-3 flex-1">
@@ -259,9 +266,15 @@ const TodoList = ({ selectedClaim }: TodoListProps) => {
                   })}
                   className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center ${
                     todo.completed 
-                      ? 'bg-green-500 border-green-500 text-white' 
-                      : 'border-gray-300 hover:border-green-500'
+                      ? 'text-white' 
+                      : 'border-gray-300'
                   }`}
+                  style={todo.completed ? { 
+                    backgroundColor: claimColor, 
+                    borderColor: claimColor 
+                  } : { 
+                    borderColor: `${claimColor}50` 
+                  }}
                 >
                   {todo.completed && <Check className="w-3 h-3" />}
                 </button>
@@ -284,7 +297,7 @@ const TodoList = ({ selectedClaim }: TodoListProps) => {
                     </span>
                     {todo.alarm_enabled && (
                       <div className="flex items-center space-x-1">
-                        <AlertCircle className="w-4 h-4" />
+                        <AlertCircle className="w-4 h-4" style={{ color: claimColor }} />
                         <span>Alarm set</span>
                       </div>
                     )}

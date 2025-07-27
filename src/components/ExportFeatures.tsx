@@ -7,9 +7,10 @@ import html2canvas from 'html2canvas'
 
 interface ExportFeaturesProps {
   selectedClaim: string | null
+  claimColor?: string
 }
 
-const ExportFeatures = ({ selectedClaim }: ExportFeaturesProps) => {
+const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeaturesProps) => {
   const [exportType, setExportType] = useState<'claims' | 'evidence' | 'todos' | 'calendar' | 'all'>('all')
   const [isExporting, setIsExporting] = useState(false)
 
@@ -222,8 +223,11 @@ const ExportFeatures = ({ selectedClaim }: ExportFeaturesProps) => {
   return (
     <div className="space-y-6">
       {selectedClaim && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-blue-800">
+        <div className="border-l-4 rounded-lg p-4" style={{ 
+          borderLeftColor: claimColor,
+          backgroundColor: `${claimColor}10`
+        }}>
+          <p style={{ color: claimColor }}>
             Exporting data for selected claim: <strong>{selectedClaim}</strong>
           </p>
         </div>
@@ -247,9 +251,14 @@ const ExportFeatures = ({ selectedClaim }: ExportFeaturesProps) => {
                 onClick={() => setExportType('claims')}
                 className={`p-4 border rounded-lg text-center transition-colors ${
                   exportType === 'claims' 
-                    ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                    ? 'text-white' 
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
+                style={exportType === 'claims' ? { 
+                  borderColor: claimColor, 
+                  backgroundColor: `${claimColor}20`,
+                  color: claimColor
+                } : {}}
               >
                 <FileText className="w-6 h-6 mx-auto mb-2" />
                 <div className="text-sm font-medium">Claims</div>
@@ -260,9 +269,14 @@ const ExportFeatures = ({ selectedClaim }: ExportFeaturesProps) => {
                 onClick={() => setExportType('evidence')}
                 className={`p-4 border rounded-lg text-center transition-colors ${
                   exportType === 'evidence' 
-                    ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                    ? 'text-white' 
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
+                style={exportType === 'evidence' ? { 
+                  borderColor: claimColor, 
+                  backgroundColor: `${claimColor}20`,
+                  color: claimColor
+                } : {}}
               >
                 <FileText className="w-6 h-6 mx-auto mb-2" />
                 <div className="text-sm font-medium">Evidence</div>
@@ -273,9 +287,14 @@ const ExportFeatures = ({ selectedClaim }: ExportFeaturesProps) => {
                 onClick={() => setExportType('todos')}
                 className={`p-4 border rounded-lg text-center transition-colors ${
                   exportType === 'todos' 
-                    ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                    ? 'text-white' 
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
+                style={exportType === 'todos' ? { 
+                  borderColor: claimColor, 
+                  backgroundColor: `${claimColor}20`,
+                  color: claimColor
+                } : {}}
               >
                 <CheckSquare className="w-6 h-6 mx-auto mb-2" />
                 <div className="text-sm font-medium">Todos</div>
@@ -286,9 +305,14 @@ const ExportFeatures = ({ selectedClaim }: ExportFeaturesProps) => {
                 onClick={() => setExportType('calendar')}
                 className={`p-4 border rounded-lg text-center transition-colors ${
                   exportType === 'calendar' 
-                    ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                    ? 'text-white' 
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
+                style={exportType === 'calendar' ? { 
+                  borderColor: claimColor, 
+                  backgroundColor: `${claimColor}20`,
+                  color: claimColor
+                } : {}}
               >
                 <Calendar className="w-6 h-6 mx-auto mb-2" />
                 <div className="text-sm font-medium">Calendar</div>
@@ -299,9 +323,14 @@ const ExportFeatures = ({ selectedClaim }: ExportFeaturesProps) => {
                 onClick={() => setExportType('all')}
                 className={`p-4 border rounded-lg text-center transition-colors ${
                   exportType === 'all' 
-                    ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                    ? 'text-white' 
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
+                style={exportType === 'all' ? { 
+                  borderColor: claimColor, 
+                  backgroundColor: `${claimColor}20`,
+                  color: claimColor
+                } : {}}
               >
                 <Users className="w-6 h-6 mx-auto mb-2" />
                 <div className="text-sm font-medium">All Data</div>
@@ -316,7 +345,7 @@ const ExportFeatures = ({ selectedClaim }: ExportFeaturesProps) => {
               <button
                 onClick={() => handleExport('csv')}
                 disabled={isExporting || getDataCount() === 0}
-                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
               >
                 <Download className="w-4 h-4" />
                 <span>Export as CSV</span>
@@ -325,7 +354,8 @@ const ExportFeatures = ({ selectedClaim }: ExportFeaturesProps) => {
               <button
                 onClick={() => handleExport('pdf')}
                 disabled={isExporting || getDataCount() === 0}
-                className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                className="text-white px-6 py-3 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                style={{ backgroundColor: claimColor }}
               >
                 <Download className="w-4 h-4" />
                 <span>{isExporting ? 'Generating PDF...' : 'Export as PDF'}</span>

@@ -9,9 +9,10 @@ import { Edit, Trash2, Plus, X } from 'lucide-react'
 interface ClaimsTableProps {
   onClaimSelect: (claimId: string | null) => void
   selectedClaim: string | null
+  onClaimColorChange: (color: string) => void
 }
 
-const ClaimsTable = ({ onClaimSelect, selectedClaim }: ClaimsTableProps) => {
+const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange }: ClaimsTableProps) => {
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingClaim, setEditingClaim] = useState<Claim | null>(null)
   const [newClaim, setNewClaim] = useState({
@@ -21,7 +22,8 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim }: ClaimsTableProps) => {
     plaintiff_name: '',
     defendant_name: '',
     description: '',
-    status: 'Active'
+    status: 'Active',
+    color: '#3B82F6'
   })
 
   const queryClient = useQueryClient()
@@ -63,7 +65,8 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim }: ClaimsTableProps) => {
         plaintiff_name: '',
         defendant_name: '',
         description: '',
-        status: 'Active'
+        status: 'Active',
+        color: '#3B82F6'
       })
     }
   })
@@ -118,6 +121,16 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim }: ClaimsTableProps) => {
     })
   }
 
+  const handleClaimSelect = (claim: Claim) => {
+    onClaimSelect(claim.case_number)
+    onClaimColorChange(claim.color || '#3B82F6')
+  }
+
+  const getClaimColors = () => [
+    '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', 
+    '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1'
+  ]
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -134,31 +147,86 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim }: ClaimsTableProps) => {
     )
   }
 
-  if (!claims || claims.length === 0) {
+  // If a claim is selected, show only that claim with evidence subform
+  if (selectedClaim) {
+    const claim = claims?.find(c => c.case_number === selectedClaim)
+    if (!claim) return <div>Claim not found</div>
+
     return (
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
-        <div className="text-gray-600">No claims found</div>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold">Claim Details</h2>
+          <button
+            onClick={() => onClaimSelect(null)}
+            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center space-x-2"
+          >
+            <X className="w-4 h-4" />
+            <span>Back to All Claims</span>
+          </button>
+        </div>
+        
+        {/* Selected Claim Display */}
+        <div 
+          className="p-6 rounded-lg shadow border-l-4"
+          style={{ 
+            borderLeftColor: claim.color || '#3B82F6',
+            backgroundColor: `${claim.color || '#3B82F6'}10`
+          }}
+        >
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              <h3 className="text-xl font-semibold mb-2">{claim.title}</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                <div><strong>Case Number:</strong> {claim.case_number}</div>
+                <div><strong>Court:</strong> {claim.court || 'N/A'}</div>
+                <div><strong>Plaintiff:</strong> {claim.plaintiff_name || 'N/A'}</div>
+                <div><strong>Defendant:</strong> {claim.defendant_name || 'N/A'}</div>
+              </div>
+              {claim.description && (
+                <div className="mt-3">
+                  <strong>Description:</strong> {claim.description}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setEditingClaim(claim)}
+                className="text-blue-600 hover:text-blue-800 p-2"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => deleteClaimMutation.mutate(claim.case_number)}
+                className="text-red-600 hover:text-red-800 p-2"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Evidence Subform */}
+        <EvidenceManager selectedClaim={selectedClaim} claimColor={claim.color || '#3B82F6'} />
       </div>
     )
   }
 
+  // Show all claims in boxes
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <div className="flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-gray-900">Claims</h2>
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Claim</span>
-          </button>
-        </div>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Legal Claims</h2>
+        <button
+          onClick={() => setShowAddForm(true)}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Add Claim</span>
+        </button>
       </div>
 
       {showAddForm && (
-        <div className="p-6 border-b border-gray-200 bg-gray-50">
+        <div className="bg-white p-6 rounded-lg shadow border">
           <h3 className="text-lg font-semibold mb-4">Add New Claim</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -221,6 +289,22 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim }: ClaimsTableProps) => {
                 rows={3}
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Claim Color</label>
+              <div className="flex space-x-2">
+                {getClaimColors().map(color => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setNewClaim({ ...newClaim, color })}
+                    className={`w-8 h-8 rounded-full border-2 ${
+                      newClaim.color === color ? 'border-gray-800' : 'border-gray-300'
+                    }`}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+            </div>
             <div className="flex space-x-3">
               <button
                 type="submit"
@@ -242,7 +326,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim }: ClaimsTableProps) => {
       )}
 
       {editingClaim && (
-        <div className="p-6 border-b border-gray-200 bg-gray-50">
+        <div className="bg-white p-6 rounded-lg shadow border">
           <h3 className="text-lg font-semibold mb-4">Edit Claim</h3>
           <form onSubmit={handleUpdate} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -305,6 +389,22 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim }: ClaimsTableProps) => {
                 rows={3}
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Claim Color</label>
+              <div className="flex space-x-2">
+                {getClaimColors().map(color => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setEditingClaim({ ...editingClaim, color })}
+                    className={`w-8 h-8 rounded-full border-2 ${
+                      editingClaim.color === color ? 'border-gray-800' : 'border-gray-300'
+                    }`}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+            </div>
             <div className="flex space-x-3">
               <button
                 type="submit"
@@ -325,103 +425,69 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim }: ClaimsTableProps) => {
         </div>
       )}
 
-      {selectedClaim && (
-        <div className="px-6 py-3 bg-blue-50 border-b border-blue-200">
-          <div className="flex justify-between items-center">
-            <span className="text-blue-800 font-medium">
-              Currently viewing: {claims?.find(c => c.case_number === selectedClaim)?.title}
-            </span>
-            <button
-              onClick={() => onClaimSelect(null)}
-              className="text-blue-600 hover:text-blue-800"
-            >
-              <X className="w-4 h-4" />
-            </button>
+      {/* Claims Grid */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {claims?.map((claim) => (
+          <div
+            key={claim.case_number}
+            className="bg-white p-6 rounded-lg shadow border-l-4 cursor-pointer hover:shadow-lg transition-shadow"
+            style={{ borderLeftColor: claim.color || '#3B82F6' }}
+            onClick={() => handleClaimSelect(claim)}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <div 
+                className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: claim.color || '#3B82F6' }}
+              />
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setEditingClaim(claim)
+                  }}
+                  className="text-blue-600 hover:text-blue-800 p-1"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    deleteClaimMutation.mutate(claim.case_number)
+                  }}
+                  className="text-red-600 hover:text-red-800 p-1"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            
+            <h3 className="text-lg font-semibold mb-2">{claim.title}</h3>
+            <p className="text-sm text-gray-600 mb-2">Case: {claim.case_number}</p>
+            {claim.court && (
+              <p className="text-sm text-gray-600 mb-2">Court: {claim.court}</p>
+            )}
+            
+            <div className="flex justify-between items-center mt-4">
+              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                claim.status === 'Active' 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-gray-100 text-gray-800'
+              }`}>
+                {claim.status}
+              </span>
+              <span className="text-xs text-gray-500">
+                {new Date(claim.created_at).toLocaleDateString()}
+              </span>
+            </div>
           </div>
+        ))}
+      </div>
+      
+      {(!claims || claims.length === 0) && (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+          <div className="text-gray-600">No claims found. Create your first claim to get started!</div>
         </div>
       )}
-
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Case Number
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Title
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Court
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Created
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {claims.map((claim) => (
-              <tr 
-                key={claim.case_number} 
-                className={`hover:bg-gray-50 cursor-pointer ${
-                  selectedClaim === claim.case_number ? 'bg-blue-50' : ''
-                }`}
-                onClick={() => onClaimSelect(claim.case_number)}
-              >
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {claim.case_number}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {claim.title}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {claim.court || '-'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    claim.status === 'Active' 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {claim.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Date(claim.created_at).toLocaleDateString()}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setEditingClaim(claim)
-                      }}
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        deleteClaimMutation.mutate(claim.case_number)
-                      }}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </div>
   )
 }

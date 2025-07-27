@@ -7,6 +7,7 @@ export interface Claim {
   defendant_name?: string
   description?: string
   status: string
+  color?: string
   created_at: string
   updated_at: string
 }

@@ -18,9 +18,10 @@ interface CalendarEvent {
 
 interface CalendarProps {
   selectedClaim: string | null
+  claimColor?: string
 }
 
-const Calendar = ({ selectedClaim }: CalendarProps) => {
+const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -30,7 +31,7 @@ const Calendar = ({ selectedClaim }: CalendarProps) => {
     start_time: '',
     end_time: '',
     all_day: false,
-    color: '#3B82F6'
+    color: claimColor
   })
 
   const queryClient = useQueryClient()
@@ -82,7 +83,7 @@ const Calendar = ({ selectedClaim }: CalendarProps) => {
         start_time: '',
         end_time: '',
         all_day: false,
-        color: '#3B82F6'
+        color: claimColor
       })
     }
   })
@@ -139,8 +140,11 @@ const Calendar = ({ selectedClaim }: CalendarProps) => {
   return (
     <div className="space-y-6">
       {selectedClaim && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-blue-800">
+        <div className="border-l-4 rounded-lg p-4" style={{ 
+          borderLeftColor: claimColor,
+          backgroundColor: `${claimColor}10`
+        }}>
+          <p style={{ color: claimColor }}>
             Showing calendar events for selected claim: <strong>{selectedClaim}</strong>
           </p>
         </div>
@@ -165,7 +169,8 @@ const Calendar = ({ selectedClaim }: CalendarProps) => {
           </button>
           <button
             onClick={() => setShowAddForm(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+            className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
+            style={{ backgroundColor: claimColor }}
           >
             <Plus className="w-4 h-4" />
             <span>Add Event</span>
@@ -174,7 +179,7 @@ const Calendar = ({ selectedClaim }: CalendarProps) => {
       </div>
 
       {showAddForm && (
-        <div className="bg-white p-6 rounded-lg shadow border">
+        <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold">Add New Event</h3>
             <button
@@ -239,7 +244,7 @@ const Calendar = ({ selectedClaim }: CalendarProps) => {
               <label className="block text-sm font-medium mb-1">Color</label>
               <input
                 type="color"
-                value={newEvent.color}
+                value={newEvent.color || claimColor}
                 onChange={(e) => setNewEvent({ ...newEvent, color: e.target.value })}
                 className="w-16 h-10 border rounded-lg"
               />
@@ -248,7 +253,8 @@ const Calendar = ({ selectedClaim }: CalendarProps) => {
               <button
                 type="submit"
                 disabled={addEventMutation.isPending}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50"
+                style={{ backgroundColor: claimColor }}
               >
                 {addEventMutation.isPending ? 'Adding...' : 'Add Event'}
               </button>
@@ -293,7 +299,7 @@ const Calendar = ({ selectedClaim }: CalendarProps) => {
                     <div
                       key={event.id}
                       className="text-xs p-1 rounded truncate text-white relative group"
-                      style={{ backgroundColor: event.color || '#3B82F6' }}
+                     style={{ backgroundColor: event.color || claimColor }}
                     >
                       {event.title}
                       <button
