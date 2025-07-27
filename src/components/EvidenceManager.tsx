@@ -1,13 +1,14 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { Upload, FileText, Link, Calendar, Hash, BookOpen, Eye, Trash2, Edit, Plus, Settings } from 'lucide-react'
+import { Upload, FileText, Link, Calendar, Hash, BookOpen, Eye, Trash2, Edit, Plus, Settings, GripVertical } from 'lucide-react'
 import { Evidence } from '@/types/database'
 
 const EvidenceManager = () => {
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingEvidence, setEditingEvidence] = useState<Evidence | null>(null)
   const [editMode, setEditMode] = useState(false)
+  const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [newEvidence, setNewEvidence] = useState({
     file_name: '',
     file_url: '',
@@ -144,22 +145,37 @@ const EvidenceManager = () => {
     }
   })
 
-  const moveEvidence = (id: string, direction: 'up' | 'down') => {
-    if (!evidence) return
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedItem(id)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault()
+    if (!draggedItem || !evidence || draggedItem === targetId) return
+
+    const draggedIndex = evidence.findIndex(item => item.id === draggedItem)
+    const targetIndex = evidence.findIndex(item => item.id === targetId)
     
-    const currentIndex = evidence.findIndex(item => item.id === id)
-    if (currentIndex === -1) return
-    
-    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
-    if (newIndex < 0 || newIndex >= evidence.length) return
-    
-    // Create new array with swapped items
+    if (draggedIndex === -1 || targetIndex === -1) return
+
+    // Create new array with reordered items
     const newEvidenceList = [...evidence]
-    const [movedItem] = newEvidenceList.splice(currentIndex, 1)
-    newEvidenceList.splice(newIndex, 0, movedItem)
+    const [movedItem] = newEvidenceList.splice(draggedIndex, 1)
+    newEvidenceList.splice(targetIndex, 0, movedItem)
     
     // Update with new exhibit numbers
     moveEvidenceMutation.mutate({ evidenceList: newEvidenceList })
+    setDraggedItem(null)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedItem(null)
   }
 
   const oldMoveEvidenceMutation = useMutation({
@@ -421,17 +437,41 @@ const EvidenceManager = () => {
 
       <div className="grid gap-4">
         {evidence?.map((item) => (
-          <div key={item.id} className="bg-white p-6 rounded-lg shadow border">
+          <div 
+            key={item.id} 
+            className={`bg-white p-6 rounded-lg shadow border transition-all ${
+              editMode ? 'cursor-move hover:shadow-lg' : ''
+            } ${draggedItem === item.id ? 'opacity-50' : ''}`}
+            draggable={editMode}
+            onDragStart={(e) => handleDragStart(e, item.id)}
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, item.id)}
+            onDragEnd={handleDragEnd}
+          >
             <div className="flex justify-between items-start">
               <div className="flex-1">
                 <div className="flex items-center space-x-2 mb-2">
+                  {editMode && (
+                    <GripVertical className="w-4 h-4 text-gray-400" />
+                  )}
                   {getMethodIcon(item.method)}
                   <h3 className="text-lg font-semibold">{item.file_name}</h3>
                 </div>
                 <div className="grid grid-cols-5 gap-4 text-sm text-gray-600 mb-3">
                   <div className="flex items-center space-x-1">
                     <Hash className="w-4 h-4" />
-                    <span className="font-medium">Exhibit {item.exhibit_id || 'N/A'}</span>
+                    {item.file_url ? (
+                      <a
+                        href={item.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-bold text-blue-600 hover:text-blue-800 underline"
+                      >
+                        Exhibit {item.exhibit_id || 'N/A'}
+                      </a>
+                    ) : (
+                      <span className="font-bold">Exhibit {item.exhibit_id || 'N/A'}</span>
+                    )}
                   </div>
                   <div className="flex items-center space-x-1">
                     <span className="font-medium">Pages:</span>
@@ -471,24 +511,6 @@ const EvidenceManager = () => {
                 )}
               </div>
               <div className="flex items-center space-x-2">
-                {editMode && (
-                  <div className="flex flex-col space-y-1">
-                    <button
-                      onClick={() => moveEvidence(item.id, 'up')}
-                      className="text-gray-400 hover:text-gray-600 p-1 text-lg"
-                      title="Move up"
-                    >
-                      ↑
-                    </button>
-                    <button
-                      onClick={() => moveEvidence(item.id, 'down')}
-                      className="text-gray-400 hover:text-gray-600 p-1 text-lg"
-                      title="Move down"
-                    >
-                      ↓
-                    </button>
-                  </div>
-                )}
                 {item.file_url && (
                   <a
                     href={item.file_url}
