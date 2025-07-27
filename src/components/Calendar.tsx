@@ -492,7 +492,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
                         <div
                           key={event.id}
                           className="text-xs p-1 rounded truncate text-white relative group"
-                         style={{ backgroundColor: event.color || claimColor }}
+                          style={{ backgroundColor: event.color || claimColor }}
                         >
                           <div>{event.title}</div>
                           {event.profiles?.email && (
@@ -522,25 +522,6 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
               })}
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-                      >
-                        <X className="w-2 h-2" />
-                      </button>
-                    </div>
-                  ))}
-                  {dayEvents.length > 3 && (
-                    <div className="text-xs text-gray-500">
-                      +{dayEvents.length - 3} more
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          })}
         </div>
       </div>
     </div>
