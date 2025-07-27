@@ -45,7 +45,7 @@ const SharedClaims = () => {
         .select(`
           *,
           claims!inner(title, case_number),
-          profiles!shared_with_id(email, full_name)
+          users!shared_with_id(email, full_name)
         `)
         .order('created_at', { ascending: false })
       
