@@ -50,7 +50,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
         .select(`
           *,
           claims!inner(title, case_number),
-          users!shared_with_id(email, full_name)
+          profiles!shared_with_id(email, full_name)
         `)
       
       if (selectedClaim) {
