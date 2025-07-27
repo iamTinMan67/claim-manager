@@ -326,6 +326,34 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
     }
   })
 
+  const associateAllEvidenceMutation = useMutation({
+    mutationFn: async ({ caseNumber }: { caseNumber: string }) => {
+      // Get all evidence items that are not associated with any claim
+      const unassociatedEvidence = evidence?.filter(item => !item.case_number) || []
+      
+      if (unassociatedEvidence.length === 0) return []
+
+      // Update all unassociated evidence to be associated with the current claim
+      const updates = unassociatedEvidence.map(item => 
+        supabase
+          .from('evidence')
+          .update({ case_number: caseNumber })
+          .eq('id', item.id)
+      )
+
+      const results = await Promise.all(updates)
+      const errors = results.filter(result => result.error)
+      if (errors.length > 0) {
+        throw errors[0].error
+      }
+
+      return results
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evidence'] })
+    }
+  })
+
   const oldMoveEvidenceMutation = useMutation({
     mutationFn: async ({ id, newOrder }: { id: string, newOrder: number }) => {
       const { data, error } = await supabase
@@ -347,6 +375,14 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
     if (selectedClaim) {
       associateEvidenceMutation.mutate({ 
         evidenceId, 
+        caseNumber: selectedClaim 
+      })
+    }
+  }
+
+  const handleAssociateAllWithClaim = () => {
+    if (selectedClaim) {
+      associateAllEvidenceMutation.mutate({ 
         caseNumber: selectedClaim 
       })
     }
