@@ -11,27 +11,8 @@ interface ExportFeaturesProps {
 }
 
 const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeaturesProps) => {
-  const [exportType, setExportType] = useState<'claims' | 'evidence' | 'todos' | 'calendar' | 'all'>('all')
+  const [exportType, setExportType] = useState<'evidence' | 'todos' | 'calendar'>('evidence')
   const [isExporting, setIsExporting] = useState(false)
-
-  const { data: claims } = useQuery({
-    queryKey: ['claims-export', selectedClaim],
-    queryFn: async () => {
-      let query = supabase
-        .from('claims')
-        .select('*')
-      
-      if (selectedClaim) {
-        query = query.eq('case_number', selectedClaim)
-      }
-      
-      const { data, error } = await query
-        .order('created_at', { ascending: false })
-      
-      if (error) throw error
-      return data
-    }
-  })
 
   const { data: evidence } = useQuery({
     queryKey: ['evidence-export', selectedClaim],
@@ -142,7 +123,10 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         yPosition += lines.length * 5 + 10
       })
 
-      pdf.save(`${filename}.pdf`)
+      // Open PDF in browser instead of downloading
+      const pdfBlob = pdf.output('blob')
+      const pdfUrl = URL.createObjectURL(pdfBlob)
+      window.open(pdfUrl, '_blank')
     } catch (error) {
       console.error('Error generating PDF:', error)
     } finally {
@@ -151,18 +135,9 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
   }
 
   const handleExport = async (format: 'csv' | 'pdf') => {
-    if (!claims && !evidence && !todos && !events) return
+    if (!evidence && !todos && !events) return
 
     switch (exportType) {
-      case 'claims':
-        if (claims) {
-          if (format === 'csv') {
-            exportToCSV(claims, 'claims', ['Case Number', 'Title', 'Court', 'Status', 'Created At'])
-          } else {
-            await exportToPDF(claims, 'Legal Claims Report', 'claims')
-          }
-        }
-        break
       case 'evidence':
         if (evidence) {
           if (format === 'csv') {
@@ -190,32 +165,14 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
           }
         }
         break
-      case 'all':
-        if (format === 'csv') {
-          claims && exportToCSV(claims, 'claims', ['Case Number', 'Title', 'Court', 'Status', 'Created At'])
-          evidence && exportToCSV(evidence, 'evidence', ['File Name', 'Exhibit ID', 'Method', 'Number of Pages', 'Date Submitted'])
-          todos && exportToCSV(todos, 'todos', ['Title', 'Description', 'Due Date', 'Priority', 'Completed'])
-          events && exportToCSV(events, 'calendar', ['Title', 'Description', 'Start Time', 'End Time', 'All Day'])
-        } else {
-          const allData = [
-            ...(claims || []).map(item => ({ ...item, type: 'Claim' })),
-            ...(evidence || []).map(item => ({ ...item, type: 'Evidence' })),
-            ...(todos || []).map(item => ({ ...item, type: 'Todo' })),
-            ...(events || []).map(item => ({ ...item, type: 'Event' }))
-          ]
-          await exportToPDF(allData, 'Complete Legal Data Report', 'complete-report')
-        }
-        break
     }
   }
 
   const getDataCount = () => {
     switch (exportType) {
-      case 'claims': return claims?.length || 0
       case 'evidence': return evidence?.length || 0
       case 'todos': return todos?.length || 0
       case 'calendar': return events?.length || 0
-      case 'all': return (claims?.length || 0) + (evidence?.length || 0) + (todos?.length || 0) + (events?.length || 0)
       default: return 0
     }
   }
@@ -246,25 +203,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">Select Data to Export</label>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <button
-                onClick={() => setExportType('claims')}
-                className={`p-4 border rounded-lg text-center transition-colors ${
-                  exportType === 'claims' 
-                    ? 'text-white' 
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                style={exportType === 'claims' ? { 
-                  borderColor: claimColor, 
-                  backgroundColor: `${claimColor}20`,
-                  color: claimColor
-                } : {}}
-              >
-                <FileText className="w-6 h-6 mx-auto mb-2" />
-                <div className="text-sm font-medium">Claims</div>
-                <div className="text-xs text-gray-500">{claims?.length || 0} items</div>
-              </button>
-              
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <button
                 onClick={() => setExportType('evidence')}
                 className={`p-4 border rounded-lg text-center transition-colors ${
@@ -317,24 +256,6 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
                 <Calendar className="w-6 h-6 mx-auto mb-2" />
                 <div className="text-sm font-medium">Calendar</div>
                 <div className="text-xs text-gray-500">{events?.length || 0} items</div>
-              </button>
-              
-              <button
-                onClick={() => setExportType('all')}
-                className={`p-4 border rounded-lg text-center transition-colors ${
-                  exportType === 'all' 
-                    ? 'text-white' 
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                style={exportType === 'all' ? { 
-                  borderColor: claimColor, 
-                  backgroundColor: `${claimColor}20`,
-                  color: claimColor
-                } : {}}
-              >
-                <Users className="w-6 h-6 mx-auto mb-2" />
-                <div className="text-sm font-medium">All Data</div>
-                <div className="text-xs text-gray-500">{getDataCount()} items</div>
               </button>
             </div>
           </div>

@@ -340,12 +340,11 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
             onClick={() => setEditMode(!editMode)}
             className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
               editMode 
-                ? 'text-white hover:opacity-90' 
+                ? 'text-red-600 bg-red-100 hover:bg-red-200' 
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
-            style={editMode ? { backgroundColor: claimColor } : {}}
           >
-            <Settings className="w-4 h-4" />
+            <Settings className={`w-4 h-4 ${editMode ? 'text-red-600' : ''}`} />
             <span>{editMode ? 'Exit Edit' : 'Edit Mode'}</span>
           </button>
           <button
