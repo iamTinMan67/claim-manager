@@ -96,7 +96,7 @@ export default function AuthComponent({ children, onAuthChange }: AuthComponentP
             supabaseClient={supabase}
             appearance={{ theme: ThemeSupa }}
             providers={[]}
-            redirectTo={window.location.origin}
+            redirectTo={`${window.location.protocol}//${window.location.host}`}
             onlyThirdPartyProviders={false}
           />
         </div>
