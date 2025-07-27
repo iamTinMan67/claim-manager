@@ -113,6 +113,35 @@ const EvidenceManager = () => {
     }
   })
 
+  const moveEvidenceMutation = useMutation({
+    mutationFn: async ({ id, newOrder }: { id: string, newOrder: number }) => {
+      const { data, error } = await supabase
+        .from('evidence')
+        .update({ display_order: newOrder })
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evidence'] })
+    }
+  })
+
+  const moveEvidence = (id: string, direction: 'up' | 'down') => {
+    if (!evidence) return
+    
+    const currentIndex = evidence.findIndex(item => item.id === id)
+    if (currentIndex === -1) return
+    
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+    if (newIndex < 0 || newIndex >= evidence.length) return
+    
+    moveEvidenceMutation.mutate({ id, newOrder: newIndex + 1 })
+  }
+
   const resetForm = () => {
     setNewEvidence({
       file_name: '',
@@ -373,13 +402,19 @@ const EvidenceManager = () => {
                       <span>{new Date(item.date_submitted).toLocaleDateString()}</span>
                     </div>
                   )}
-                  {item.case_number && (
+                  {item.exhibit_id && (
                     <div className="flex items-center space-x-1">
                       <Hash className="w-4 h-4" />
-                      <span>{item.case_number}</span>
+                      <span>Exhibit: {item.exhibit_id}</span>
                     </div>
                   )}
                 </div>
+                {item.case_number && (
+                  <div className="mt-2 flex items-center space-x-1 text-sm text-gray-600">
+                    <FileText className="w-4 h-4" />
+                    <span>Case: {item.case_number}</span>
+                  </div>
+                )}
                 {item.book_of_deeds_ref && (
                   <div className="mt-2 flex items-center space-x-1 text-sm text-gray-600">
                     <BookOpen className="w-4 h-4" />
@@ -400,7 +435,23 @@ const EvidenceManager = () => {
                   </div>
                 )}
               </div>
-              <div className="flex space-x-2">
+              <div className="flex items-center space-x-2">
+                <div className="flex flex-col space-y-1">
+                  <button
+                    onClick={() => moveEvidence(item.id, 'up')}
+                    className="text-gray-400 hover:text-gray-600 p-1"
+                    title="Move up"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    onClick={() => moveEvidence(item.id, 'down')}
+                    className="text-gray-400 hover:text-gray-600 p-1"
+                    title="Move down"
+                  >
+                    ↓
+                  </button>
+                </div>
                 {item.file_url && (
                   <a
                     href={item.file_url}
