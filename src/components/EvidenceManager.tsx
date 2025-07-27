@@ -453,6 +453,33 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
         </div>
       )}
       
+      {/* Show banner if there are unassociated evidence items when a claim is selected */}
+      {selectedClaim && evidence && evidence.some(item => !item.case_number) && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex justify-between items-center">
+          <div>
+            <p className="text-yellow-800 font-medium">
+              {evidence.filter(item => !item.case_number).length} evidence items are not associated with any claim.
+            </p>
+            <p className="text-yellow-700 text-sm mt-1">
+              You can associate them individually or all at once with the current claim.
+            </p>
+          </div>
+          <button
+            onClick={handleAssociateAllWithClaim}
+            disabled={associateAllEvidenceMutation.isPending}
+            className="text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center space-x-2"
+            style={{ backgroundColor: claimColor }}
+          >
+            <span>
+              {associateAllEvidenceMutation.isPending 
+                ? 'Associating All...' 
+                : `Associate All with ${selectedClaim}`
+              }
+            </span>
+          </button>
+        </div>
+      )}
+      
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Evidence Management</h2>
         <div className="flex items-center space-x-3">
