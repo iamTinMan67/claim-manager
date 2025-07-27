@@ -673,7 +673,19 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
                 </div>
                 <div className="mt-2 flex items-center space-x-1 text-sm text-gray-600">
                   <span className="font-medium">Case:</span>
-                  <span>{item.case_number || 'N/A'}</span>
+                  <span className={item.case_number ? '' : 'text-red-600 font-medium'}>
+                    {item.case_number || 'Not Associated'}
+                  </span>
+                  {selectedClaim && !item.case_number && (
+                    <button
+                      onClick={() => handleAssociateWithClaim(item.id)}
+                      disabled={associateEvidenceMutation.isPending}
+                      className="ml-2 text-xs px-2 py-1 rounded text-white hover:opacity-90 disabled:opacity-50"
+                      style={{ backgroundColor: claimColor }}
+                    >
+                      Associate with {selectedClaim}
+                    </button>
+                  )}
                 </div>
                 {item.book_of_deeds_ref && (
                   <div className="mt-2 flex items-center space-x-1 text-sm text-gray-600">
