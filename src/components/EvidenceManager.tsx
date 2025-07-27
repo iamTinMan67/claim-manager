@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { Upload, FileText, Link, Calendar, Hash, BookOpen, Eye, Trash2, Edit, Plus, Settings, GripVertical } from 'lucide-react'
 import { Evidence } from '@/types/database'
+import { format } from 'date-fns'
 
 interface EvidenceManagerProps {
   selectedClaim: string | null
@@ -80,10 +81,42 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
         .single()
 
       if (error) throw error
+
+      // If method is "To-Do" and date_submitted is not empty and >= today, create a todo task
+      if (evidenceData.method === 'To-Do' && evidenceData.date_submitted) {
+        const submittedDate = new Date(evidenceData.date_submitted)
+        const today = new Date()
+        today.setHours(0, 0, 0, 0) // Reset time to start of day for comparison
+        
+        if (submittedDate >= today) {
+          // Create a todo task
+          const todoData = {
+            user_id: user.id,
+            title: `Evidence Task: ${evidenceData.file_name}`,
+            description: `Complete evidence task for ${evidenceData.file_name}${evidenceData.case_number ? ` (Case: ${evidenceData.case_number})` : ''}`,
+            due_date: `${evidenceData.date_submitted}T09:00:00`, // Set to 9 AM on the date
+            priority: 'medium',
+            alarm_enabled: true,
+            alarm_time: `${evidenceData.date_submitted}T08:00:00`, // Set alarm 1 hour before
+            case_number: evidenceData.case_number || null
+          }
+
+          const { error: todoError } = await supabase
+            .from('todos')
+            .insert([todoData])
+
+          if (todoError) {
+            console.error('Error creating todo task:', todoError)
+            // Don't throw error here as evidence was created successfully
+          }
+        }
+      }
+
       return data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evidence'] })
+      queryClient.invalidateQueries({ queryKey: ['todos'] }) // Refresh todos in case a new task was created
       setShowAddForm(false)
       resetForm()
     }
@@ -91,6 +124,9 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
 
   const updateEvidenceMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string, data: Partial<Evidence> }) => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
       const processedData = {
         ...data,
         number_of_pages: data.number_of_pages ? parseInt(data.number_of_pages.toString()) : null
@@ -104,10 +140,51 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
         .single()
 
       if (error) throw error
+
+      // If method is "To-Do" and date_submitted is not empty and >= today, create a todo task
+      if (data.method === 'To-Do' && data.date_submitted) {
+        const submittedDate = new Date(data.date_submitted)
+        const today = new Date()
+        today.setHours(0, 0, 0, 0) // Reset time to start of day for comparison
+        
+        if (submittedDate >= today) {
+          // Check if a todo already exists for this evidence
+          const { data: existingTodos } = await supabase
+            .from('todos')
+            .select('id')
+            .eq('title', `Evidence Task: ${data.file_name || result.file_name}`)
+            .eq('user_id', user.id)
+
+          if (!existingTodos || existingTodos.length === 0) {
+            // Create a todo task
+            const todoData = {
+              user_id: user.id,
+              title: `Evidence Task: ${data.file_name || result.file_name}`,
+              description: `Complete evidence task for ${data.file_name || result.file_name}${data.case_number ? ` (Case: ${data.case_number})` : ''}`,
+              due_date: `${data.date_submitted}T09:00:00`, // Set to 9 AM on the date
+              priority: 'medium',
+              alarm_enabled: true,
+              alarm_time: `${data.date_submitted}T08:00:00`, // Set alarm 1 hour before
+              case_number: data.case_number || result.case_number || null
+            }
+
+            const { error: todoError } = await supabase
+              .from('todos')
+              .insert([todoData])
+
+            if (todoError) {
+              console.error('Error creating todo task:', todoError)
+              // Don't throw error here as evidence was updated successfully
+            }
+          }
+        }
+      }
+
       return result
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evidence'] })
+      queryClient.invalidateQueries({ queryKey: ['todos'] }) // Refresh todos in case a new task was created
       setEditingEvidence(null)
     }
   })
@@ -245,6 +322,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
       case 'Email': return <FileText className="w-4 h-4" />
       case 'Hand': return <FileText className="w-4 h-4" />
       case 'Call': return <FileText className="w-4 h-4" />
+      case 'To-Do': return <FileText className="w-4 h-4" />
       default: return <FileText className="w-4 h-4" />
     }
   }
@@ -336,6 +414,8 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
                   <option value="Email">Email</option>
                   <option value="Hand">Hand</option>
                   <option value="Call">Call</option>
+                  <option value="To-Do">To-Do</option>
+                  <option value="To-Do">To-Do</option>
                 </select>
               </div>
             </div>
