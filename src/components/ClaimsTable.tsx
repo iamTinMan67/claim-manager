@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { Claim } from '@/types/database'
 import { Edit, Trash2, Plus, X } from 'lucide-react'
+import EvidenceManager from './EvidenceManager'
 
 interface ClaimsTableProps {
   onClaimSelect: (claimId: string | null) => void
