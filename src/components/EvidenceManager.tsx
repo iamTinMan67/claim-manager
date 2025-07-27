@@ -50,6 +50,20 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
       console.log('Evidence query result:', { data, error, count: data?.length })
       
       if (error) throw error
+      
+      // If selectedClaim is set but no evidence found, get all evidence
+      if (selectedClaim && (!data || data.length === 0)) {
+        console.log('No evidence found for claim, fetching all evidence')
+        const { data: allData, error: allError } = await supabase
+          .from('evidence')
+          .select('*')
+          .order('display_order', { ascending: true, nullsLast: true })
+          .order('created_at', { ascending: false })
+        
+        if (allError) throw allError
+        return allData as Evidence[]
+      }
+      
       return data as Evidence[]
     }
   })
@@ -295,6 +309,23 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
     setDraggedItem(null)
   }
 
+  const associateEvidenceMutation = useMutation({
+    mutationFn: async ({ evidenceId, caseNumber }: { evidenceId: string, caseNumber: string }) => {
+      const { data, error } = await supabase
+        .from('evidence')
+        .update({ case_number: caseNumber })
+        .eq('id', evidenceId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evidence'] })
+    }
+  })
+
   const oldMoveEvidenceMutation = useMutation({
     mutationFn: async ({ id, newOrder }: { id: string, newOrder: number }) => {
       const { data, error } = await supabase
@@ -311,6 +342,15 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
       queryClient.invalidateQueries({ queryKey: ['evidence'] })
     }
   })
+
+  const handleAssociateWithClaim = (evidenceId: string) => {
+    if (selectedClaim) {
+      associateEvidenceMutation.mutate({ 
+        evidenceId, 
+        caseNumber: selectedClaim 
+      })
+    }
+  }
 
   const resetForm = () => {
     setNewEvidence({
