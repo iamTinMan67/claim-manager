@@ -49,6 +49,16 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
     }
   })
 
+  // Calculate bundle numbers based on cumulative pages
+  const calculateBundleNumber = (evidenceList: Evidence[], currentIndex: number): number => {
+    let bundleNumber = 1
+    for (let i = 0; i < currentIndex; i++) {
+      const pages = evidenceList[i].number_of_pages || 1
+      bundleNumber += pages
+    }
+    return bundleNumber
+  }
+
   const { data: claims } = useQuery({
     queryKey: ['claims-for-evidence'],
     queryFn: async () => {
@@ -575,6 +585,10 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
                     <span>{item.number_of_pages || 'N/A'}</span>
                   </div>
                   <div className="flex items-center space-x-1">
+                    <span className="font-medium">Bundle #:</span>
+                    <span>{evidence ? calculateBundleNumber(evidence, evidence.findIndex(e => e.id === item.id)) : 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
                     <Calendar className="w-4 h-4" />
                     <span>{item.date_submitted ? new Date(item.date_submitted).toLocaleDateString() : 'N/A'}</span>
                   </div>
@@ -582,10 +596,10 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
                     <span className="font-medium">Method:</span>
                     <span>{item.method || 'N/A'}</span>
                   </div>
-                  <div className="flex items-center space-x-1">
-                    <span className="font-medium">Bundle:</span>
-                    <span>{item.case_number || 'N/A'}</span>
-                  </div>
+                </div>
+                <div className="mt-2 flex items-center space-x-1 text-sm text-gray-600">
+                  <span className="font-medium">Case:</span>
+                  <span>{item.case_number || 'N/A'}</span>
                 </div>
                 {item.book_of_deeds_ref && (
                   <div className="mt-2 flex items-center space-x-1 text-sm text-gray-600">
