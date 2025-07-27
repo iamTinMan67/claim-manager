@@ -97,9 +97,15 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
+      // Ensure alarm_time is null if not enabled or empty
+      const todoData = {
+        ...todo,
+        user_id: user.id,
+        alarm_time: todo.alarm_enabled && todo.alarm_time ? todo.alarm_time : null
+      }
       const { data, error } = await supabase
         .from('todos')
-        .insert([{ ...todo, user_id: user.id }])
+        .insert([todoData])
         .select()
         .single()
 
