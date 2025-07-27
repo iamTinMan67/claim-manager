@@ -541,7 +541,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
       )}
 
       <div className="grid gap-4">
-        {evidence?.map((item) => (
+        {evidence?.map((item, index) => (
           <div 
             key={item.id} 
             className={`bg-white p-6 rounded-lg shadow border-l-4 transition-all ${
@@ -586,7 +586,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
                   </div>
                   <div className="flex items-center space-x-1">
                     <span className="font-medium">Bundle #:</span>
-                    <span>{evidence ? calculateBundleNumber(evidence, evidence.findIndex(e => e.id === item.id)) : 'N/A'}</span>
+                    <span>{calculateBundleNumber(evidence, index)}</span>
                   </div>
                   <div className="flex items-center space-x-1">
                     <Calendar className="w-4 h-4" />
