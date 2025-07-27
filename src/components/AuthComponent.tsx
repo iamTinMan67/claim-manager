@@ -12,6 +12,7 @@ interface AuthComponentProps {
 export default function AuthComponent({ children, onAuthChange }: AuthComponentProps) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [authError, setAuthError] = useState<string | null>(null)
 
   useEffect(() => {
     // Get initial session
@@ -24,15 +25,49 @@ export default function AuthComponent({ children, onAuthChange }: AuthComponentP
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null)
       onAuthChange(session?.user ?? null)
+      
+      // Handle auth errors
+      if (event === 'SIGNED_IN') {
+        setAuthError(null)
+      } else if (event === 'SIGNED_OUT') {
+        setAuthError(null)
+      }
+    })
+
+    // Listen for auth errors
+    const handleAuthError = (error: any) => {
+      if (error?.message?.includes('Invalid login credentials')) {
+        setAuthError('Invalid email or password. Please check your credentials and try again.')
+      } else if (error?.message?.includes('Email not confirmed')) {
+        setAuthError('Please check your email and click the confirmation link before signing in.')
+      } else if (error?.message) {
+        setAuthError(error.message)
+      }
+    }
+
+    // Set up error handling for auth operations
+    const originalSignIn = supabase.auth.signInWithPassword
+    supabase.auth.signInWithPassword = async (credentials) => {
+      try {
+        const result = await originalSignIn.call(supabase.auth, credentials)
+        if (result.error) {
+          handleAuthError(result.error)
+        }
+        return result
+      } catch (error) {
+        handleAuthError(error)
+        throw error
+      }
     })
 
     return () => subscription.unsubscribe()
   }, [onAuthChange])
 
   const handleSignOut = async () => {
+    setAuthError(null)
     await supabase.auth.signOut()
   }
 
@@ -49,11 +84,20 @@ export default function AuthComponent({ children, onAuthChange }: AuthComponentP
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
           <h1 className="text-2xl font-bold text-center mb-6">Sign In</h1>
+          {authError && (
+            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+              {authError}
+            </div>
+          )}
+          <div className="mb-4 p-3 bg-blue-100 border border-blue-400 text-blue-700 rounded text-sm">
+            <strong>New user?</strong> Create an account by entering your email and password, then click "Sign up" instead of "Sign in".
+          </div>
           <Auth
             supabaseClient={supabase}
             appearance={{ theme: ThemeSupa }}
             providers={[]}
             redirectTo={window.location.origin}
+            onlyThirdPartyProviders={false}
           />
         </div>
       </div>
