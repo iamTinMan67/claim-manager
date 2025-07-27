@@ -96,7 +96,7 @@ export default function AuthComponent({ children, onAuthChange }: AuthComponentP
             supabaseClient={supabase}
             appearance={{ theme: ThemeSupa }}
             providers={[]}
-            redirectTo={`${window.location.protocol}//${window.location.host}`}
+            redirectTo="https://bolt.new/~/github-bergbltb"
             onlyThirdPartyProviders={false}
           />
         </div>
