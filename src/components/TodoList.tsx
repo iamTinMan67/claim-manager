@@ -19,10 +19,8 @@ interface Todo {
 }
 
 interface TodoWithUser extends Todo {
-  users?: {
-    profiles?: {
-      email: string
-    }
+  profiles?: {
+    email: string
   }
 }
 
