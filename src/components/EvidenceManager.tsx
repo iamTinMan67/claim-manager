@@ -343,6 +343,15 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
 
   return (
     <div className="space-y-6">
+      {/* Debug info */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded p-2 text-sm">
+          <strong>Debug:</strong> Evidence count: {evidence?.length || 0}, 
+          Selected claim: {selectedClaim || 'none'}, 
+          Loading: {isLoading ? 'yes' : 'no'}
+        </div>
+      )}
+      
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Evidence Management</h2>
         <div className="flex items-center space-x-3">
@@ -541,7 +550,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
       )}
 
       <div className="grid gap-4">
-        {evidence?.map((item, index) => (
+        {evidence && evidence.length > 0 ? evidence.map((item, index) => (
           <div 
             key={item.id} 
             className={`bg-white p-6 rounded-lg shadow border-l-4 transition-all ${
@@ -654,10 +663,9 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
               </div>
             </div>
           </div>
-        ))}
-        {(!evidence || evidence.length === 0) && (
+        )) : (
           <div className="text-center py-8 text-gray-500">
-            No evidence found. Add your first piece of evidence to get started!
+            {isLoading ? 'Loading evidence...' : 'No evidence found. Add your first piece of evidence to get started!'}
           </div>
         )}
       </div>
