@@ -1,12 +1,13 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { Upload, FileText, Link, Calendar, Hash, BookOpen, Eye, Trash2, Edit, Plus } from 'lucide-react'
+import { Upload, FileText, Link, Calendar, Hash, BookOpen, Eye, Trash2, Edit, Plus, Settings } from 'lucide-react'
 import { Evidence } from '@/types/database'
 
 const EvidenceManager = () => {
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingEvidence, setEditingEvidence] = useState<Evidence | null>(null)
+  const [editMode, setEditMode] = useState(false)
   const [newEvidence, setNewEvidence] = useState({
     file_name: '',
     file_url: '',
@@ -114,16 +115,29 @@ const EvidenceManager = () => {
   })
 
   const moveEvidenceMutation = useMutation({
-    mutationFn: async ({ id, newOrder }: { id: string, newOrder: number }) => {
-      const { data, error } = await supabase
-        .from('evidence')
-        .update({ display_order: newOrder })
-        .eq('id', id)
-        .select()
-        .single()
+    mutationFn: async ({ evidenceList }: { evidenceList: Evidence[] }) => {
+      // Update all evidence items with new exhibit_id based on their position
+      const updates = evidenceList.map((item, index) => ({
+        id: item.id,
+        exhibit_id: `${index + 1}`,
+        display_order: index + 1
+      }))
 
-      if (error) throw error
-      return data
+      // Perform batch update
+      const promises = updates.map(update => 
+        supabase
+          .from('evidence')
+          .update({ exhibit_id: update.exhibit_id, display_order: update.display_order })
+          .eq('id', update.id)
+      )
+
+      const results = await Promise.all(promises)
+      const errors = results.filter(result => result.error)
+      if (errors.length > 0) {
+        throw errors[0].error
+      }
+
+      return results
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evidence'] })
@@ -139,8 +153,31 @@ const EvidenceManager = () => {
     const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
     if (newIndex < 0 || newIndex >= evidence.length) return
     
-    moveEvidenceMutation.mutate({ id, newOrder: newIndex + 1 })
+    // Create new array with swapped items
+    const newEvidenceList = [...evidence]
+    const [movedItem] = newEvidenceList.splice(currentIndex, 1)
+    newEvidenceList.splice(newIndex, 0, movedItem)
+    
+    // Update with new exhibit numbers
+    moveEvidenceMutation.mutate({ evidenceList: newEvidenceList })
   }
+
+  const oldMoveEvidenceMutation = useMutation({
+    mutationFn: async ({ id, newOrder }: { id: string, newOrder: number }) => {
+      const { data, error } = await supabase
+        .from('evidence')
+        .update({ display_order: newOrder })
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evidence'] })
+    }
+  })
 
   const resetForm = () => {
     setNewEvidence({
@@ -193,13 +230,26 @@ const EvidenceManager = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Evidence Management</h2>
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Evidence</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => setEditMode(!editMode)}
+            className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
+              editMode 
+                ? 'bg-gray-600 text-white hover:bg-gray-700' 
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            <span>{editMode ? 'Exit Edit' : 'Edit Mode'}</span>
+          </button>
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Evidence</span>
+          </button>
+        </div>
       </div>
 
       {showAddForm && (
@@ -377,44 +427,29 @@ const EvidenceManager = () => {
                 <div className="flex items-center space-x-2 mb-2">
                   {getMethodIcon(item.method)}
                   <h3 className="text-lg font-semibold">{item.file_name}</h3>
-                  {item.exhibit_id && (
-                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
-                      Exhibit: {item.exhibit_id}
-                    </span>
-                  )}
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
-                  {item.method && (
-                    <div className="flex items-center space-x-1">
-                      <span className="font-medium">Method:</span>
-                      <span>{item.method}</span>
-                    </div>
-                  )}
-                  {item.number_of_pages && (
-                    <div className="flex items-center space-x-1">
-                      <span className="font-medium">Pages:</span>
-                      <span>{item.number_of_pages}</span>
-                    </div>
-                  )}
-                  {item.date_submitted && (
-                    <div className="flex items-center space-x-1">
-                      <Calendar className="w-4 h-4" />
-                      <span>{new Date(item.date_submitted).toLocaleDateString()}</span>
-                    </div>
-                  )}
-                  {item.exhibit_id && (
-                    <div className="flex items-center space-x-1">
-                      <Hash className="w-4 h-4" />
-                      <span>Exhibit: {item.exhibit_id}</span>
-                    </div>
-                  )}
-                </div>
-                {item.case_number && (
-                  <div className="mt-2 flex items-center space-x-1 text-sm text-gray-600">
-                    <FileText className="w-4 h-4" />
-                    <span>Case: {item.case_number}</span>
+                <div className="grid grid-cols-5 gap-4 text-sm text-gray-600 mb-3">
+                  <div className="flex items-center space-x-1">
+                    <Hash className="w-4 h-4" />
+                    <span className="font-medium">Exhibit {item.exhibit_id || 'N/A'}</span>
                   </div>
-                )}
+                  <div className="flex items-center space-x-1">
+                    <span className="font-medium">Pages:</span>
+                    <span>{item.number_of_pages || 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <Calendar className="w-4 h-4" />
+                    <span>{item.date_submitted ? new Date(item.date_submitted).toLocaleDateString() : 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <span className="font-medium">Method:</span>
+                    <span>{item.method || 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <span className="font-medium">Bundle:</span>
+                    <span>{item.case_number || 'N/A'}</span>
+                  </div>
+                </div>
                 {item.book_of_deeds_ref && (
                   <div className="mt-2 flex items-center space-x-1 text-sm text-gray-600">
                     <BookOpen className="w-4 h-4" />
@@ -436,22 +471,24 @@ const EvidenceManager = () => {
                 )}
               </div>
               <div className="flex items-center space-x-2">
-                <div className="flex flex-col space-y-1">
-                  <button
-                    onClick={() => moveEvidence(item.id, 'up')}
-                    className="text-gray-400 hover:text-gray-600 p-1"
-                    title="Move up"
-                  >
-                    ↑
-                  </button>
-                  <button
-                    onClick={() => moveEvidence(item.id, 'down')}
-                    className="text-gray-400 hover:text-gray-600 p-1"
-                    title="Move down"
-                  >
-                    ↓
-                  </button>
-                </div>
+                {editMode && (
+                  <div className="flex flex-col space-y-1">
+                    <button
+                      onClick={() => moveEvidence(item.id, 'up')}
+                      className="text-gray-400 hover:text-gray-600 p-1 text-lg"
+                      title="Move up"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      onClick={() => moveEvidence(item.id, 'down')}
+                      className="text-gray-400 hover:text-gray-600 p-1 text-lg"
+                      title="Move down"
+                    >
+                      ↓
+                    </button>
+                  </div>
+                )}
                 {item.file_url && (
                   <a
                     href={item.file_url}
@@ -462,18 +499,24 @@ const EvidenceManager = () => {
                     <Eye className="w-4 h-4" />
                   </a>
                 )}
-                <button
-                  onClick={() => handleEdit(item)}
-                  className="text-gray-600 hover:text-gray-800 p-2"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => deleteEvidenceMutation.mutate(item.id)}
-                  className="text-red-600 hover:text-red-800 p-2"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {editMode && (
+                  <>
+                    <button
+                      onClick={() => handleEdit(item)}
+                      className="text-gray-600 hover:text-gray-800 p-2"
+                      title="Edit evidence"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => deleteEvidenceMutation.mutate(item.id)}
+                      className="text-red-600 hover:text-red-800 p-2"
+                      title="Delete evidence"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
