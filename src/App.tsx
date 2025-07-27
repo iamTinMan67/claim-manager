@@ -15,7 +15,8 @@ const queryClient = new QueryClient()
 
 function App() {
   const [user, setUser] = useState<User | null>(null)
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const [activeTab, setActiveTab] = useState('claims')
+  const [selectedClaim, setSelectedClaim] = useState<string | null>(null)
 
   if (!user) {
     return (
@@ -27,27 +28,20 @@ function App() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'dashboard':
-        return (
-          <div className="space-y-8">
-            <ClaimsTable />
-            <EvidenceManager />
-          </div>
-        )
       case 'claims':
-        return <ClaimsTable />
+        return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} />
       case 'evidence':
-        return <EvidenceManager />
+        return <EvidenceManager selectedClaim={selectedClaim} />
       case 'todos':
-        return <TodoList />
+        return <TodoList selectedClaim={selectedClaim} />
       case 'calendar':
-        return <Calendar />
+        return <Calendar selectedClaim={selectedClaim} />
       case 'collaboration':
-        return <SharedClaims />
+        return <SharedClaims selectedClaim={selectedClaim} />
       case 'export':
-        return <ExportFeatures />
+        return <ExportFeatures selectedClaim={selectedClaim} />
       default:
-        return <ClaimsTable />
+        return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} />
     }
   }
 

@@ -5,16 +5,26 @@ import { Download, FileText, Calendar, Users, CheckSquare } from 'lucide-react'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 
-const ExportFeatures = () => {
+interface ExportFeaturesProps {
+  selectedClaim: string | null
+}
+
+const ExportFeatures = ({ selectedClaim }: ExportFeaturesProps) => {
   const [exportType, setExportType] = useState<'claims' | 'evidence' | 'todos' | 'calendar' | 'all'>('all')
   const [isExporting, setIsExporting] = useState(false)
 
   const { data: claims } = useQuery({
-    queryKey: ['claims-export'],
+    queryKey: ['claims-export', selectedClaim],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('claims')
         .select('*')
+      
+      if (selectedClaim) {
+        query = query.eq('case_number', selectedClaim)
+      }
+      
+      const { data, error } = await query
         .order('created_at', { ascending: false })
       
       if (error) throw error
@@ -23,11 +33,17 @@ const ExportFeatures = () => {
   })
 
   const { data: evidence } = useQuery({
-    queryKey: ['evidence-export'],
+    queryKey: ['evidence-export', selectedClaim],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('evidence')
         .select('*')
+      
+      if (selectedClaim) {
+        query = query.eq('case_number', selectedClaim)
+      }
+      
+      const { data, error } = await query
         .order('created_at', { ascending: false })
       
       if (error) throw error
@@ -36,11 +52,17 @@ const ExportFeatures = () => {
   })
 
   const { data: todos } = useQuery({
-    queryKey: ['todos-export'],
+    queryKey: ['todos-export', selectedClaim],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('todos')
         .select('*')
+      
+      if (selectedClaim) {
+        query = query.eq('case_number', selectedClaim)
+      }
+      
+      const { data, error } = await query
         .order('due_date', { ascending: true })
       
       if (error) throw error
@@ -49,11 +71,17 @@ const ExportFeatures = () => {
   })
 
   const { data: events } = useQuery({
-    queryKey: ['events-export'],
+    queryKey: ['events-export', selectedClaim],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('calendar_events')
         .select('*')
+      
+      if (selectedClaim) {
+        query = query.eq('claim_id', selectedClaim)
+      }
+      
+      const { data, error } = await query
         .order('start_time', { ascending: true })
       
       if (error) throw error
@@ -193,9 +221,19 @@ const ExportFeatures = () => {
 
   return (
     <div className="space-y-6">
+      {selectedClaim && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-blue-800">
+            Exporting data for selected claim: <strong>{selectedClaim}</strong>
+          </p>
+        </div>
+      )}
       <div>
         <h2 className="text-2xl font-bold mb-2">Export Features</h2>
-        <p className="text-gray-600">Export your legal data in various formats for backup or sharing.</p>
+        <p className="text-gray-600">
+          Export your legal data in various formats for backup or sharing.
+          {selectedClaim ? ' Currently showing data for the selected claim only.' : ' Showing all data.'}
+        </p>
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow border">

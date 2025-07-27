@@ -24,9 +24,13 @@ interface ClaimShare {
   }
 }
 
-const SharedClaims = () => {
+interface SharedClaimsProps {
+  selectedClaim: string | null
+}
+
+const SharedClaims = ({ selectedClaim }: SharedClaimsProps) => {
   const [showShareForm, setShowShareForm] = useState(false)
-  const [selectedClaim, setSelectedClaim] = useState('')
+  const [claimToShare, setClaimToShare] = useState('')
   const [shareData, setShareData] = useState({
     email: '',
     permission: 'view' as const,
@@ -38,15 +42,21 @@ const SharedClaims = () => {
   const queryClient = useQueryClient()
 
   const { data: sharedClaims, isLoading } = useQuery({
-    queryKey: ['shared-claims'],
+    queryKey: ['shared-claims', selectedClaim],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('claim_shares')
         .select(`
           *,
           claims!inner(title, case_number),
           users!shared_with_id(email, full_name)
         `)
+      
+      if (selectedClaim) {
+        query = query.eq('claim_id', selectedClaim)
+      }
+      
+      const { data, error } = await query
         .order('created_at', { ascending: false })
       
       if (error) throw error
@@ -110,7 +120,7 @@ const SharedClaims = () => {
         donation_required: false,
         donation_amount: ''
       })
-      setSelectedClaim('')
+      setClaimToShare('')
     }
   })
 
@@ -130,8 +140,8 @@ const SharedClaims = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!shareData.email.trim() || !selectedClaim) return
-    shareClaimMutation.mutate({ ...shareData, claim_id: selectedClaim })
+    if (!shareData.email.trim() || !claimToShare) return
+    shareClaimMutation.mutate({ ...shareData, claim_id: claimToShare })
   }
 
   if (isLoading) {
@@ -140,6 +150,13 @@ const SharedClaims = () => {
 
   return (
     <div className="space-y-6">
+      {selectedClaim && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-blue-800">
+            Showing shared access for selected claim: <strong>{selectedClaim}</strong>
+          </p>
+        </div>
+      )}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Shared Claims Collaboration</h2>
         <button
@@ -158,9 +175,10 @@ const SharedClaims = () => {
             <div>
               <label className="block text-sm font-medium mb-1">Select Claim *</label>
               <select
-                value={selectedClaim}
-                onChange={(e) => setSelectedClaim(e.target.value)}
+                value={selectedClaim || claimToShare}
+                onChange={(e) => setClaimToShare(e.target.value)}
                 className="w-full border rounded-lg px-3 py-2"
+                disabled={!!selectedClaim}
                 required
               >
                 <option value="">Choose a claim to share...</option>

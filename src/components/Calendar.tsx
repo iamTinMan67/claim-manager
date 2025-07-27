@@ -16,7 +16,11 @@ interface CalendarEvent {
   created_at: string
 }
 
-const Calendar = () => {
+interface CalendarProps {
+  selectedClaim: string | null
+}
+
+const Calendar = ({ selectedClaim }: CalendarProps) => {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -32,16 +36,22 @@ const Calendar = () => {
   const queryClient = useQueryClient()
 
   const { data: events, isLoading } = useQuery({
-    queryKey: ['calendar-events', format(currentDate, 'yyyy-MM')],
+    queryKey: ['calendar-events', format(currentDate, 'yyyy-MM'), selectedClaim],
     queryFn: async () => {
       const start = startOfMonth(currentDate)
       const end = endOfMonth(currentDate)
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('calendar_events')
         .select('*')
         .gte('start_time', start.toISOString())
         .lte('start_time', end.toISOString())
+      
+      if (selectedClaim) {
+        query = query.eq('claim_id', selectedClaim)
+      }
+      
+      const { data, error } = await query
         .order('start_time', { ascending: true })
       
       if (error) throw error
@@ -128,6 +138,13 @@ const Calendar = () => {
 
   return (
     <div className="space-y-6">
+      {selectedClaim && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-blue-800">
+            Showing calendar events for selected claim: <strong>{selectedClaim}</strong>
+          </p>
+        </div>
+      )}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Calendar</h2>
         <div className="flex items-center space-x-4">

@@ -4,7 +4,11 @@ import { supabase } from '@/lib/supabase'
 import { Upload, FileText, Link, Calendar, Hash, BookOpen, Eye, Trash2, Edit, Plus, Settings, GripVertical } from 'lucide-react'
 import { Evidence } from '@/types/database'
 
-const EvidenceManager = () => {
+interface EvidenceManagerProps {
+  selectedClaim: string | null
+}
+
+const EvidenceManager = ({ selectedClaim }: EvidenceManagerProps) => {
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingEvidence, setEditingEvidence] = useState<Evidence | null>(null)
   const [editMode, setEditMode] = useState(false)
@@ -24,11 +28,17 @@ const EvidenceManager = () => {
   const queryClient = useQueryClient()
 
   const { data: evidence, isLoading } = useQuery({
-    queryKey: ['evidence'],
+    queryKey: ['evidence', selectedClaim],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('evidence')
         .select('*')
+      
+      if (selectedClaim) {
+        query = query.eq('case_number', selectedClaim)
+      }
+      
+      const { data, error } = await query
         .order('display_order', { ascending: true, nullsLast: true })
         .order('created_at', { ascending: false })
       
@@ -244,6 +254,13 @@ const EvidenceManager = () => {
 
   return (
     <div className="space-y-6">
+      {selectedClaim && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-blue-800">
+            Showing evidence for selected claim: <strong>{selectedClaim}</strong>
+          </p>
+        </div>
+      )}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Evidence Management</h2>
         <div className="flex items-center space-x-3">
@@ -339,9 +356,10 @@ const EvidenceManager = () => {
               <div>
                 <label className="block text-sm font-medium mb-1">Associated Claim</label>
                 <select
-                  value={newEvidence.case_number}
+                  value={selectedClaim || newEvidence.case_number}
                   onChange={(e) => setNewEvidence({ ...newEvidence, case_number: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2"
+                  disabled={!!selectedClaim}
                 >
                   <option value="">Select a claim...</option>
                   {claims?.map((claim) => (

@@ -17,7 +17,11 @@ interface Todo {
   created_at: string
 }
 
-const TodoList = () => {
+interface TodoListProps {
+  selectedClaim: string | null
+}
+
+const TodoList = ({ selectedClaim }: TodoListProps) => {
   const [showAddForm, setShowAddForm] = useState(false)
   const [newTodo, setNewTodo] = useState({
     title: '',
@@ -31,11 +35,17 @@ const TodoList = () => {
   const queryClient = useQueryClient()
 
   const { data: todos, isLoading } = useQuery({
-    queryKey: ['todos'],
+    queryKey: ['todos', selectedClaim],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('todos')
         .select('*')
+      
+      if (selectedClaim) {
+        query = query.eq('case_number', selectedClaim)
+      }
+      
+      const { data, error } = await query
         .order('due_date', { ascending: true })
       
       if (error) throw error
@@ -126,6 +136,13 @@ const TodoList = () => {
 
   return (
     <div className="space-y-6">
+      {selectedClaim && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-blue-800">
+            Showing todos for selected claim: <strong>{selectedClaim}</strong>
+          </p>
+        </div>
+      )}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">To-Do Lists</h2>
         <button

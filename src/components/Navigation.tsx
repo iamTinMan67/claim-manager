@@ -8,7 +8,6 @@ interface NavigationProps {
 
 const Navigation = ({ activeTab, onTabChange }: NavigationProps) => {
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'claims', label: 'Claims', icon: FileText },
     { id: 'evidence', label: 'Evidence', icon: Upload },
     { id: 'todos', label: 'To-Do Lists', icon: CheckSquare },
