@@ -6,6 +6,7 @@ import { Plus, Clock, X } from 'lucide-react'
 
 interface CalendarEvent {
   id: string
+  user_id: string
   title: string
   description?: string
   start_time: string
@@ -14,6 +15,12 @@ interface CalendarEvent {
   color?: string
   claim_id?: string
   created_at: string
+}
+
+interface CalendarEventWithUser extends CalendarEvent {
+  profiles?: {
+    email: string
+  }
 }
 
 interface CalendarProps {
@@ -44,7 +51,10 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
       
       let query = supabase
         .from('calendar_events')
-        .select('*')
+        .select(`
+          *,
+          profiles!user_id(email)
+        `)
         .gte('start_time', start.toISOString())
         .lte('start_time', end.toISOString())
       
@@ -56,7 +66,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
         .order('start_time', { ascending: true })
       
       if (error) throw error
-      return data as CalendarEvent[]
+      return data as CalendarEventWithUser[]
     }
   })
 
@@ -301,7 +311,12 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
                       className="text-xs p-1 rounded truncate text-white relative group"
                      style={{ backgroundColor: event.color || claimColor }}
                     >
-                      {event.title}
+                      <div>{event.title}</div>
+                      {event.profiles?.email && (
+                        <div className="text-xs opacity-75">
+                          by {event.profiles.email.split('@')[0]}
+                        </div>
+                      )}
                       <button
                         onClick={(e) => {
                           e.stopPropagation()

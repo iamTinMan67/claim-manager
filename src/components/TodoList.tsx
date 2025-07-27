@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { Plus, Check, Clock, AlertCircle, Trash2 } from 'lucide-react'
+import { Plus, Check, Clock, AlertCircle, Trash2, User, Calendar as CalendarIcon } from 'lucide-react'
 import { format } from 'date-fns'
 
 interface Todo {
   id: string
+  user_id: string
   title: string
   description?: string
   due_date: string
@@ -15,6 +16,12 @@ interface Todo {
   alarm_enabled: boolean
   alarm_time?: string
   created_at: string
+}
+
+interface TodoWithUser extends Todo {
+  profiles?: {
+    email: string
+  }
 }
 
 interface TodoListProps {
@@ -40,7 +47,10 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
     queryFn: async () => {
       let query = supabase
         .from('todos')
-        .select('*')
+        .select(`
+          *,
+          profiles!user_id(email)
+        `)
       
       if (selectedClaim) {
         query = query.eq('case_number', selectedClaim)
@@ -50,7 +60,35 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
         .order('due_date', { ascending: true })
       
       if (error) throw error
-      return data as Todo[]
+      return data as TodoWithUser[]
+    }
+  })
+
+  const { data: todayTodos } = useQuery({
+    queryKey: ['today-todos', selectedClaim],
+    queryFn: async () => {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const todayString = today.toISOString().split('T')[0]
+      
+      let query = supabase
+        .from('todos')
+        .select(`
+          *,
+          profiles!user_id(email)
+        `)
+        .gte('due_date', todayString)
+        .eq('completed', false)
+      
+      if (selectedClaim) {
+        query = query.eq('case_number', selectedClaim)
+      }
+      
+      const { data, error } = await query
+        .order('due_date', { ascending: true })
+      
+      if (error) throw error
+      return data as TodoWithUser[]
     }
   })
 
@@ -147,6 +185,77 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
           </p>
         </div>
       )}
+      
+      {/* Daily Summary */}
+      {todayTodos && todayTodos.length > 0 && (
+        <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
+          <div className="flex items-center space-x-2 mb-4">
+            <CalendarIcon className="w-5 h-5" style={{ color: claimColor }} />
+            <h3 className="text-lg font-semibold">Today's Tasks & Upcoming</h3>
+          </div>
+          <div className="space-y-3">
+            {todayTodos.map((todo) => {
+              const dueDate = new Date(todo.due_date)
+              const today = new Date()
+              today.setHours(0, 0, 0, 0)
+              const isToday = dueDate.toDateString() === today.toDateString()
+              const isOverdue = dueDate < today
+              
+              return (
+                <div
+                  key={todo.id}
+                  className={`p-3 rounded border-l-2 ${
+                    isOverdue ? 'bg-red-50 border-red-400' : 
+                    isToday ? 'bg-yellow-50 border-yellow-400' : 
+                    'bg-blue-50 border-blue-400'
+                  }`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-sm">{todo.title}</h4>
+                      <div className="flex items-center space-x-4 mt-1 text-xs text-gray-600">
+                        <div className="flex items-center space-x-1">
+                          <User className="w-3 h-3" />
+                          <span>{todo.profiles?.email || 'Unknown user'}</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <Clock className="w-3 h-3" />
+                          <span>{format(dueDate, 'MMM d, h:mm a')}</span>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs ${getPriorityColor(todo.priority)}`}>
+                          {todo.priority}
+                        </span>
+                        {isOverdue && <span className="text-red-600 font-medium">OVERDUE</span>}
+                        {isToday && <span className="text-yellow-600 font-medium">DUE TODAY</span>}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => toggleTodoMutation.mutate({ 
+                        id: todo.id, 
+                        completed: !todo.completed 
+                      })}
+                      className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                        todo.completed 
+                          ? 'text-white' 
+                          : 'border-gray-300'
+                      }`}
+                      style={todo.completed ? { 
+                        backgroundColor: claimColor, 
+                        borderColor: claimColor 
+                      } : { 
+                        borderColor: `${claimColor}50` 
+                      }}
+                    >
+                      {todo.completed && <Check className="w-2 h-2" />}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+      
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">To-Do Lists</h2>
         <button
@@ -291,6 +400,10 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
                     <div className="flex items-center space-x-1">
                       <Clock className="w-4 h-4" />
                       <span>Due: {format(new Date(todo.due_date), 'MMM d, yyyy h:mm a')}</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <User className="w-4 h-4" />
+                      <span>By: {todo.profiles?.email || 'Unknown user'}</span>
                     </div>
                     <span className={`px-2 py-1 rounded-full text-xs ${getPriorityColor(todo.priority)}`}>
                       {todo.priority}
