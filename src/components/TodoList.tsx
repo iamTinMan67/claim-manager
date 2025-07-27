@@ -1,0 +1,296 @@
+import React, { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabase'
+import { Plus, Check, Clock, AlertCircle, Trash2 } from 'lucide-react'
+import { format } from 'date-fns'
+
+interface Todo {
+  id: string
+  title: string
+  description?: string
+  due_date: string
+  completed: boolean
+  completed_at?: string
+  priority: 'low' | 'medium' | 'high'
+  alarm_enabled: boolean
+  alarm_time?: string
+  created_at: string
+}
+
+const TodoList = () => {
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [newTodo, setNewTodo] = useState({
+    title: '',
+    description: '',
+    due_date: '',
+    priority: 'medium' as const,
+    alarm_enabled: false,
+    alarm_time: ''
+  })
+
+  const queryClient = useQueryClient()
+
+  const { data: todos, isLoading } = useQuery({
+    queryKey: ['todos'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('todos')
+        .select('*')
+        .order('due_date', { ascending: true })
+      
+      if (error) throw error
+      return data as Todo[]
+    }
+  })
+
+  const addTodoMutation = useMutation({
+    mutationFn: async (todo: typeof newTodo) => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
+      const { data, error } = await supabase
+        .from('todos')
+        .insert([{ ...todo, user_id: user.id }])
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['todos'] })
+      setShowAddForm(false)
+      setNewTodo({
+        title: '',
+        description: '',
+        due_date: '',
+        priority: 'medium',
+        alarm_enabled: false,
+        alarm_time: ''
+      })
+    }
+  })
+
+  const toggleTodoMutation = useMutation({
+    mutationFn: async ({ id, completed }: { id: string, completed: boolean }) => {
+      const { data, error } = await supabase
+        .from('todos')
+        .update({ 
+          completed,
+          completed_at: completed ? new Date().toISOString() : null
+        })
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['todos'] })
+    }
+  })
+
+  const deleteTodoMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('todos')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['todos'] })
+    }
+  })
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newTodo.title.trim() || !newTodo.due_date) return
+    addTodoMutation.mutate(newTodo)
+  }
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high': return 'text-red-600 bg-red-100'
+      case 'medium': return 'text-yellow-600 bg-yellow-100'
+      case 'low': return 'text-green-600 bg-green-100'
+      default: return 'text-gray-600 bg-gray-100'
+    }
+  }
+
+  if (isLoading) {
+    return <div className="flex justify-center p-8">Loading todos...</div>
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">To-Do Lists</h2>
+        <button
+          onClick={() => setShowAddForm(true)}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Add Todo</span>
+        </button>
+      </div>
+
+      {showAddForm && (
+        <div className="bg-white p-6 rounded-lg shadow border">
+          <h3 className="text-lg font-semibold mb-4">Add New Todo</h3>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Title *</label>
+              <input
+                type="text"
+                value={newTodo.title}
+                onChange={(e) => setNewTodo({ ...newTodo, title: e.target.value })}
+                className="w-full border rounded-lg px-3 py-2"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Description</label>
+              <textarea
+                value={newTodo.description}
+                onChange={(e) => setNewTodo({ ...newTodo, description: e.target.value })}
+                className="w-full border rounded-lg px-3 py-2"
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Due Date *</label>
+                <input
+                  type="datetime-local"
+                  value={newTodo.due_date}
+                  onChange={(e) => setNewTodo({ ...newTodo, due_date: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Priority</label>
+                <select
+                  value={newTodo.priority}
+                  onChange={(e) => setNewTodo({ ...newTodo, priority: e.target.value as any })}
+                  className="w-full border rounded-lg px-3 py-2"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="alarm"
+                checked={newTodo.alarm_enabled}
+                onChange={(e) => setNewTodo({ ...newTodo, alarm_enabled: e.target.checked })}
+                className="rounded"
+              />
+              <label htmlFor="alarm" className="text-sm">Enable alarm</label>
+            </div>
+            {newTodo.alarm_enabled && (
+              <div>
+                <label className="block text-sm font-medium mb-1">Alarm Time</label>
+                <input
+                  type="datetime-local"
+                  value={newTodo.alarm_time}
+                  onChange={(e) => setNewTodo({ ...newTodo, alarm_time: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2"
+                />
+              </div>
+            )}
+            <div className="flex space-x-3">
+              <button
+                type="submit"
+                disabled={addTodoMutation.isPending}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                {addTodoMutation.isPending ? 'Adding...' : 'Add Todo'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAddForm(false)}
+                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      <div className="space-y-4">
+        {todos?.map((todo) => (
+          <div
+            key={todo.id}
+            className={`bg-white p-4 rounded-lg shadow border ${
+              todo.completed ? 'opacity-75' : ''
+            }`}
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex items-start space-x-3 flex-1">
+                <button
+                  onClick={() => toggleTodoMutation.mutate({ 
+                    id: todo.id, 
+                    completed: !todo.completed 
+                  })}
+                  className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center ${
+                    todo.completed 
+                      ? 'bg-green-500 border-green-500 text-white' 
+                      : 'border-gray-300 hover:border-green-500'
+                  }`}
+                >
+                  {todo.completed && <Check className="w-3 h-3" />}
+                </button>
+                <div className="flex-1">
+                  <h3 className={`font-medium ${todo.completed ? 'line-through text-gray-500' : ''}`}>
+                    {todo.title}
+                  </h3>
+                  {todo.description && (
+                    <p className={`text-sm mt-1 ${todo.completed ? 'text-gray-400' : 'text-gray-600'}`}>
+                      {todo.description}
+                    </p>
+                  )}
+                  <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
+                    <div className="flex items-center space-x-1">
+                      <Clock className="w-4 h-4" />
+                      <span>Due: {format(new Date(todo.due_date), 'MMM d, yyyy h:mm a')}</span>
+                    </div>
+                    <span className={`px-2 py-1 rounded-full text-xs ${getPriorityColor(todo.priority)}`}>
+                      {todo.priority}
+                    </span>
+                    {todo.alarm_enabled && (
+                      <div className="flex items-center space-x-1">
+                        <AlertCircle className="w-4 h-4" />
+                        <span>Alarm set</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => deleteTodoMutation.mutate(todo.id)}
+                className="text-red-500 hover:text-red-700 p-1"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+        {(!todos || todos.length === 0) && (
+          <div className="text-center py-8 text-gray-500">
+            No todos yet. Create your first todo to get started!
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default TodoList

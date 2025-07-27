@@ -123,14 +123,6 @@ export default function AuthComponent({ children, onAuthChange }: AuthComponentP
         </div>
       </div>
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Your Legal Data
-          </h2>
-          <p className="text-gray-600">
-            Manage your legal claims and evidence
-          </p>
-        </div>
         {children}
       </div>
     </div>
