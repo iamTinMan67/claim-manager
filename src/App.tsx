@@ -32,17 +32,3 @@ function App() {
 }
 
 export default App
-
-          </div>
-          
-          <div className="space-y-8">
-            <ClaimsTable />
-            <EvidenceTable />
-          </div>
-        </div>
-      </div>
-    </QueryClientProvider>
-  )
-}
-
-export default App
