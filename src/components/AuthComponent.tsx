@@ -61,7 +61,7 @@ export default function AuthComponent({ children, onAuthChange }: AuthComponentP
         handleAuthError(error)
         throw error
       }
-    })
+    }
 
     return () => subscription.unsubscribe()
   }, [onAuthChange])
