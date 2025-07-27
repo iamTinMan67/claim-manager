@@ -1,22 +1,9 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { Todo } from '@/types/database'
 import { Plus, Check, Clock, AlertCircle, Trash2, User, Calendar as CalendarIcon } from 'lucide-react'
 import { format } from 'date-fns'
-
-interface Todo {
-  id: string
-  user_id: string
-  title: string
-  description?: string
-  due_date: string
-  completed: boolean
-  completed_at?: string
-  priority: 'low' | 'medium' | 'high'
-  alarm_enabled: boolean
-  alarm_time?: string
-  created_at: string
-}
 
 interface TodoWithUser extends Todo {
   profiles?: {

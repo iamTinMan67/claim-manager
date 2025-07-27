@@ -12,6 +12,22 @@ export interface Claim {
   updated_at: string
 }
 
+export interface Todo {
+  id: string
+  user_id: string
+  title: string
+  description?: string
+  due_date: string
+  completed: boolean
+  completed_at?: string
+  priority: 'low' | 'medium' | 'high'
+  alarm_enabled: boolean
+  alarm_time?: string
+  case_number?: string
+  created_at: string
+  updated_at: string
+}
+
 export interface Evidence {
   id: string
   user_id: string

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { Todo } from '@/types/database'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday } from 'date-fns'
 import { Plus, Clock, X, Check, User, AlertCircle, Trash2 } from 'lucide-react'
 
@@ -26,20 +27,6 @@ interface CalendarEventWithUser extends CalendarEvent {
 interface CalendarProps {
   selectedClaim: string | null
   claimColor?: string
-}
-
-interface Todo {
-  id: string
-  user_id: string
-  title: string
-  description?: string
-  due_date: string
-  completed: boolean
-  completed_at?: string
-  priority: 'low' | 'medium' | 'high'
-  alarm_enabled: boolean
-  alarm_time?: string
-  created_at: string
 }
 
 interface TodoWithUser extends Todo {
