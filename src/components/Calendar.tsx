@@ -51,6 +51,19 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
 
   const queryClient = useQueryClient()
 
+  const { data: claims } = useQuery({
+    queryKey: ['claims-for-calendar'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('claims')
+        .select('case_number, title, color')
+        .order('title')
+      
+      if (error) throw error
+      return data
+    }
+  })
+
   const { data: events, isLoading } = useQuery({
     queryKey: ['calendar-events', format(currentDate, 'yyyy-MM'), selectedClaim],
     queryFn: async () => {
