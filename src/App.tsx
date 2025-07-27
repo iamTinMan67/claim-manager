@@ -1,22 +1,38 @@
 import React from 'react'
+import { useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { User } from '@supabase/supabase-js'
+import AuthComponent from './components/AuthComponent'
 import ClaimsTable from './components/ClaimsTable'
 import EvidenceTable from './components/EvidenceTable'
 
 const queryClient = new QueryClient()
 
 function App() {
+  const [user, setUser] = useState<User | null>(null)
+
+  if (!user) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <AuthComponent onAuthChange={setUser} />
+      </QueryClientProvider>
+    )
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen bg-gray-100">
-        <div className="container mx-auto px-4 py-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Legal Evidence Management
-            </h1>
-            <p className="text-gray-600">
-              Manage your legal claims and evidence
-            </p>
+      <AuthComponent onAuthChange={setUser}>
+        <div className="space-y-8">
+          <ClaimsTable />
+          <EvidenceTable />
+        </div>
+      </AuthComponent>
+    </QueryClientProvider>
+  )
+}
+
+export default App
+
           </div>
           
           <div className="space-y-8">
