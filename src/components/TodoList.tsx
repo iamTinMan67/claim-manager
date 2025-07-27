@@ -9,6 +9,10 @@ interface TodoWithUser extends Todo {
   profiles?: {
     email: string
   }
+  claims?: {
+    title: string
+    status: string
+  }
 }
 
 interface TodoListProps {
@@ -32,18 +36,15 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
   const { data: todos, isLoading } = useQuery({
     queryKey: ['todos', selectedClaim],
     queryFn: async () => {
-      let query = supabase
+      const query = supabase
         .from('todos')
         .select(`
           *,
-          profiles(email)
+          profiles(email),
+          claims(title, status)
         `)
-      
-      if (selectedClaim) {
-        query = query.eq('case_number', selectedClaim)
-      }
-      
-      const { data, error } = await query
+        .order('case_number', { ascending: true, nullsLast: true })
+        .order('priority', { ascending: false })
         .order('due_date', { ascending: true })
       
       if (error) throw error
@@ -351,7 +352,32 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
       )}
 
       <div className="space-y-4">
-        {todos?.map((todo) => (
+        {todos?.reduce((groups: { [key: string]: TodoWithUser[] }, todo) => {
+          const claimKey = todo.case_number || 'No Claim'
+          if (!groups[claimKey]) {
+            groups[claimKey] = []
+          }
+          groups[claimKey].push(todo)
+          return groups
+        }, {}) && Object.entries(todos?.reduce((groups: { [key: string]: TodoWithUser[] }, todo) => {
+          const claimKey = todo.case_number || 'No Claim'
+          if (!groups[claimKey]) {
+            groups[claimKey] = []
+          }
+          groups[claimKey].push(todo)
+          return groups
+        }, {}) || {}).map(([claimKey, claimTodos]) => (
+          <div key={claimKey} className="space-y-3">
+            <div className="flex items-center space-x-2 pb-2 border-b border-gray-200">
+              <h3 className="text-lg font-semibold" style={{ color: claimColor }}>
+                {claimKey === 'No Claim' ? 'General Tasks' : `${claimKey}`}
+              </h3>
+              {claimKey !== 'No Claim' && claimTodos[0]?.claims?.title && (
+                <span className="text-sm text-gray-600">- {claimTodos[0].claims.title}</span>
+              )}
+              <span className="text-sm text-gray-500">({claimTodos.length} tasks)</span>
+            </div>
+            {claimTodos.map((todo) => (
           <div
             key={todo.id}
             className={`bg-white p-4 rounded-lg shadow border-l-4 ${
@@ -417,6 +443,8 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
+          </div>
+            ))}
           </div>
         ))}
         {(!todos || todos.length === 0) && (
