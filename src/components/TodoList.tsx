@@ -19,8 +19,10 @@ interface Todo {
 }
 
 interface TodoWithUser extends Todo {
-  profiles?: {
-    email: string
+  users?: {
+    profiles?: {
+      email: string
+    }
   }
 }
 
@@ -49,7 +51,9 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
         .from('todos')
         .select(`
           *,
-          profiles!user_id(email)
+          users!user_id(
+            profiles(email)
+          )
         `)
       
       if (selectedClaim) {
@@ -75,7 +79,9 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
         .from('todos')
         .select(`
           *,
-          profiles!user_id(email)
+          users!user_id(
+            profiles(email)
+          )
         `)
         .gte('due_date', todayString)
         .eq('completed', false)
@@ -216,7 +222,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
                       <div className="flex items-center space-x-4 mt-1 text-xs text-gray-600">
                         <div className="flex items-center space-x-1">
                           <User className="w-3 h-3" />
-                          <span>{todo.profiles?.email || 'Unknown user'}</span>
+                          <span>{todo.users?.profiles?.email || 'Unknown user'}</span>
                         </div>
                         <div className="flex items-center space-x-1">
                           <Clock className="w-3 h-3" />
@@ -403,7 +409,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
                     </div>
                     <div className="flex items-center space-x-1">
                       <User className="w-4 h-4" />
-                      <span>By: {todo.profiles?.email || 'Unknown user'}</span>
+                      <span>By: {todo.users?.profiles?.email || 'Unknown user'}</span>
                     </div>
                     <span className={`px-2 py-1 rounded-full text-xs ${getPriorityColor(todo.priority)}`}>
                       {todo.priority}
