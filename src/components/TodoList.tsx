@@ -89,6 +89,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
       const todoData = {
         ...todo,
         user_id: user.id,
+        case_number: todo.case_number || null,
         alarm_time: todo.alarm_enabled && todo.alarm_time ? todo.alarm_time : null
       }
       const { data, error } = await supabase
