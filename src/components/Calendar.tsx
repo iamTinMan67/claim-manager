@@ -101,7 +101,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
         .from('todos')
         .select(`
           *,
-          profiles!user_id(email)
+          profiles(email)
         `)
         .gte('due_date', todayString)
         .eq('completed', false)

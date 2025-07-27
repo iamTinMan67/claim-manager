@@ -49,9 +49,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
         .from('todos')
         .select(`
           *,
-          users!user_id(
-            profiles(email)
-          )
+          profiles(email)
         `)
       
       if (selectedClaim) {
@@ -77,9 +75,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
         .from('todos')
         .select(`
           *,
-          users!user_id(
-            profiles(email)
-          )
+          profiles(email)
         `)
         .gte('due_date', todayString)
         .eq('completed', false)
@@ -220,7 +216,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
                       <div className="flex items-center space-x-4 mt-1 text-xs text-gray-600">
                         <div className="flex items-center space-x-1">
                           <User className="w-3 h-3" />
-                          <span>{todo.users?.profiles?.email || 'Unknown user'}</span>
+                          <span>{todo.profiles?.email || 'Unknown user'}</span>
                         </div>
                         <div className="flex items-center space-x-1">
                           <Clock className="w-3 h-3" />
