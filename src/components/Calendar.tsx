@@ -45,7 +45,8 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
     start_time: '',
     end_time: '',
     all_day: false,
-    color: claimColor
+    color: claimColor,
+    claim_id: selectedClaim || ''
   })
 
   const queryClient = useQueryClient()
@@ -112,7 +113,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
 
       const { data, error } = await supabase
         .from('calendar_events')
-        .insert([{ ...event, user_id: user.id }])
+        .insert([{ ...event, user_id: user.id, claim_id: event.claim_id || null }])
         .select()
         .single()
 
@@ -128,7 +129,8 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
         start_time: '',
         end_time: '',
         all_day: false,
-        color: claimColor
+        color: claimColor,
+        claim_id: selectedClaim || ''
       })
     }
   })
@@ -207,7 +209,8 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
     setNewEvent(prev => ({
       ...prev,
       start_time: format(date, "yyyy-MM-dd'T'HH:mm"),
-      end_time: format(date, "yyyy-MM-dd'T'HH:mm")
+      end_time: format(date, "yyyy-MM-dd'T'HH:mm"),
+      claim_id: selectedClaim || ''
     }))
     setShowAddForm(true)
   }
@@ -336,6 +339,21 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
                 onChange={(e) => setNewEvent({ ...newEvent, color: e.target.value })}
                 className="w-16 h-10 border rounded-lg"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Associated Claim</label>
+              <select
+                value={newEvent.claim_id}
+                onChange={(e) => setNewEvent({ ...newEvent, claim_id: e.target.value })}
+                className="w-full border rounded-lg px-3 py-2"
+              >
+                <option value="">No specific claim</option>
+                {claims?.map((claim) => (
+                  <option key={claim.case_number} value={claim.case_number}>
+                    {claim.case_number} - {claim.title}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="flex space-x-3">
               <button

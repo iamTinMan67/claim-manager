@@ -28,7 +28,8 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
     due_date: '',
     priority: 'medium' as const,
     alarm_enabled: false,
-    alarm_time: ''
+    alarm_time: '',
+    case_number: selectedClaim || ''
   })
 
   const queryClient = useQueryClient()
@@ -130,7 +131,8 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
         due_date: '',
         priority: 'medium',
         alarm_enabled: false,
-        alarm_time: ''
+        alarm_time: '',
+        case_number: selectedClaim || ''
       })
     }
   })
@@ -350,6 +352,21 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
                 />
               </div>
             )}
+            <div>
+              <label className="block text-sm font-medium mb-1">Associated Claim</label>
+              <select
+                value={newTodo.case_number}
+                onChange={(e) => setNewTodo({ ...newTodo, case_number: e.target.value })}
+                className="w-full border rounded-lg px-3 py-2"
+              >
+                <option value="">No specific claim</option>
+                {claims?.map((claim) => (
+                  <option key={claim.case_number} value={claim.case_number}>
+                    {claim.case_number} - {claim.title}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="flex space-x-3">
               <button
                 type="submit"
