@@ -54,6 +54,20 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
     }
   })
 
+  // Debug query to see ALL evidence in database
+  const { data: allEvidence } = useQuery({
+    queryKey: ['all-evidence-debug'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('evidence')
+        .select('id, file_name, case_number, exhibit_id')
+        .limit(10)
+      
+      console.log('ALL Evidence in database:', data)
+      if (error) console.error('Error fetching all evidence:', error)
+      return data || []
+    }
+  })
   // Calculate bundle numbers based on cumulative pages
   const calculateBundleNumber = (evidenceList: Evidence[], currentIndex: number): number => {
     let bundleNumber = 1
@@ -355,7 +369,11 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
           Selected claim: {selectedClaim || 'none'}, 
           Loading: {isLoading ? 'yes' : 'no'}
           <br />
-          <strong>Raw evidence data:</strong> {JSON.stringify(evidence?.slice(0, 2), null, 2)}
+          <strong>Filtered evidence:</strong> {JSON.stringify(evidence?.slice(0, 2), null, 2)}
+          <br />
+          <strong>ALL evidence in DB:</strong> {JSON.stringify(allEvidence?.slice(0, 3), null, 2)}
+          <br />
+          <strong>Case numbers in DB:</strong> {allEvidence?.map(e => e.case_number).join(', ') || 'none'}
         </div>
       )}
       
