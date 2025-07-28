@@ -256,12 +256,16 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
 
   const moveEvidenceMutation = useMutation({
     mutationFn: async ({ evidenceList }: { evidenceList: Evidence[] }) => {
-      // Update all evidence items with new exhibit_id based on their position
-      const updates = evidenceList.map((item, index) => ({
-        id: item.id,
-        exhibit_id: `${index + 1}`,
-        display_order: index + 1
-      }))
+      // Update all evidence items with new exhibit_id and display_order based on their position
+      // Since we're showing in descending order, we need to reverse the numbering
+      const updates = evidenceList.map((item, index) => {
+        const newExhibitNumber = evidenceList.length - index
+        return {
+          id: item.id,
+          exhibit_id: `${newExhibitNumber}`,
+          display_order: newExhibitNumber
+        }
+      })
 
       // Perform batch update
       const promises = updates.map(update => 
