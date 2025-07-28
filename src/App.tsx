@@ -31,8 +31,6 @@ function App() {
     switch (activeTab) {
       case 'claims':
         return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} onClaimColorChange={setSelectedClaimColor} />
-      case 'evidence':
-        return <EvidenceManager selectedClaim={selectedClaim} claimColor={selectedClaimColor} />
       case 'todos':
         return <TodoList selectedClaim={selectedClaim} claimColor={selectedClaimColor} />
       case 'calendar':

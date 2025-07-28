@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { Claim } from '@/types/database'
-import { Edit, Trash2, Plus, X } from 'lucide-react'
+import { Edit, Trash2, Plus, X, Settings } from 'lucide-react'
 import EvidenceManager from './EvidenceManager'
 
 interface ClaimsTableProps {
@@ -16,6 +16,7 @@ interface ClaimsTableProps {
 const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange }: ClaimsTableProps) => {
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingClaim, setEditingClaim] = useState<Claim | null>(null)
+  const [amendMode, setAmendMode] = useState(false)
   const [newClaim, setNewClaim] = useState({
     case_number: '',
     title: '',
@@ -157,13 +158,27 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange }: Claim
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-bold">Claim Details</h2>
-          <button
-            onClick={() => onClaimSelect(null)}
-            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center space-x-2"
-          >
-            <X className="w-4 h-4" />
-            <span>Back to All Claims</span>
-          </button>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setAmendMode(!amendMode)}
+              className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
+                amendMode 
+                  ? 'text-red-600 bg-red-100 hover:bg-red-200' 
+                  : 'text-white hover:opacity-90'
+              }`}
+              style={!amendMode ? { backgroundColor: claim.color || '#3B82F6' } : {}}
+            >
+              <Settings className="w-4 h-4" />
+              <span>{amendMode ? 'Exit Amend' : 'Amend Evidence'}</span>
+            </button>
+            <button
+              onClick={() => onClaimSelect(null)}
+              className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center space-x-2"
+            >
+              <X className="w-4 h-4" />
+              <span>Back to All Claims</span>
+            </button>
+          </div>
         </div>
         
         {/* Selected Claim Display */}
@@ -206,8 +221,12 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange }: Claim
           </div>
         </div>
 
-        {/* Evidence Subform */}
-        <EvidenceManager selectedClaim={selectedClaim} claimColor={claim.color || '#3B82F6'} />
+        {/* Evidence Management - Always show but with amend mode control */}
+        <EvidenceManager 
+          selectedClaim={selectedClaim} 
+          claimColor={claim.color || '#3B82F6'} 
+          amendMode={amendMode}
+        />
       </div>
     )
   }

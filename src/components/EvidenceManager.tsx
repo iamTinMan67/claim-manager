@@ -8,12 +8,12 @@ import { format } from 'date-fns'
 interface EvidenceManagerProps {
   selectedClaim: string | null
   claimColor?: string
+  amendMode?: boolean
 }
 
-const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceManagerProps) => {
+const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = false }: EvidenceManagerProps) => {
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingEvidence, setEditingEvidence] = useState<Evidence | null>(null)
-  const [editMode, setEditMode] = useState(false)
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [showClaimSwitcher, setShowClaimSwitcher] = useState(false)
   const [uploadingFile, setUploadingFile] = useState(false)
@@ -649,7 +649,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
         </div>
       </div>
 
-      {showAddForm && (
+      {amendMode && showAddForm && (
         <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4">Add New Evidence</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -812,7 +812,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
         </div>
       )}
 
-      {editingEvidence && (
+      {amendMode && editingEvidence && (
         <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4">Edit Evidence</h3>
           <form onSubmit={handleUpdate} className="space-y-4">
@@ -926,10 +926,10 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
           <div 
             key={item.id} 
             className={`bg-white p-6 rounded-lg shadow border-l-4 transition-all ${
-              editMode ? 'cursor-move hover:shadow-lg' : ''
+              amendMode ? 'cursor-move hover:shadow-lg' : ''
             } ${draggedItem === item.id ? 'opacity-50' : ''}`}
             style={{ borderLeftColor: claimColor }}
-            draggable={editMode}
+            draggable={amendMode}
             onDragStart={(e) => handleDragStart(e, item.id)}
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, item.id)}
@@ -938,7 +938,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
             <div className="flex justify-between items-start">
               <div className="flex-1">
                 <div className="flex items-center space-x-2 mb-2">
-                  {editMode && (
+                  {amendMode && (
                     <GripVertical className="w-4 h-4 text-gray-400" />
                   )}
                   {getMethodIcon(item.method)}
@@ -1029,7 +1029,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
-                {editMode && (
+                {amendMode && (
                   <>
                     <button
                       onClick={() => handleEdit(item)}
