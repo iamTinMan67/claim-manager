@@ -699,6 +699,17 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
                 />
               </div>
               <div>
+                <label className="block text-sm font-medium mb-1">File URL</label>
+                <input
+                  type="url"
+                  value={editingEvidence.file_url || ''}
+                  onChange={(e) => setEditingEvidence({ ...editingEvidence, file_url: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
                 <label className="block text-sm font-medium mb-1">Exhibit ID</label>
                 <input
                   type="text"
@@ -707,6 +718,58 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
                   className="w-full border rounded-lg px-3 py-2"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Number of Pages</label>
+                <input
+                  type="number"
+                  value={editingEvidence.number_of_pages || ''}
+                  onChange={(e) => setEditingEvidence({ ...editingEvidence, number_of_pages: parseInt(e.target.value) || null })}
+                  className="w-full border rounded-lg px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Method</label>
+                <select
+                  value={editingEvidence.method || 'Post'}
+                  onChange={(e) => setEditingEvidence({ ...editingEvidence, method: e.target.value as any })}
+                  className="w-full border rounded-lg px-3 py-2"
+                >
+                  <option value="Post">Post</option>
+                  <option value="Email">Email</option>
+                  <option value="Hand">Hand</option>
+                  <option value="Call">Call</option>
+                  <option value="To-Do">To-Do</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Date Submitted</label>
+                <input
+                  type="date"
+                  value={editingEvidence.date_submitted || ''}
+                  onChange={(e) => setEditingEvidence({ ...editingEvidence, date_submitted: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">URL Link</label>
+                <input
+                  type="url"
+                  value={editingEvidence.url_link || ''}
+                  onChange={(e) => setEditingEvidence({ ...editingEvidence, url_link: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Book of Deeds Reference</label>
+              <input
+                type="text"
+                value={editingEvidence.book_of_deeds_ref || ''}
+                onChange={(e) => setEditingEvidence({ ...editingEvidence, book_of_deeds_ref: e.target.value })}
+                className="w-full border rounded-lg px-3 py-2"
+              />
             </div>
             <div className="flex space-x-3">
               <button
@@ -774,6 +837,10 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
                     <span>{item.number_of_pages || 'N/A'}</span>
                   </div>
                   <div className="flex items-center space-x-1">
+                    <span className="font-medium">Method:</span>
+                    <span>{item.method || 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
                     <span className="font-medium">Bundle #:</span>
                     <span>{calculateBundleNumber(evidence, index)}</span>
                   </div>
@@ -781,26 +848,6 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
                     <Calendar className="w-4 h-4" />
                     <span>{item.date_submitted ? new Date(item.date_submitted).toLocaleDateString() : 'N/A'}</span>
                   </div>
-                  <div className="flex items-center space-x-1">
-                    <span className="font-medium">Method:</span>
-                    <span>{item.method || 'N/A'}</span>
-                  </div>
-                </div>
-                <div className="mt-2 flex items-center space-x-1 text-sm text-gray-600">
-                  <span className="font-medium">Case:</span>
-                  <span className={item.case_number ? '' : 'text-red-600 font-medium'}>
-                    {item.case_number || 'Not Associated'}
-                  </span>
-                  {selectedClaim && !item.case_number && (
-                    <button
-                      onClick={() => handleAssociateWithClaim(item.id)}
-                      disabled={associateEvidenceMutation.isPending}
-                      className="ml-2 text-xs px-2 py-1 rounded text-white hover:opacity-90 disabled:opacity-50"
-                      style={{ backgroundColor: claimColor }}
-                    >
-                      Associate with {selectedClaim}
-                    </button>
-                  )}
                 </div>
                 {item.book_of_deeds_ref && (
                   <div className="mt-2 flex items-center space-x-1 text-sm text-gray-600">
