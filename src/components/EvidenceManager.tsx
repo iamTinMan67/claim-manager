@@ -55,8 +55,8 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
       
       if (error) throw error
       
-      // Reverse the order to show in descending order (newest first)
-      return (data as Evidence[]).reverse()
+      // Return evidence as-is (ordered by display_order, then created_at)
+      return data as Evidence[]
     }
   })
 
@@ -299,8 +299,8 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evidence'] })
       queryClient.invalidateQueries({ queryKey: ['evidence-counts'] })
-      // Force refresh of the current evidence view
       queryClient.invalidateQueries({ queryKey: ['evidence', selectedClaim] })
+      queryClient.invalidateQueries({ queryKey: ['evidence', null] }) // Also refresh "all evidence" view
     }
   })
 
