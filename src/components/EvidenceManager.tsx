@@ -1021,6 +1021,25 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
                     <Eye className="w-4 h-4" />
                   </a>
                 )}
+                <button
+                  onClick={() => {
+                    if (selectedClaim) {
+                      // Remove from current claim only
+                      if (window.confirm(`Remove this evidence from claim ${selectedClaim}? The evidence will not be deleted, just unassociated from this claim.`)) {
+                        unassociateEvidenceMutation.mutate(item.id)
+                      }
+                    } else {
+                      // Permanent delete when viewing all evidence
+                      if (window.confirm('Are you sure you want to permanently delete this evidence? This cannot be undone.')) {
+                        deleteEvidenceMutation.mutate(item.id)
+                      }
+                    }
+                  }}
+                  className={`p-2 ${selectedClaim ? 'text-orange-600 hover:text-orange-800' : 'text-red-600 hover:text-red-800'}`}
+                  title={selectedClaim ? 'Remove from current claim' : 'Delete evidence permanently'}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
                 {editMode && (
                   <>
                     <button
@@ -1029,25 +1048,6 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
                       title="Edit evidence"
                     >
                       <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (selectedClaim) {
-                          // Remove from current claim only
-                          if (window.confirm(`Remove this evidence from claim ${selectedClaim}? The evidence will not be deleted, just unassociated from this claim.`)) {
-                            unassociateEvidenceMutation.mutate(item.id)
-                          }
-                        } else {
-                          // Permanent delete when viewing all evidence
-                          if (window.confirm('Are you sure you want to permanently delete this evidence? This cannot be undone.')) {
-                            deleteEvidenceMutation.mutate(item.id)
-                          }
-                        }
-                      }}
-                      className={`p-2 ${selectedClaim ? 'text-orange-600 hover:text-orange-800' : 'text-red-600 hover:text-red-800'}`}
-                      title={selectedClaim ? 'Remove from current claim' : 'Delete evidence permanently'}
-                    >
-                      <Trash2 className="w-4 h-4" />
                     </button>
                   </>
                 )}
