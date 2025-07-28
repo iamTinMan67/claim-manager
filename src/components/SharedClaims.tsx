@@ -52,7 +52,8 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
 
   // Calculate pricing based on guest count
   const calculateDonationAmount = (guestCount: number): number => {
-    if (guestCount === 1) return 7 // £7 for single guest
+    if (guestCount === 1) return 0 // First guest is FREE
+    if (guestCount === 2) return 7 // £7 for second guest
     if (guestCount <= 5) return 10 // £10 for up to 5 guests
     if (guestCount <= 10) return 20 // £20 for 6-10 guests
     if (guestCount <= 20) return 20 // £20 for 11-20 guests
@@ -146,8 +147,8 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
           shared_with_id: existingUser.id,
           permission: shareInfo.permission,
           can_view_evidence: shareInfo.can_view_evidence,
-          donation_required: true, // Always required for app owner
-          donation_paid: false, // Will be set to true after payment
+          donation_required: shareInfo.donation_amount > 0, // Only required if amount > 0
+          donation_paid: shareInfo.donation_amount === 0, // Free guests are automatically "paid"
           donation_amount: shareInfo.donation_amount
         }])
         .select()
@@ -250,8 +251,17 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
     const currentGuestCount = (guestCounts?.[claimToShare] || 0) + 1
     const donationAmount = calculateDonationAmount(currentGuestCount)
     
-    // Show payment modal instead of directly sharing
-    handlePayment(claimToShare, shareData.email)
+    // If first guest (free), share directly. Otherwise, show payment modal
+    if (donationAmount === 0) {
+      shareClaimMutation.mutate({
+        ...shareData,
+        claim_id: claimToShare,
+        donation_amount: 0
+      })
+    } else {
+      // Show payment modal for paid guests
+      handlePayment(claimToShare, shareData.email)
+    }
   }
 
   if (isLoading) {
@@ -279,24 +289,24 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           <div className="bg-white p-3 rounded border">
-            <div className="font-medium text-gray-900">Single Guest</div>
+            <div className="font-medium text-gray-900">First Guest</div>
+            <div className="text-green-600 font-bold">FREE</div>
+          </div>
+          <div className="bg-white p-3 rounded border">
+            <div className="font-medium text-gray-900">2nd Guest</div>
             <div className="text-blue-600 font-bold">£7</div>
           </div>
           <div className="bg-white p-3 rounded border">
-            <div className="font-medium text-gray-900">Up to 5 Guests</div>
+            <div className="font-medium text-gray-900">3-5 Guests</div>
             <div className="text-blue-600 font-bold">£10</div>
           </div>
           <div className="bg-white p-3 rounded border">
-            <div className="font-medium text-gray-900">6-20 Guests</div>
-            <div className="text-blue-600 font-bold">£20</div>
-          </div>
-          <div className="bg-white p-3 rounded border">
-            <div className="font-medium text-gray-900">21+ Guests</div>
-            <div className="text-blue-600 font-bold">£30-£50</div>
+            <div className="font-medium text-gray-900">6+ Guests</div>
+            <div className="text-blue-600 font-bold">£20-£50</div>
           </div>
         </div>
         <p className="text-blue-800 text-sm mt-3">
-          <strong>Note:</strong> Payment is required to add guests to your claims. All payments support the app development and maintenance.
+          <strong>Note:</strong> First guest is FREE! Payment required for additional guests. All payments support app development.
         </p>
       </div>
 
@@ -317,16 +327,30 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
           <h3 className="text-lg font-semibold mb-4">Share a Claim</h3>
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
             <div className="flex items-center space-x-2">
-              <AlertCircle className="w-4 h-4 text-yellow-600" />
-              <span className="text-sm font-medium text-yellow-800">Payment Required</span>
+              {calculateDonationAmount((guestCounts?.[selectedClaim || claimToShare] || 0) + 1) === 0 ? (
+                <>
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <span className="text-sm font-medium text-green-800">First Guest - FREE!</span>
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="w-4 h-4 text-yellow-600" />
+                  <span className="text-sm font-medium text-yellow-800">Payment Required</span>
+                </>
+              )}
             </div>
             <p className="text-yellow-700 text-sm mt-1">
-              Adding a guest requires a payment to support app development. 
               Current guest count for this claim: <strong>{guestCounts?.[selectedClaim || claimToShare] || 0}</strong>
             </p>
-            <p className="text-yellow-700 text-sm">
-              Cost for next guest: <strong>£{calculateDonationAmount((guestCounts?.[selectedClaim || claimToShare] || 0) + 1)}</strong>
-            </p>
+            {calculateDonationAmount((guestCounts?.[selectedClaim || claimToShare] || 0) + 1) === 0 ? (
+              <p className="text-green-700 text-sm">
+                Your first guest is completely free! No payment required.
+              </p>
+            ) : (
+              <p className="text-yellow-700 text-sm">
+                Cost for next guest: <strong>£{calculateDonationAmount((guestCounts?.[selectedClaim || claimToShare] || 0) + 1)}</strong>
+              </p>
+            )}
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -385,7 +409,9 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
                 className="text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50"
                 style={{ backgroundColor: claimColor }}
               >
-                {shareClaimMutation.isPending ? 'Processing...' : 'Proceed to Payment'}
+                {shareClaimMutation.isPending ? 'Processing...' : 
+                 calculateDonationAmount((guestCounts?.[selectedClaim || claimToShare] || 0) + 1) === 0 ? 
+                 'Share for Free' : 'Proceed to Payment'}
               </button>
               <button
                 type="button"
@@ -515,7 +541,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
                   <div className="mt-2 flex items-center space-x-2">
                     <DollarSign className="w-4 h-4 text-green-600" />
                     <span className="text-sm text-gray-600">
-                      App Owner Payment: £{share.donation_amount}
+                      {share.donation_amount === 0 ? 'First Guest - FREE' : `App Owner Payment: £${share.donation_amount}`}
                     </span>
                     <span className={`px-2 py-1 rounded text-xs ${
                       share.donation_paid 
@@ -525,7 +551,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
                       {share.donation_paid ? (
                         <div className="flex items-center space-x-1">
                           <CheckCircle className="w-3 h-3" />
-                          <span>Paid</span>
+                          <span>{share.donation_amount === 0 ? 'Free' : 'Paid'}</span>
                           {share.donation_paid_at && (
                             <span className="text-xs">
                               on {new Date(share.donation_paid_at).toLocaleDateString()}
