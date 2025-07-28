@@ -69,21 +69,6 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
     }
   })
 
-  // Debug query to see ALL evidence in database
-  const { data: allEvidence } = useQuery({
-    queryKey: ['all-evidence-debug'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('evidence')
-        .select('id, file_name, case_number, exhibit_id')
-        .limit(10)
-      
-      console.log('ALL Evidence in database:', data)
-      if (error) console.error('Error fetching all evidence:', error)
-      return data || []
-    }
-  })
-  // Calculate bundle numbers based on cumulative pages
   const calculateBundleNumber = (evidenceList: Evidence[], currentIndex: number): number => {
     let bundleNumber = 1
     for (let i = 0; i < currentIndex; i++) {
@@ -376,41 +361,6 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
     }
   })
 
-  const associateAllWithSpecificClaimMutation = useMutation({
-    mutationFn: async ({ caseNumber }: { caseNumber: string }) => {
-      // Get ALL evidence items that are not associated with any claim from the database
-      const { data: allUnassociated, error } = await supabase
-        .from('evidence')
-        .select('id, file_name, case_number')
-        .is('case_number', null)
-      
-      if (error) throw error
-      if (!allUnassociated || allUnassociated.length === 0) return []
-
-      console.log('Found unassociated evidence items:', allUnassociated)
-
-      // Update all unassociated evidence to be associated with the specified claim
-      const updates = allUnassociated.map(item => 
-        supabase
-          .from('evidence')
-          .update({ case_number: caseNumber })
-          .eq('id', item.id)
-      )
-
-      const results = await Promise.all(updates)
-      const errors = results.filter(result => result.error)
-      if (errors.length > 0) {
-        throw errors[0].error
-      }
-
-      console.log('Successfully associated', allUnassociated.length, 'items with claim', caseNumber)
-      return results
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evidence'] })
-      queryClient.invalidateQueries({ queryKey: ['evidence-counts'] })
-    }
-  })
   const oldMoveEvidenceMutation = useMutation({
     mutationFn: async ({ id, newOrder }: { id: string, newOrder: number }) => {
       const { data, error } = await supabase
@@ -495,23 +445,6 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
 
   return (
     <div className="space-y-6">
-      {/* Debug info */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded p-2 text-sm">
-          <strong>Debug:</strong> Evidence count: {evidence?.length || 0}, 
-          Selected claim: {selectedClaim || 'none'}, 
-          Loading: {isLoading ? 'yes' : 'no'}
-          <br />
-          <strong>Filtered evidence:</strong> {JSON.stringify(evidence?.slice(0, 2), null, 2)}
-          <br />
-          <strong>ALL evidence in DB:</strong> {JSON.stringify(allEvidence?.slice(0, 3), null, 2)}
-          <br />
-          <strong>Case numbers in DB:</strong> {allEvidence?.map(e => e.case_number).join(', ') || 'none'}
-          <br />
-          <strong>Evidence counts:</strong> {JSON.stringify(evidenceCounts, null, 2)}
-        </div>
-      )}
-      
       {/* Claim Evidence Summary */}
       {evidenceCounts && Object.keys(evidenceCounts).length > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -592,50 +525,6 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
               }
             </span>
           </button>
-        </div>
-      )}
-      
-      {/* Global action to associate all unassociated evidence with claim 60EF0083825 */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex justify-between items-center">
-          <div>
-            <p className="text-blue-800 font-medium">
-              Associate All Unassociated Evidence with Claim 60EF0083825
-            </p>
-            <p className="text-blue-700 text-sm mt-1">
-              This will find ALL evidence items in the database that are not associated with any claim and associate them with claim 60EF0083825.
-            </p>
-          </div>
-          <button
-            onClick={() => associateAllWithSpecificClaimMutation.mutate({ caseNumber: '60EF0083825' })}
-            disabled={associateAllWithSpecificClaimMutation.isPending}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
-          >
-            <span>
-              {associateAllWithSpecificClaimMutation.isPending 
-                ? 'Associating All...' 
-                : 'Associate All with 60EF0083825'
-              }
-            </span>
-          </button>
-        </div>
-      </div>
-      {/* Show info about evidence in other claims */}
-      {selectedClaim && evidenceCounts && evidenceCounts['60EF0083825'] && selectedClaim !== '60EF0083825' && (
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-orange-800 font-medium">
-                Found {evidenceCounts['60EF0083825']} evidence items in claim "60EF0083825"
-              </p>
-              <p className="text-orange-700 text-sm mt-1">
-                These items are not showing because you're currently viewing a different claim.
-              </p>
-            </div>
-            <div className="text-sm text-orange-600">
-              Switch to claim "60EF0083825" in the Claims tab to view these items
-            </div>
-          </div>
         </div>
       )}
       
