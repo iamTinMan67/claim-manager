@@ -1012,13 +1012,27 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
                     >
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button
-                      onClick={() => deleteEvidenceMutation.mutate(item.id)}
-                      className="text-red-600 hover:text-red-800 p-2"
-                      title="Delete evidence"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {selectedClaim ? (
+                      <button
+                        onClick={() => deleteEvidenceMutation.mutate({ id: item.id, removeFromClaim: true })}
+                        className="text-orange-600 hover:text-orange-800 p-2"
+                        title="Remove from current claim"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          if (window.confirm('Are you sure you want to permanently delete this evidence? This cannot be undone.')) {
+                            permanentDeleteEvidenceMutation.mutate(item.id)
+                          }
+                        }}
+                        className="text-red-600 hover:text-red-800 p-2"
+                        title="Delete evidence permanently"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </>
                 )}
               </div>
