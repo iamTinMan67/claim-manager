@@ -25,10 +25,10 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
     exhibit_id: '',
     number_of_pages: '',
     date_submitted: '',
-    method: 'Post' as const,
+    method: 'To-Do' as const,
     url_link: '',
     book_of_deeds_ref: '',
-    case_number: ''
+    case_number: selectedClaim || ''
   })
 
   const queryClient = useQueryClient()
@@ -470,16 +470,22 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
 
   const resetForm = () => {
     setSelectedFile(null)
+    
+    // Calculate next exhibit number
+    const nextExhibitNumber = evidence && evidence.length > 0 
+      ? Math.max(...evidence.map(e => parseInt(e.exhibit_id || '0'))) + 1 
+      : 1
+    
     setNewEvidence({
       file_name: '',
       file_url: '',
-      exhibit_id: '',
+      exhibit_id: nextExhibitNumber.toString(),
       number_of_pages: '',
       date_submitted: '',
-      method: 'Post',
+      method: 'To-Do',
       url_link: '',
       book_of_deeds_ref: '',
-      case_number: ''
+      case_number: selectedClaim || ''
     })
   }
 
@@ -652,7 +658,9 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
                       setSelectedFile(file)
                       // Auto-fill filename if empty
                       if (!newEvidence.file_name) {
-                        setNewEvidence({ ...newEvidence, file_name: file.name })
+                        // Remove file extension from filename
+                        const nameWithoutExtension = file.name.replace(/\.[^/.]+$/, '')
+                        setNewEvidence({ ...newEvidence, file_name: nameWithoutExtension })
                       }
                     }
                   }}
