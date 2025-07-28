@@ -15,6 +15,16 @@ import ExportFeatures from './components/ExportFeatures'
 const queryClient = new QueryClient()
 
 function App() {
+  return (
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+      <QueryClientProvider client={queryClient}>
+        <AppContent />
+      </QueryClientProvider>
+    </ThemeProvider>
+  )
+}
+
+function AppContent() {
   const [user, setUser] = useState<User | null>(null)
   const [activeTab, setActiveTab] = useState('claims')
   const [selectedClaim, setSelectedClaim] = useState<string | null>(null)
@@ -22,7 +32,52 @@ function App() {
   const [isGuest, setIsGuest] = useState(false) // TODO: Implement guest detection logic
   const [showGuestContent, setShowGuestContent] = useState(false)
 
-  // Get guest status for current user
+  if (!user) {
+    return <AuthComponent onAuthChange={setUser} />
+  }
+
+  return (
+    <AuthComponent onAuthChange={setUser}>
+      <LoggedInContent 
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        selectedClaim={selectedClaim}
+        setSelectedClaim={setSelectedClaim}
+        selectedClaimColor={selectedClaimColor}
+        setSelectedClaimColor={setSelectedClaimColor}
+        isGuest={isGuest}
+        showGuestContent={showGuestContent}
+        setShowGuestContent={setShowGuestContent}
+        user={user}
+      />
+    </AuthComponent>
+  )
+}
+
+function LoggedInContent({ 
+  activeTab, 
+  setActiveTab, 
+  selectedClaim, 
+  setSelectedClaim, 
+  selectedClaimColor, 
+  setSelectedClaimColor, 
+  isGuest, 
+  showGuestContent, 
+  setShowGuestContent,
+  user 
+}: {
+  activeTab: string
+  setActiveTab: (tab: string) => void
+  selectedClaim: string | null
+  setSelectedClaim: (claim: string | null) => void
+  selectedClaimColor: string
+  setSelectedClaimColor: (color: string) => void
+  isGuest: boolean
+  showGuestContent: boolean
+  setShowGuestContent: (show: boolean) => void
+  user: any
+}) {
+  // Get guest status for current user - now inside QueryClientProvider
   const { data: guestStatus } = useQuery({
     queryKey: ['guest-status-app', selectedClaim, user?.id],
     queryFn: async () => {
@@ -40,16 +95,6 @@ function App() {
     },
     enabled: !!selectedClaim && !!user?.id && isGuest
   })
-
-  if (!user) {
-    return (
-      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-      <QueryClientProvider client={queryClient}>
-        <AuthComponent onAuthChange={setUser} />
-      </QueryClientProvider>
-      </ThemeProvider>
-    )
-  }
 
   const renderContent = () => {
     switch (activeTab) {
@@ -69,9 +114,7 @@ function App() {
   }
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-    <QueryClientProvider client={queryClient}>
-      <AuthComponent onAuthChange={setUser}>
+    <>
         <Navigation 
           activeTab={activeTab} 
           onTabChange={setActiveTab} 
@@ -80,9 +123,7 @@ function App() {
           onToggleGuestContent={setShowGuestContent}
         />
         {renderContent()}
-      </AuthComponent>
-    </QueryClientProvider>
-    </ThemeProvider>
+    </>
   )
 }
 
