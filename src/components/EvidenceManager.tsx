@@ -55,19 +55,6 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
       
       if (error) throw error
       
-      // If selectedClaim is set but no evidence found, get all evidence
-      if (selectedClaim && (!data || data.length === 0)) {
-        console.log('No evidence found for claim, fetching all evidence')
-        const { data: allData, error: allError } = await supabase
-          .from('evidence')
-          .select('*')
-          .order('display_order', { ascending: true, nullsLast: true })
-          .order('created_at', { ascending: true })
-        
-        if (allError) throw allError
-        return allData as Evidence[]
-      }
-      
       // Reverse the order to show in descending order (newest first)
       return (data as Evidence[]).reverse()
     }
@@ -312,6 +299,8 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evidence'] })
       queryClient.invalidateQueries({ queryKey: ['evidence-counts'] })
+      // Force refresh of the current evidence view
+      queryClient.invalidateQueries({ queryKey: ['evidence', selectedClaim] })
     }
   })
 
