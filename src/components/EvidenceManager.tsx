@@ -46,7 +46,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
       
       const { data, error } = await query
         .order('display_order', { ascending: true, nullsLast: true })
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: true })
       
       console.log('Evidence query result:', { data, error, count: data?.length })
       
@@ -59,14 +59,14 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
           .from('evidence')
           .select('*')
           .order('display_order', { ascending: true, nullsLast: true })
-          .order('created_at', { ascending: false })
+          .order('created_at', { ascending: true })
         
         if (allError) throw allError
         return allData as Evidence[]
       }
       
-      return data as Evidence[]
-    }
+      // Reverse the order to show in descending order (newest first)
+      return (data as Evidence[]).reverse()
   })
 
   const calculateBundleNumber = (evidenceList: Evidence[], currentIndex: number): number => {
