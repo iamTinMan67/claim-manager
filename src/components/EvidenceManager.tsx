@@ -67,6 +67,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
       
       // Reverse the order to show in descending order (newest first)
       return (data as Evidence[]).reverse()
+    }
   })
 
   const calculateBundleNumber = (evidenceList: Evidence[], currentIndex: number): number => {
@@ -608,7 +609,6 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
                   <option value="Email">Email</option>
                   <option value="Hand">Hand</option>
                   <option value="Call">Call</option>
-                  <option value="To-Do">To-Do</option>
                   <option value="To-Do">To-Do</option>
                 </select>
               </div>
