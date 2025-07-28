@@ -297,6 +297,24 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
     }
   })
 
+  const unassociateEvidenceMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await supabase
+        .from('evidence')
+        .update({ case_number: null })
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evidence'] })
+      queryClient.invalidateQueries({ queryKey: ['evidence-counts'] })
+    }
+  })
+
   const moveEvidenceMutation = useMutation({
     mutationFn: async ({ evidenceList }: { evidenceList: Evidence[] }) => {
       // Update all evidence items with new exhibit_id and display_order based on their position
@@ -1012,27 +1030,25 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
                     >
                       <Edit className="w-4 h-4" />
                     </button>
-                    {selectedClaim ? (
-                      <button
-                        onClick={() => deleteEvidenceMutation.mutate(item.id)}
-                        className="text-orange-600 hover:text-orange-800 p-2"
-                        title="Remove from current claim"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {
+                    <button
+                      onClick={() => {
+                        if (selectedClaim) {
+                          // Remove from current claim only
+                          if (window.confirm(`Remove this evidence from claim ${selectedClaim}? The evidence will not be deleted, just unassociated from this claim.`)) {
+                            unassociateEvidenceMutation.mutate(item.id)
+                          }
+                        } else {
+                          // Permanent delete when viewing all evidence
                           if (window.confirm('Are you sure you want to permanently delete this evidence? This cannot be undone.')) {
                             deleteEvidenceMutation.mutate(item.id)
                           }
-                        }}
-                        className="text-red-600 hover:text-red-800 p-2"
-                        title="Delete evidence permanently"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+                        }
+                      }}
+                      className={`p-2 ${selectedClaim ? 'text-orange-600 hover:text-orange-800' : 'text-red-600 hover:text-red-800'}`}
+                      title={selectedClaim ? 'Remove from current claim' : 'Delete evidence permanently'}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </>
                 )}
               </div>
