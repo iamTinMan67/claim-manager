@@ -414,7 +414,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
                 ⚠️ Account Required: The person you're inviting must have a registered account on this app.
               </p>
               <p className="text-blue-700 text-xs mt-1">
-                They can create their own claims and invite their own guests (with their own donations to the app owner).
+                They can create their own claims and invite their own guests.
               </p>
             </div>
           </div>
