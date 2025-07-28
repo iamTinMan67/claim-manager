@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { Upload, FileText, Link, Calendar, Hash, BookOpen, Eye, Trash2, Edit, Plus, Settings, GripVertical, X } from 'lucide-react'
+import { Upload, FileText, Link, Calendar, Hash, BookOpen, Eye, Trash2, Edit, Plus, Settings, GripVertical, X, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
 import { Evidence } from '@/types/database'
 import { format } from 'date-fns'
 
@@ -22,6 +22,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
   const [uploadingFile, setUploadingFile] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [showCleanupDialog, setShowCleanupDialog] = useState(false)
+  const [showPendingEvidence, setShowPendingEvidence] = useState(false)
   const [newEvidence, setNewEvidence] = useState({
     file_name: '',
     file_url: '',
@@ -73,6 +74,46 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
       // Return evidence as-is (ordered by display_order, then created_at)
       return data as Evidence[]
     }
+  })
+
+  // Query for pending evidence (for hosts to review)
+  const { data: pendingEvidence } = useQuery({
+    queryKey: ['pending-evidence', selectedClaim],
+    queryFn: async () => {
+      if (!selectedClaim) return []
+      
+      const { data, error } = await supabase
+        .from('pending_evidence')
+        .select(`
+          *,
+          profiles!submitter_id(email, full_name)
+        `)
+        .eq('claim_id', selectedClaim)
+        .order('submitted_at', { ascending: false })
+      
+      if (error) throw error
+      return data
+    },
+    enabled: !!selectedClaim && !isGuest
+  })
+
+  // Query for user's own pending submissions (for guests)
+  const { data: myPendingEvidence } = useQuery({
+    queryKey: ['my-pending-evidence', selectedClaim, actualUserId],
+    queryFn: async () => {
+      if (!selectedClaim || !actualUserId) return []
+      
+      const { data, error } = await supabase
+        .from('pending_evidence')
+        .select('*')
+        .eq('claim_id', selectedClaim)
+        .eq('submitter_id', actualUserId)
+        .order('submitted_at', { ascending: false })
+      
+      if (error) throw error
+      return data
+    },
+    enabled: !!selectedClaim && !!actualUserId && isGuest
   })
 
   const calculateBundleNumber = (evidenceList: Evidence[], currentIndex: number): number => {
@@ -161,6 +202,32 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
         }
       }
 
+      // If user is a guest, submit to pending_evidence table for approval
+      if (isGuest) {
+        const pendingData = {
+          submitter_id: user.id,
+          claim_id: evidenceData.case_number || selectedClaim,
+          file_name: evidenceData.file_name,
+          file_url: fileUrl,
+          exhibit_id: evidenceData.exhibit_id,
+          method: evidenceData.method,
+          url_link: evidenceData.url_link,
+          book_of_deeds_ref: evidenceData.book_of_deeds_ref,
+          number_of_pages: evidenceData.number_of_pages ? parseInt(evidenceData.number_of_pages) : null,
+          date_submitted: evidenceData.date_submitted || null,
+          status: 'pending'
+        }
+
+        const { data, error } = await supabase
+          .from('pending_evidence')
+          .insert([pendingData])
+          .select()
+          .single()
+
+        if (error) throw error
+        return data
+      }
+
       const processedData = {
         ...evidenceData,
         file_url: fileUrl,
@@ -211,10 +278,101 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evidence'] })
+      queryClient.invalidateQueries({ queryKey: ['pending-evidence'] })
+      queryClient.invalidateQueries({ queryKey: ['my-pending-evidence'] })
       queryClient.invalidateQueries({ queryKey: ['todos'] }) // Refresh todos in case a new task was created
       setShowAddForm(false)
       setSelectedFile(null)
       resetForm()
+    }
+  })
+
+  const approvePendingEvidenceMutation = useMutation({
+    mutationFn: async ({ id, reviewerNotes }: { id: string, reviewerNotes?: string }) => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
+      // Get the pending evidence
+      const { data: pending, error: fetchError } = await supabase
+        .from('pending_evidence')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (fetchError) throw fetchError
+
+      // Move to main evidence table
+      const evidenceData = {
+        user_id: user.id, // Host takes legal responsibility
+        file_name: pending.file_name,
+        file_url: pending.file_url,
+        exhibit_id: pending.exhibit_id,
+        method: pending.method,
+        url_link: pending.url_link,
+        book_of_deeds_ref: pending.book_of_deeds_ref,
+        number_of_pages: pending.number_of_pages,
+        date_submitted: pending.date_submitted,
+        case_number: pending.claim_id
+      }
+
+      const { data: newEvidence, error: insertError } = await supabase
+        .from('evidence')
+        .insert([evidenceData])
+        .select()
+        .single()
+
+      if (insertError) throw insertError
+
+      // Update pending evidence status
+      const { error: updateError } = await supabase
+        .from('pending_evidence')
+        .update({
+          status: 'approved',
+          reviewed_at: new Date().toISOString(),
+          reviewer_notes: reviewerNotes
+        })
+        .eq('id', id)
+
+      if (updateError) throw updateError
+
+      return newEvidence
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evidence'] })
+      queryClient.invalidateQueries({ queryKey: ['pending-evidence'] })
+    }
+  })
+
+  const rejectPendingEvidenceMutation = useMutation({
+    mutationFn: async ({ id, reviewerNotes }: { id: string, reviewerNotes: string }) => {
+      const { error } = await supabase
+        .from('pending_evidence')
+        .update({
+          status: 'rejected',
+          reviewed_at: new Date().toISOString(),
+          reviewer_notes: reviewerNotes
+        })
+        .eq('id', id)
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pending-evidence'] })
+    }
+  })
+
+  const deletePendingEvidenceMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('pending_evidence')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pending-evidence'] })
+      queryClient.invalidateQueries({ queryKey: ['my-pending-evidence'] })
     }
   })
 
@@ -642,6 +800,15 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Evidence Management</h2>
         <div className="flex items-center space-x-3">
+          {!isGuest && pendingEvidence && pendingEvidence.length > 0 && (
+            <button
+              onClick={() => setShowPendingEvidence(!showPendingEvidence)}
+              className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center space-x-2"
+            >
+              <AlertTriangle className="w-4 h-4" />
+              <span>Review Pending ({pendingEvidence.length})</span>
+            </button>
+          )}
           {amendMode && !isGuest && (
             <button
             onClick={() => setShowAddForm(true)}
@@ -675,9 +842,170 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
         </div>
       </div>
 
+      {/* Pending Evidence Review Section (for hosts) */}
+      {!isGuest && showPendingEvidence && pendingEvidence && pendingEvidence.length > 0 && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-orange-900 mb-4">
+            Pending Evidence Submissions - Awaiting Your Approval
+          </h3>
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+            <div className="flex items-center space-x-2">
+              <AlertTriangle className="w-5 h-5 text-yellow-600" />
+              <span className="font-medium text-yellow-900">Legal Responsibility Notice</span>
+            </div>
+            <p className="text-yellow-800 text-sm mt-2">
+              By approving evidence submissions, you accept full legal responsibility for the content. 
+              Only approve evidence that you have verified and are comfortable taking legal responsibility for.
+            </p>
+          </div>
+          <div className="space-y-4">
+            {pendingEvidence.map((pending) => (
+              <div key={pending.id} className="bg-white p-4 rounded-lg border border-orange-300">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Clock className="w-4 h-4 text-orange-600" />
+                      <h4 className="font-medium">{pending.file_name}</h4>
+                      <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
+                        {pending.status}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm text-gray-600 mb-2">
+                      <div>Submitted by: {pending.profiles?.email}</div>
+                      <div>Method: {pending.method}</div>
+                      <div>Exhibit ID: {pending.exhibit_id || 'N/A'}</div>
+                      <div>Pages: {pending.number_of_pages || 'N/A'}</div>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Submitted: {format(new Date(pending.submitted_at), 'MMM d, yyyy h:mm a')}
+                    </div>
+                    {pending.file_url && (
+                      <div className="mt-2">
+                        <a
+                          href={pending.file_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 text-sm flex items-center space-x-1"
+                        >
+                          <Eye className="w-4 h-4" />
+                          <span>Preview File</span>
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => {
+                        const notes = prompt('Optional approval notes:')
+                        if (notes !== null) {
+                          approvePendingEvidenceMutation.mutate({ id: pending.id, reviewerNotes: notes })
+                        }
+                      }}
+                      className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 flex items-center space-x-1"
+                    >
+                      <CheckCircle className="w-3 h-3" />
+                      <span>Approve</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        const notes = prompt('Rejection reason (required):')
+                        if (notes && notes.trim()) {
+                          rejectPendingEvidenceMutation.mutate({ id: pending.id, reviewerNotes: notes })
+                        }
+                      }}
+                      className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 flex items-center space-x-1"
+                    >
+                      <XCircle className="w-3 h-3" />
+                      <span>Reject</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (window.confirm('Delete this pending submission?')) {
+                          deletePendingEvidenceMutation.mutate(pending.id)
+                        }
+                      }}
+                      className="text-gray-600 hover:text-gray-800 p-1"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Guest's Pending Submissions */}
+      {isGuest && myPendingEvidence && myPendingEvidence.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-blue-900 mb-4">
+            Your Pending Submissions
+          </h3>
+          <div className="space-y-3">
+            {myPendingEvidence.map((pending) => (
+              <div key={pending.id} className="bg-white p-3 rounded border border-blue-300 flex justify-between items-center">
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <Clock className="w-4 h-4 text-blue-600" />
+                    <span className="font-medium">{pending.file_name}</span>
+                    <span className={`text-xs px-2 py-1 rounded ${
+                      pending.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      pending.status === 'approved' ? 'bg-green-100 text-green-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {pending.status}
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    Submitted: {format(new Date(pending.submitted_at), 'MMM d, yyyy h:mm a')}
+                    {pending.reviewed_at && (
+                      <span className="ml-4">
+                        Reviewed: {format(new Date(pending.reviewed_at), 'MMM d, yyyy h:mm a')}
+                      </span>
+                    )}
+                  </div>
+                  {pending.reviewer_notes && (
+                    <div className="text-sm text-gray-700 mt-1">
+                      <strong>Notes:</strong> {pending.reviewer_notes}
+                    </div>
+                  )}
+                </div>
+                {pending.status === 'pending' && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm('Delete this pending submission?')) {
+                        deletePendingEvidenceMutation.mutate(pending.id)
+                      }
+                    }}
+                    className="text-red-600 hover:text-red-800 p-1"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {amendMode && (!isGuest || !isGuestFrozen) && showAddForm && (
         <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
-          <h3 className="text-lg font-semibold mb-4">Add New Evidence</h3>
+          <h3 className="text-lg font-semibold mb-4">
+            {isGuest ? 'Submit Evidence for Approval' : 'Add New Evidence'}
+          </h3>
+          {isGuest && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+              <div className="flex items-center space-x-2">
+                <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                <span className="font-medium text-yellow-900">Approval Required</span>
+              </div>
+              <p className="text-yellow-800 text-sm mt-1">
+                Your evidence submission will be sent to the claim owner for review and approval. 
+                The claim owner accepts legal responsibility for all approved content.
+              </p>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1">Upload PDF Document</label>
@@ -824,7 +1152,9 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
                 className="text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50"
                 style={{ backgroundColor: claimColor }}
               >
-                {uploadingFile ? 'Uploading...' : addEvidenceMutation.isPending ? 'Adding...' : 'Add Evidence'}
+                {uploadingFile ? 'Uploading...' : 
+                 addEvidenceMutation.isPending ? (isGuest ? 'Submitting...' : 'Adding...') : 
+                 (isGuest ? 'Submit for Approval' : 'Add Evidence')}
               </button>
               <button
                 type="button"
