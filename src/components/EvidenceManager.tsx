@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { Upload, FileText, Link, Calendar, Hash, BookOpen, Eye, Trash2, Edit, Plus, Settings, GripVertical } from 'lucide-react'
+import { Upload, FileText, Link, Calendar, Hash, BookOpen, Eye, Trash2, Edit, Plus, Settings, GripVertical, X } from 'lucide-react'
 import { Evidence } from '@/types/database'
 import { format } from 'date-fns'
 
@@ -16,6 +16,8 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
   const [editMode, setEditMode] = useState(false)
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [showClaimSwitcher, setShowClaimSwitcher] = useState(false)
+  const [uploadingFile, setUploadingFile] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [newEvidence, setNewEvidence] = useState({
     file_name: '',
     file_url: '',
@@ -113,13 +115,52 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
     }
   })
 
+  const handleFileUpload = async (file: File): Promise<string> => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Not authenticated')
+
+    // Create a unique filename
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${user.id}/${Date.now()}.${fileExt}`
+
+    // Upload file to Supabase storage
+    const { data, error } = await supabase.storage
+      .from('evidence-files')
+      .upload(fileName, file)
+
+    if (error) throw error
+
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('evidence-files')
+      .getPublicUrl(fileName)
+
+    return publicUrl
+  }
+
   const addEvidenceMutation = useMutation({
     mutationFn: async (evidenceData: typeof newEvidence) => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
+      let fileUrl = evidenceData.file_url
+
+      // Handle file upload if a file is selected
+      if (selectedFile) {
+        setUploadingFile(true)
+        try {
+          fileUrl = await handleFileUpload(selectedFile)
+        } catch (error) {
+          console.error('File upload error:', error)
+          throw new Error('Failed to upload file')
+        } finally {
+          setUploadingFile(false)
+        }
+      }
+
       const processedData = {
         ...evidenceData,
+        file_url: fileUrl,
         user_id: user.id,
         number_of_pages: evidenceData.number_of_pages ? parseInt(evidenceData.number_of_pages) : null,
         case_number: evidenceData.case_number || null
@@ -169,6 +210,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
       queryClient.invalidateQueries({ queryKey: ['evidence'] })
       queryClient.invalidateQueries({ queryKey: ['todos'] }) // Refresh todos in case a new task was created
       setShowAddForm(false)
+      setSelectedFile(null)
       resetForm()
     }
   })
@@ -401,6 +443,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
   }
 
   const resetForm = () => {
+    setSelectedFile(null)
     setNewEvidence({
       file_name: '',
       file_url: '',
@@ -562,6 +605,41 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
         <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4">Add New Evidence</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Upload PDF Document</label>
+              <div className="flex items-center space-x-3">
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      setSelectedFile(file)
+                      // Auto-fill filename if empty
+                      if (!newEvidence.file_name) {
+                        setNewEvidence({ ...newEvidence, file_name: file.name })
+                      }
+                    }
+                  }}
+                  className="flex-1 border rounded-lg px-3 py-2"
+                />
+                {selectedFile && (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-green-600">✓ {selectedFile.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFile(null)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Upload a PDF, Word document, or image file. This will be stored securely and accessible via a link.
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">File Name *</label>
@@ -574,12 +652,13 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">File URL</label>
+                <label className="block text-sm font-medium mb-1">File URL (or upload above)</label>
                 <input
                   type="url"
                   value={newEvidence.file_url}
                   onChange={(e) => setNewEvidence({ ...newEvidence, file_url: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2"
+                  placeholder="Enter URL or upload file above"
                 />
               </div>
             </div>
@@ -665,11 +744,11 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
             <div className="flex space-x-3">
               <button
                 type="submit"
-                disabled={addEvidenceMutation.isPending}
+                disabled={addEvidenceMutation.isPending || uploadingFile}
                 className="text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50"
                 style={{ backgroundColor: claimColor }}
               >
-                {addEvidenceMutation.isPending ? 'Adding...' : 'Add Evidence'}
+                {uploadingFile ? 'Uploading...' : addEvidenceMutation.isPending ? 'Adding...' : 'Add Evidence'}
               </button>
               <button
                 type="button"
