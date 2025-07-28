@@ -18,6 +18,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
   const [showClaimSwitcher, setShowClaimSwitcher] = useState(false)
   const [uploadingFile, setUploadingFile] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [showCleanupDialog, setShowCleanupDialog] = useState(false)
   const [newEvidence, setNewEvidence] = useState({
     file_name: '',
     file_url: '',
@@ -408,6 +409,25 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
     }
   })
 
+  const removeAllEvidenceFromClaimMutation = useMutation({
+    mutationFn: async (claimNumber: string) => {
+      // Update all evidence items associated with this claim to have null case_number
+      const { data, error } = await supabase
+        .from('evidence')
+        .update({ case_number: null })
+        .eq('case_number', claimNumber)
+        .select()
+
+      if (error) throw error
+      return data
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['evidence'] })
+      queryClient.invalidateQueries({ queryKey: ['evidence-counts'] })
+      console.log(`Removed ${data.length} evidence items from claim`)
+    }
+  })
+
   const oldMoveEvidenceMutation = useMutation({
     mutationFn: async ({ id, newOrder }: { id: string, newOrder: number }) => {
       const { data, error } = await supabase
@@ -439,6 +459,12 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
       associateAllEvidenceMutation.mutate({ 
         caseNumber: selectedClaim 
       })
+    }
+  }
+
+  const handleRemoveAllFromClaim = (claimNumber: string) => {
+    if (window.confirm(`Are you sure you want to remove ALL evidence from claim ${claimNumber}? This will unassociate all evidence items from this claim.`)) {
+      removeAllEvidenceFromClaimMutation.mutate(claimNumber)
     }
   }
 
@@ -530,6 +556,15 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6' }: EvidenceMana
                       <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">
                         {count} items
                       </span>
+                      {caseNumber === '74888685' && (
+                        <button
+                          onClick={() => handleRemoveAllFromClaim(caseNumber)}
+                          disabled={removeAllEvidenceFromClaimMutation.isPending}
+                          className="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 disabled:opacity-50"
+                        >
+                          {removeAllEvidenceFromClaimMutation.isPending ? 'Removing...' : 'Remove All'}
+                        </button>
+                      )}
                       {caseNumber !== 'unassociated' && caseNumber !== selectedClaim && (
                         <span className="text-xs text-orange-600 font-medium">
                           Switch to this claim to view
