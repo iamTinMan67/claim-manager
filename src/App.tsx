@@ -1,6 +1,7 @@
 import React from 'react'
 import { useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ThemeProvider } from 'next-themes'
 import type { User } from '@supabase/supabase-js'
 import AuthComponent from './components/AuthComponent'
 import Navigation from './components/Navigation'
@@ -21,9 +22,11 @@ function App() {
 
   if (!user) {
     return (
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
       <QueryClientProvider client={queryClient}>
         <AuthComponent onAuthChange={setUser} />
       </QueryClientProvider>
+      </ThemeProvider>
     )
   }
 
@@ -45,12 +48,14 @@ function App() {
   }
 
   return (
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
     <QueryClientProvider client={queryClient}>
       <AuthComponent onAuthChange={setUser}>
         <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
         {renderContent()}
       </AuthComponent>
     </QueryClientProvider>
+    </ThemeProvider>
   )
 }
 
