@@ -10,9 +10,11 @@ interface EvidenceManagerProps {
   claimColor?: string
   amendMode?: boolean
   isGuest?: boolean
+  currentUserId?: string
+  isGuestFrozen?: boolean
 }
 
-const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = false, isGuest = false }: EvidenceManagerProps) => {
+const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = false, isGuest = false, currentUserId, isGuestFrozen = false }: EvidenceManagerProps) => {
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingEvidence, setEditingEvidence] = useState<Evidence | null>(null)
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
@@ -33,6 +35,18 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
   })
 
   const queryClient = useQueryClient()
+
+  // Get current user ID if not provided
+  const { data: currentUser } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      return user
+    },
+    enabled: !currentUserId
+  })
+
+  const actualUserId = currentUserId || currentUser?.id
 
   const { data: evidence, isLoading } = useQuery({
     queryKey: ['evidence', selectedClaim],
@@ -638,15 +652,30 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
             <span>Add Evidence</span>
           </button>
           )}
-          {isGuest && (
-            <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-lg text-sm">
-              Guest View - Read Only
+          {amendMode && isGuest && !isGuestFrozen && (
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
+              style={{ backgroundColor: claimColor }}
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Evidence</span>
+            </button>
+          )}
+          {isGuest && isGuestFrozen && (
+            <div className="bg-red-100 text-red-800 px-3 py-1 rounded-lg text-sm">
+              Access Frozen
+            </div>
+          )}
+          {isGuest && !isGuestFrozen && (
+            <div className="bg-green-100 text-green-800 px-3 py-1 rounded-lg text-sm">
+              Guest Access - Can Add/Edit Own Content
             </div>
           )}
         </div>
       </div>
 
-      {amendMode && !isGuest && showAddForm && (
+      {amendMode && (!isGuest || !isGuestFrozen) && showAddForm && (
         <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4">Add New Evidence</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -809,7 +838,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
         </div>
       )}
 
-      {amendMode && !isGuest && editingEvidence && (
+      {amendMode && (!isGuest || (editingEvidence && editingEvidence.user_id === actualUserId)) && !isGuestFrozen && editingEvidence && (
         <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4">Edit Evidence</h3>
           <form onSubmit={handleUpdate} className="space-y-4">
@@ -1009,9 +1038,13 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
                 )}
                 <button
                   onClick={() => {
-                    if (isGuest) {
-                      // Guests cannot delete evidence
-                      alert('Guests cannot delete evidence. Contact the claim owner.')
+                    if (isGuest && isGuestFrozen) {
+                      alert('Your access has been frozen by the claim owner.')
+                      return
+                    }
+                    
+                    if (isGuest && item.user_id !== actualUserId) {
+                      alert('You can only delete evidence that you created.')
                       return
                     }
                     
@@ -1028,24 +1061,26 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
                     }
                   }}
                   className={`p-2 ${
-                    isGuest 
-                      ? 'text-gray-400 cursor-not-allowed' 
+                    (isGuest && (isGuestFrozen || item.user_id !== actualUserId))
+                      ? 'text-gray-400 cursor-not-allowed'
                       : selectedClaim 
                         ? 'text-orange-600 hover:text-orange-800' 
                         : 'text-red-600 hover:text-red-800'
                   }`}
                   title={
-                    isGuest 
-                      ? 'Guests cannot delete evidence' 
+                    isGuest && isGuestFrozen
+                      ? 'Access frozen by claim owner'
+                      : isGuest && item.user_id !== actualUserId
+                        ? 'You can only delete your own evidence'
                       : selectedClaim 
                         ? 'Remove from current claim' 
                         : 'Delete evidence permanently'
                   }
-                  disabled={isGuest}
+                  disabled={isGuest && (isGuestFrozen || item.user_id !== actualUserId)}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
-                {amendMode && !isGuest && (
+                {amendMode && (!isGuest || item.user_id === actualUserId) && !isGuestFrozen && (
                   <>
                     <button
                       onClick={() => handleEdit(item)}

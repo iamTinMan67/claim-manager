@@ -31,6 +31,34 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
 
   const queryClient = useQueryClient()
 
+  // Get current user for permission checks
+  const { data: currentUser } = useQuery({
+    queryKey: ['current-user-claims'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      return user
+    }
+  })
+
+  // Check if current user is a guest and if they're frozen
+  const { data: guestStatus } = useQuery({
+    queryKey: ['guest-status', selectedClaim, currentUser?.id],
+    queryFn: async () => {
+      if (!selectedClaim || !currentUser?.id) return null
+      
+      const { data, error } = await supabase
+        .from('claim_shares')
+        .select('is_frozen, is_muted')
+        .eq('claim_id', selectedClaim)
+        .eq('shared_with_id', currentUser.id)
+        .single()
+      
+      if (error) return null
+      return data
+    },
+    enabled: !!selectedClaim && !!currentUser?.id && isGuest
+  })
+
   const { data: claims, isLoading, error } = useQuery({
     queryKey: ['claims'],
     queryFn: async () => {
@@ -243,6 +271,8 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
           claimColor={claim.color || '#3B82F6'} 
           amendMode={amendMode}
           isGuest={isGuest}
+          currentUserId={currentUser?.id}
+          isGuestFrozen={guestStatus?.is_frozen || false}
         />
       </div>
     )

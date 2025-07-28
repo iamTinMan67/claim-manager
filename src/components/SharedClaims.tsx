@@ -10,6 +10,8 @@ interface ClaimShare {
   shared_with_id: string
   permission: 'view' | 'edit'
   can_view_evidence: boolean
+  is_frozen: boolean
+  is_muted: boolean
   donation_required: boolean
   donation_paid: boolean
   donation_amount?: number
@@ -45,7 +47,9 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
   const [shareData, setShareData] = useState({
     email: '',
     permission: 'view' as const,
-    can_view_evidence: false
+    can_view_evidence: false,
+    is_frozen: false,
+    is_muted: false
   })
 
   const queryClient = useQueryClient()
@@ -147,6 +151,8 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
           shared_with_id: existingUser.id,
           permission: shareInfo.permission,
           can_view_evidence: shareInfo.can_view_evidence,
+          is_frozen: false,
+          is_muted: false,
           donation_required: shareInfo.donation_amount > 0, // Only required if amount > 0
           donation_paid: shareInfo.donation_amount === 0, // Free guests are automatically "paid"
           donation_amount: shareInfo.donation_amount
@@ -164,7 +170,9 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
       setShareData({
         email: '',
         permission: 'view',
-        can_view_evidence: false
+        can_view_evidence: false,
+        is_frozen: false,
+        is_muted: false
       })
       setClaimToShare('')
     }
@@ -182,6 +190,40 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shared-claims'] })
       queryClient.invalidateQueries({ queryKey: ['guest-counts'] })
+    }
+  })
+
+  const toggleFreezeGuestMutation = useMutation({
+    mutationFn: async ({ id, is_frozen }: { id: string, is_frozen: boolean }) => {
+      const { data, error } = await supabase
+        .from('claim_shares')
+        .update({ is_frozen })
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shared-claims'] })
+    }
+  })
+
+  const toggleMuteGuestMutation = useMutation({
+    mutationFn: async ({ id, is_muted }: { id: string, is_muted: boolean }) => {
+      const { data, error } = await supabase
+        .from('claim_shares')
+        .update({ is_muted })
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shared-claims'] })
     }
   })
 
@@ -499,13 +541,60 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      <div className="space-y-4">
-        {sharedClaims?.map((share) => (
-          <div key={share.id} className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => toggleFreezeGuestMutation.mutate({ 
+                  id: share.id, 
+                  is_frozen: !share.is_frozen 
+                })}
+                className={`p-2 ${
+                  share.is_frozen 
+                    ? 'text-green-600 hover:text-green-800' 
+                    : 'text-orange-600 hover:text-orange-800'
+                }`}
+                title={share.is_frozen ? 'Unfreeze guest' : 'Freeze guest'}
+              >
+                {share.is_frozen ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zM12 9a3 3 0 110-6 3 3 0 010 6z" />
+                  </svg>
+                )}
+              </button>
+              <button
+                onClick={() => toggleMuteGuestMutation.mutate({ 
+                  id: share.id, 
+                  is_muted: !share.is_muted 
+                })}
+                className={`p-2 ${
+                  share.is_muted 
+                    ? 'text-green-600 hover:text-green-800' 
+                    : 'text-red-600 hover:text-red-800'
+                }`}
+                title={share.is_muted ? 'Unmute guest' : 'Mute guest'}
+              >
+                {share.is_muted ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                  </svg>
+                )}
+              </button>
+              <button
+                onClick={() => deleteShareMutation.mutate(share.id)}
+                className="text-red-600 hover:text-red-800 p-2"
+                title="Remove share"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
             <div className="flex justify-between items-start">
               <div className="flex-1">
                 <div className="flex items-center space-x-2 mb-2">
@@ -534,6 +623,24 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
                         : 'bg-gray-100 text-gray-800'
                     }`}>
                       {share.can_view_evidence ? 'Can View Evidence' : 'No Evidence Access'}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      share.is_frozen 
+                        ? 'bg-red-100 text-red-800' 
+                        : 'bg-green-100 text-green-800'
+                    }`}>
+                      {share.is_frozen ? 'Frozen' : 'Active'}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      share.is_muted 
+                        ? 'bg-orange-100 text-orange-800' 
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {share.is_muted ? 'Muted' : 'Can Chat'}
                     </span>
                   </div>
                 </div>

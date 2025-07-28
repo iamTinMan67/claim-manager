@@ -29,6 +29,7 @@ interface CalendarProps {
   claimColor?: string
   isGuest?: boolean
   showGuestContent?: boolean
+  isGuestFrozen?: boolean
 }
 
 interface TodoWithUser extends Todo {
@@ -37,7 +38,7 @@ interface TodoWithUser extends Todo {
   }
 }
 
-const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, showGuestContent = false }: CalendarProps) => {
+const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, showGuestContent = false, isGuestFrozen = false }: CalendarProps) => {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -52,6 +53,15 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
   })
 
   const queryClient = useQueryClient()
+
+  // Get current user for permission checks
+  const { data: currentUser } = useQuery({
+    queryKey: ['current-user-calendar'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      return user
+    }
+  })
 
   const { data: claims } = useQuery({
     queryKey: ['claims-for-calendar'],
@@ -289,7 +299,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
           >
             Next
           </button>
-          {!isGuest && (
+          {(!isGuest || !isGuestFrozen) && (
             <button
               onClick={() => setShowAddForm(true)}
               className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
@@ -299,15 +309,20 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
               <span>Add Event</span>
             </button>
           )}
-          {isGuest && (
-            <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-lg text-sm">
-              Guest View - Can Add Only
+          {isGuest && isGuestFrozen && (
+            <div className="bg-red-100 text-red-800 px-3 py-1 rounded-lg text-sm">
+              Access Frozen
+            </div>
+          )}
+          {isGuest && !isGuestFrozen && (
+            <div className="bg-green-100 text-green-800 px-3 py-1 rounded-lg text-sm">
+              Guest Access - Can Add/Edit Own Content
             </div>
           )}
         </div>
       </div>
 
-      {showAddForm && !isGuest && (
+      {showAddForm && (!isGuest || !isGuestFrozen) && (
         <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold">Add New Event</h3>
@@ -546,8 +561,12 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              if (isGuest) {
-                                alert('Guests cannot delete events. Contact the claim owner.')
+                             if (isGuest && isGuestFrozen) {
+                               alert('Your access has been frozen by the claim owner.')
+                               return
+                             }
+                             if (isGuest && event.user_id !== currentUser?.id) {
+                               alert('You can only delete events that you created.')
                                 return
                               }
                               if (window.confirm('Are you sure you want to delete this event?')) {
@@ -555,10 +574,16 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                               }
                             }}
                             className={`absolute -top-1 -right-1 w-4 h-4 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center ${
-                              isGuest ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600'
+                             (isGuest && (isGuestFrozen || event.user_id !== currentUser?.id)) ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600'
                             } text-white`}
-                            disabled={isGuest}
-                            title={isGuest ? 'Guests cannot delete events' : 'Delete event'}
+                           disabled={isGuest && (isGuestFrozen || event.user_id !== currentUser?.id)}
+                           title={
+                             isGuest && isGuestFrozen
+                               ? 'Access frozen by claim owner'
+                               : isGuest && event.user_id !== currentUser?.id
+                                 ? 'You can only delete your own events'
+                                 : 'Delete event'
+                           }
                           >
                             <X className="w-2 h-2" />
                           </button>

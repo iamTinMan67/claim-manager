@@ -22,6 +22,25 @@ function App() {
   const [isGuest, setIsGuest] = useState(false) // TODO: Implement guest detection logic
   const [showGuestContent, setShowGuestContent] = useState(false)
 
+  // Get guest status for current user
+  const { data: guestStatus } = useQuery({
+    queryKey: ['guest-status-app', selectedClaim, user?.id],
+    queryFn: async () => {
+      if (!selectedClaim || !user?.id) return null
+      
+      const { data, error } = await supabase
+        .from('claim_shares')
+        .select('is_frozen, is_muted')
+        .eq('claim_id', selectedClaim)
+        .eq('shared_with_id', user.id)
+        .single()
+      
+      if (error) return null
+      return data
+    },
+    enabled: !!selectedClaim && !!user?.id && isGuest
+  })
+
   if (!user) {
     return (
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
@@ -37,9 +56,9 @@ function App() {
       case 'claims':
         return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} onClaimColorChange={setSelectedClaimColor} isGuest={isGuest} />
       case 'todos':
-        return <TodoList selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={isGuest} showGuestContent={showGuestContent} />
+        return <TodoList selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={isGuest} showGuestContent={showGuestContent} isGuestFrozen={guestStatus?.is_frozen || false} />
       case 'calendar':
-        return <Calendar selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={isGuest} showGuestContent={showGuestContent} />
+        return <Calendar selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={isGuest} showGuestContent={showGuestContent} isGuestFrozen={guestStatus?.is_frozen || false} />
       case 'collaboration':
         return <SharedClaims selectedClaim={selectedClaim} claimColor={selectedClaimColor} />
       case 'export':

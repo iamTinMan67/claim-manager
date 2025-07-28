@@ -20,9 +20,10 @@ interface TodoListProps {
   claimColor?: string
   isGuest?: boolean
   showGuestContent?: boolean
+  isGuestFrozen?: boolean
 }
 
-const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, showGuestContent = false }: TodoListProps) => {
+const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, showGuestContent = false, isGuestFrozen = false }: TodoListProps) => {
   const [showAddForm, setShowAddForm] = useState(false)
   const [newTodo, setNewTodo] = useState({
     title: '',
@@ -303,7 +304,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
           {showGuestContent ? 'Guest To-Do Lists' : 'To-Do Lists'}
         </h2>
         <div className="flex items-center space-x-3">
-          {!isGuest && (
+          {!isGuest || !isGuestFrozen && (
             <button
               onClick={() => setShowAddForm(true)}
               className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
@@ -313,15 +314,20 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
               <span>Add Todo</span>
             </button>
           )}
-          {isGuest && (
-            <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-lg text-sm">
-              Guest View - Can Add Only
+          {isGuest && isGuestFrozen && (
+            <div className="bg-red-100 text-red-800 px-3 py-1 rounded-lg text-sm">
+              Access Frozen
+            </div>
+          )}
+          {isGuest && !isGuestFrozen && (
+            <div className="bg-green-100 text-green-800 px-3 py-1 rounded-lg text-sm">
+              Guest Access - Can Add/Edit Own Content
             </div>
           )}
         </div>
       </div>
 
-      {showAddForm && (
+      {showAddForm && (!isGuest || !isGuestFrozen) && (
         <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4">Add New Todo</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -521,6 +527,16 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                     <button
                       onClick={() => deleteTodoMutation.mutate(todo.id)}
                       className="text-red-500 hover:text-red-700 p-1"
+                      disabled={isGuest && (isGuestFrozen || todo.user_id !== currentUser?.id)}
+                      title={
+                        isGuest && isGuestFrozen 
+                          ? 'Access frozen by claim owner'
+                          : isGuest && todo.user_id !== currentUser?.id
+                            ? 'You can only delete your own todos'
+                            : 'Delete todo'
+                      }
+                      disabled={isGuest && isGuestFrozen}
+                      title={isGuest && isGuestFrozen ? 'Access frozen by claim owner' : 'Delete todo'}
                       disabled={isGuest}
                       title={isGuest ? 'Guests cannot delete todos' : 'Delete todo'}
                       disabled={isGuest}
