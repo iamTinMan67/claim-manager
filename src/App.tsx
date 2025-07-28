@@ -1,6 +1,6 @@
 import React from 'react'
 import { useState } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
 import type { User } from '@supabase/supabase-js'
 import AuthComponent from './components/AuthComponent'
