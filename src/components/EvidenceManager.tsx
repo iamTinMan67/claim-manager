@@ -627,18 +627,8 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Evidence Management</h2>
         <div className="flex items-center space-x-3">
-          <button
-            onClick={() => setEditMode(!editMode)}
-            className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
-              editMode 
-                ? 'text-red-600 bg-red-100 hover:bg-red-200' 
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            <Settings className={`w-4 h-4 ${editMode ? 'text-red-600' : ''}`} />
-            <span>{editMode ? 'Exit Edit' : 'Edit Mode'}</span>
-          </button>
-          <button
+          {amendMode && (
+            <button
             onClick={() => setShowAddForm(true)}
             className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
             style={{ backgroundColor: claimColor }}
@@ -646,6 +636,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
             <Plus className="w-4 h-4" />
             <span>Add Evidence</span>
           </button>
+          )}
         </div>
       </div>
 
