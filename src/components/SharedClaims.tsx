@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { Users, Mail, Eye, Edit, Trash2, Plus, DollarSign, CreditCard, CheckCircle, Clock, AlertCircle } from 'lucide-react'
+import { Users, Mail, Eye, Edit, Trash2, Plus, DollarSign, CreditCard, CheckCircle, Clock, AlertCircle, X } from 'lucide-react'
 
 interface ClaimShare {
   id: string
@@ -34,18 +34,33 @@ interface SharedClaimsProps {
 const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsProps) => {
   const [showShareForm, setShowShareForm] = useState(false)
   const [claimToShare, setClaimToShare] = useState('')
-  const [showDonationModal, setShowDonationModal] = useState(false)
-  const [selectedShareForDonation, setSelectedShareForDonation] = useState<ClaimShare | null>(null)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [pendingPayment, setPendingPayment] = useState<{
+    claimId: string
+    guestEmail: string
+    amount: number
+    guestCount: number
+  } | null>(null)
   const [processingPayment, setProcessingPayment] = useState(false)
   const [shareData, setShareData] = useState({
     email: '',
     permission: 'view' as const,
-    can_view_evidence: false,
-    donation_required: false,
-    donation_amount: ''
+    can_view_evidence: false
   })
 
   const queryClient = useQueryClient()
+
+  // Calculate pricing based on guest count
+  const calculateDonationAmount = (guestCount: number): number => {
+    if (guestCount === 1) return 7 // £7 for single guest
+    if (guestCount <= 5) return 10 // £10 for up to 5 guests
+    if (guestCount <= 10) return 20 // £20 for 6-10 guests
+    if (guestCount <= 20) return 20 // £20 for 11-20 guests
+    if (guestCount <= 30) return 30 // £30 for 21-30 guests
+    if (guestCount <= 40) return 40 // £40 for 31-40 guests
+    if (guestCount <= 50) return 50 // £50 for 41-50 guests
+    return 50 // Cap at £50
+  }
 
   const { data: sharedClaims, isLoading } = useQuery({
     queryKey: ['shared-claims', selectedClaim],
@@ -70,29 +85,27 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
     }
   })
 
-  // Query for shares where current user needs to pay donation
-  const { data: pendingDonations } = useQuery({
-    queryKey: ['pending-donations'],
+  // Query for guest count per claim to calculate pricing
+  const { data: guestCounts } = useQuery({
+    queryKey: ['guest-counts'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return []
+      if (!user) return {}
 
       const { data, error } = await supabase
         .from('claim_shares')
-        .select(`
-          *,
-          claims!inner(title, case_number),
-          profiles!owner_id(email, full_name)
-        `)
-        .eq('shared_with_id', user.id)
-        .eq('donation_required', true)
-        .eq('donation_paid', false)
-        .order('created_at', { ascending: false })
+        .select('claim_id')
+        .eq('owner_id', user.id)
       
       if (error) throw error
-      return data as (ClaimShare & { 
-        profiles: { email: string, full_name?: string } 
-      })[]
+      
+      // Count guests per claim
+      const counts: { [key: string]: number } = {}
+      data.forEach(share => {
+        counts[share.claim_id] = (counts[share.claim_id] || 0) + 1
+      })
+      
+      return counts
     }
   })
 
@@ -110,7 +123,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
   })
 
   const shareClaimMutation = useMutation({
-    mutationFn: async (shareInfo: typeof shareData & { claim_id: string }) => {
+    mutationFn: async (shareInfo: typeof shareData & { claim_id: string, donation_amount: number }) => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
@@ -133,8 +146,9 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
           shared_with_id: existingUser.id,
           permission: shareInfo.permission,
           can_view_evidence: shareInfo.can_view_evidence,
-          donation_required: shareInfo.donation_required,
-          donation_amount: shareInfo.donation_amount ? parseInt(shareInfo.donation_amount) : null
+          donation_required: true, // Always required for app owner
+          donation_paid: false, // Will be set to true after payment
+          donation_amount: shareInfo.donation_amount
         }])
         .select()
         .single()
@@ -144,13 +158,12 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shared-claims'] })
+      queryClient.invalidateQueries({ queryKey: ['guest-counts'] })
       setShowShareForm(false)
       setShareData({
         email: '',
         permission: 'view',
-        can_view_evidence: false,
-        donation_required: false,
-        donation_amount: ''
+        can_view_evidence: false
       })
       setClaimToShare('')
     }
@@ -167,26 +180,28 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shared-claims'] })
+      queryClient.invalidateQueries({ queryKey: ['guest-counts'] })
     }
   })
 
-  const processDonationMutation = useMutation({
-    mutationFn: async ({ shareId, amount }: { shareId: string, amount: number }) => {
+  const processPaymentMutation = useMutation({
+    mutationFn: async ({ claimId, guestEmail, amount }: { claimId: string, guestEmail: string, amount: number }) => {
       setProcessingPayment(true)
       
-      // In a real implementation, you would integrate with Stripe here
-      // For now, we'll simulate the payment process
+      // In production, this would integrate with your Stripe account
+      // The payment goes to the app owner (you), not the claim owner
       await new Promise(resolve => setTimeout(resolve, 2000)) // Simulate API call
       
-      // Update the share record to mark donation as paid
+      // Mark all pending shares for this claim as paid (since payment covers all guests)
       const { data, error } = await supabase
         .from('claim_shares')
         .update({ 
           donation_paid: true,
           donation_paid_at: new Date().toISOString(),
-          stripe_payment_intent_id: `pi_simulated_${Date.now()}`
+          stripe_payment_intent_id: `pi_app_owner_${Date.now()}`
         })
-        .eq('id', shareId)
+        .eq('claim_id', claimId)
+        .eq('donation_paid', false)
         .select()
         .single()
 
@@ -195,9 +210,9 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shared-claims'] })
-      queryClient.invalidateQueries({ queryKey: ['pending-donations'] })
-      setShowDonationModal(false)
-      setSelectedShareForDonation(null)
+      queryClient.invalidateQueries({ queryKey: ['guest-counts'] })
+      setShowPaymentModal(false)
+      setPendingPayment(null)
       setProcessingPayment(false)
     },
     onError: () => {
@@ -205,23 +220,38 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
     }
   })
 
-  const handleDonationPayment = (share: ClaimShare) => {
-    setSelectedShareForDonation(share)
-    setShowDonationModal(true)
+  const handlePayment = (claimId: string, guestEmail: string) => {
+    const currentGuestCount = (guestCounts?.[claimId] || 0) + 1 // +1 for the new guest
+    const amount = calculateDonationAmount(currentGuestCount)
+    
+    setPendingPayment({
+      claimId,
+      guestEmail,
+      amount,
+      guestCount: currentGuestCount
+    })
+    setShowPaymentModal(true)
   }
 
-  const processDonation = () => {
-    if (!selectedShareForDonation) return
-    processDonationMutation.mutate({
-      shareId: selectedShareForDonation.id,
-      amount: selectedShareForDonation.donation_amount || 0
+  const processPayment = () => {
+    if (!pendingPayment) return
+    processPaymentMutation.mutate({
+      claimId: pendingPayment.claimId,
+      guestEmail: pendingPayment.guestEmail,
+      amount: pendingPayment.amount
     })
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!shareData.email.trim() || !claimToShare) return
-    shareClaimMutation.mutate({ ...shareData, claim_id: claimToShare })
+    
+    // Calculate donation amount based on current guest count
+    const currentGuestCount = (guestCounts?.[claimToShare] || 0) + 1
+    const donationAmount = calculateDonationAmount(currentGuestCount)
+    
+    // Show payment modal instead of directly sharing
+    handlePayment(claimToShare, shareData.email)
   }
 
   if (isLoading) {
@@ -241,47 +271,34 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
         </div>
       )}
       
-      {/* Pending Donations Section */}
-      {pendingDonations && pendingDonations.length > 0 && (
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
-          <div className="flex items-center space-x-2 mb-4">
-            <AlertCircle className="w-5 h-5 text-orange-600" />
-            <h3 className="text-lg font-semibold text-orange-900">Pending Donations Required</h3>
+      {/* Pricing Information */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+        <div className="flex items-center space-x-2 mb-4">
+          <DollarSign className="w-5 h-5 text-blue-600" />
+          <h3 className="text-lg font-semibold text-blue-900">Guest Access Pricing</h3>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="bg-white p-3 rounded border">
+            <div className="font-medium text-gray-900">Single Guest</div>
+            <div className="text-blue-600 font-bold">£7</div>
           </div>
-          <p className="text-orange-800 mb-4">
-            You have access to shared claims that require donations. Complete your donations to gain full access.
-          </p>
-          <div className="space-y-3">
-            {pendingDonations.map((share) => (
-              <div key={share.id} className="bg-white p-4 rounded-lg border border-orange-200">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h4 className="font-medium text-gray-900">
-                      {share.claims.case_number} - {share.claims.title}
-                    </h4>
-                    <p className="text-sm text-gray-600">
-                      Shared by: {share.profiles.email}
-                    </p>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <DollarSign className="w-4 h-4 text-green-600" />
-                      <span className="text-sm font-medium text-green-600">
-                        Donation Required: ${share.donation_amount}
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleDonationPayment(share)}
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2"
-                  >
-                    <CreditCard className="w-4 h-4" />
-                    <span>Pay Donation</span>
-                  </button>
-                </div>
-              </div>
-            ))}
+          <div className="bg-white p-3 rounded border">
+            <div className="font-medium text-gray-900">Up to 5 Guests</div>
+            <div className="text-blue-600 font-bold">£10</div>
+          </div>
+          <div className="bg-white p-3 rounded border">
+            <div className="font-medium text-gray-900">6-20 Guests</div>
+            <div className="text-blue-600 font-bold">£20</div>
+          </div>
+          <div className="bg-white p-3 rounded border">
+            <div className="font-medium text-gray-900">21+ Guests</div>
+            <div className="text-blue-600 font-bold">£30-£50</div>
           </div>
         </div>
-      )}
+        <p className="text-blue-800 text-sm mt-3">
+          <strong>Note:</strong> Payment is required to add guests to your claims. All payments support the app development and maintenance.
+        </p>
+      </div>
 
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Shared Claims Collaboration</h2>
@@ -298,6 +315,19 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
       {showShareForm && (
         <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4">Share a Claim</h3>
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+            <div className="flex items-center space-x-2">
+              <AlertCircle className="w-4 h-4 text-yellow-600" />
+              <span className="text-sm font-medium text-yellow-800">Payment Required</span>
+            </div>
+            <p className="text-yellow-700 text-sm mt-1">
+              Adding a guest requires a payment to support app development. 
+              Current guest count for this claim: <strong>{guestCounts?.[selectedClaim || claimToShare] || 0}</strong>
+            </p>
+            <p className="text-yellow-700 text-sm">
+              Cost for next guest: <strong>£{calculateDonationAmount((guestCounts?.[selectedClaim || claimToShare] || 0) + 1)}</strong>
+            </p>
+          </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1">Select Claim *</label>
@@ -348,30 +378,6 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
               />
               <label htmlFor="can-view-evidence" className="text-sm">Allow viewing evidence</label>
             </div>
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="donation-required"
-                checked={shareData.donation_required}
-                onChange={(e) => setShareData({ ...shareData, donation_required: e.target.checked })}
-                className="rounded"
-              />
-              <label htmlFor="donation-required" className="text-sm">Require donation for access</label>
-            </div>
-            {shareData.donation_required && (
-              <div>
-                <label className="block text-sm font-medium mb-1">Donation Amount ($)</label>
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={shareData.donation_amount}
-                  onChange={(e) => setShareData({ ...shareData, donation_amount: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
-                  placeholder="Enter amount in dollars (minimum $1)"
-                />
-              </div>
-            )}
             <div className="flex space-x-3">
               <button
                 type="submit"
@@ -379,7 +385,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
                 className="text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50"
                 style={{ backgroundColor: claimColor }}
               >
-                {shareClaimMutation.isPending ? 'Sharing...' : 'Share Claim'}
+                {shareClaimMutation.isPending ? 'Processing...' : 'Proceed to Payment'}
               </button>
               <button
                 type="button"
@@ -393,14 +399,14 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
         </div>
       )}
 
-      {/* Donation Payment Modal */}
-      {showDonationModal && selectedShareForDonation && (
+      {/* Payment Modal */}
+      {showPaymentModal && pendingPayment && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Complete Donation</h3>
+              <h3 className="text-lg font-semibold">Complete Payment</h3>
               <button
-                onClick={() => setShowDonationModal(false)}
+                onClick={() => setShowPaymentModal(false)}
                 className="text-gray-500 hover:text-gray-700"
                 disabled={processingPayment}
               >
@@ -410,13 +416,13 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
             
             <div className="space-y-4">
               <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-medium text-gray-900 mb-2">
-                  {selectedShareForDonation.claims.case_number} - {selectedShareForDonation.claims.title}
-                </h4>
+                <h4 className="font-medium text-gray-900 mb-2">Guest Access Payment</h4>
                 <div className="text-sm text-gray-600 space-y-1">
-                  <p>Shared by: {selectedShareForDonation.profiles.email}</p>
-                  <p>Access Level: {selectedShareForDonation.permission === 'edit' ? 'View & Edit' : 'View Only'}</p>
-                  <p>Evidence Access: {selectedShareForDonation.can_view_evidence ? 'Yes' : 'No'}</p>
+                  <p>Claim: {pendingPayment.claimId}</p>
+                  <p>Guest Email: {pendingPayment.guestEmail}</p>
+                  <p>Total Guests: {pendingPayment.guestCount}</p>
+                  <p>Access Level: {shareData.permission === 'edit' ? 'View & Edit' : 'View Only'}</p>
+                  <p>Evidence Access: {shareData.can_view_evidence ? 'Yes' : 'No'}</p>
                 </div>
               </div>
               
@@ -424,25 +430,25 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
                 <div className="flex items-center space-x-2">
                   <DollarSign className="w-5 h-5 text-green-600" />
                   <span className="text-lg font-semibold text-green-600">
-                    Donation Amount: ${selectedShareForDonation.donation_amount}
+                    Payment Amount: £{pendingPayment.amount}
                   </span>
                 </div>
                 <p className="text-sm text-green-700 mt-1">
-                  This donation helps support the claim owner's legal efforts.
+                  This payment supports app development and maintenance.
                 </p>
               </div>
               
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                 <h5 className="font-medium text-blue-900 mb-2">Payment Information</h5>
                 <p className="text-sm text-blue-800">
-                  In a production environment, this would integrate with Stripe for secure payment processing. 
-                  For demonstration purposes, clicking "Process Donation" will simulate a successful payment.
+                  Payment will be processed securely through Stripe and sent to the app owner. 
+                  For demonstration purposes, clicking "Process Payment" will simulate a successful payment.
                 </p>
               </div>
               
               <div className="flex space-x-3">
                 <button
-                  onClick={processDonation}
+                  onClick={processPayment}
                   disabled={processingPayment}
                   className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center space-x-2"
                 >
@@ -454,12 +460,12 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
                   ) : (
                     <>
                       <CreditCard className="w-4 h-4" />
-                      <span>Process Donation</span>
+                      <span>Process Payment</span>
                     </>
                   )}
                 </button>
                 <button
-                  onClick={() => setShowDonationModal(false)}
+                  onClick={() => setShowPaymentModal(false)}
                   disabled={processingPayment}
                   className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
                 >
@@ -509,7 +515,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
                   <div className="mt-2 flex items-center space-x-2">
                     <DollarSign className="w-4 h-4 text-green-600" />
                     <span className="text-sm text-gray-600">
-                      Donation Required: ${share.donation_amount}
+                      App Owner Payment: £{share.donation_amount}
                     </span>
                     <span className={`px-2 py-1 rounded text-xs ${
                       share.donation_paid 
@@ -529,7 +535,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
                       ) : (
                         <div className="flex items-center space-x-1">
                           <Clock className="w-3 h-3" />
-                          <span>Pending Payment</span>
+                          <span>Payment Required</span>
                         </div>
                       )}
                     </span>
