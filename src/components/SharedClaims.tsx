@@ -541,60 +541,13 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
                 </button>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => toggleFreezeGuestMutation.mutate({ 
-                  id: share.id, 
-                  is_frozen: !share.is_frozen 
-                })}
-                className={`p-2 ${
-                  share.is_frozen 
-                    ? 'text-green-600 hover:text-green-800' 
-                    : 'text-orange-600 hover:text-orange-800'
-                }`}
-                title={share.is_frozen ? 'Unfreeze guest' : 'Freeze guest'}
-              >
-                {share.is_frozen ? (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zM12 9a3 3 0 110-6 3 3 0 010 6z" />
-                  </svg>
-                )}
-              </button>
-              <button
-                onClick={() => toggleMuteGuestMutation.mutate({ 
-                  id: share.id, 
-                  is_muted: !share.is_muted 
-                })}
-                className={`p-2 ${
-                  share.is_muted 
-                    ? 'text-green-600 hover:text-green-800' 
-                    : 'text-red-600 hover:text-red-800'
-                }`}
-                title={share.is_muted ? 'Unmute guest' : 'Mute guest'}
-              >
-                {share.is_muted ? (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-                  </svg>
-                )}
-              </button>
-              <button
-                onClick={() => deleteShareMutation.mutate(share.id)}
-                className="text-red-600 hover:text-red-800 p-2"
-                title="Remove share"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-4">
+        {sharedClaims?.map((share) => (
+          <div key={share.id} className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
             <div className="flex justify-between items-start">
               <div className="flex-1">
                 <div className="flex items-center space-x-2 mb-2">
@@ -678,13 +631,60 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
                   Shared on {new Date(share.created_at).toLocaleDateString()}
                 </div>
               </div>
-              <button
-                onClick={() => deleteShareMutation.mutate(share.id)}
-                className="text-red-600 hover:text-red-800 p-2"
-                title="Remove share"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => toggleFreezeGuestMutation.mutate({ 
+                    id: share.id, 
+                    is_frozen: !share.is_frozen 
+                  })}
+                  className={`p-2 ${
+                    share.is_frozen 
+                      ? 'text-green-600 hover:text-green-800' 
+                      : 'text-orange-600 hover:text-orange-800'
+                  }`}
+                  title={share.is_frozen ? 'Unfreeze guest' : 'Freeze guest'}
+                >
+                  {share.is_frozen ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zM12 9a3 3 0 110-6 3 3 0 010 6z" />
+                    </svg>
+                  )}
+                </button>
+                <button
+                  onClick={() => toggleMuteGuestMutation.mutate({ 
+                    id: share.id, 
+                    is_muted: !share.is_muted 
+                  })}
+                  className={`p-2 ${
+                    share.is_muted 
+                      ? 'text-green-600 hover:text-green-800' 
+                      : 'text-red-600 hover:text-red-800'
+                  }`}
+                  title={share.is_muted ? 'Unmute guest' : 'Mute guest'}
+                >
+                  {share.is_muted ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                    </svg>
+                  )}
+                </button>
+                <button
+                  onClick={() => deleteShareMutation.mutate(share.id)}
+                  className="text-red-600 hover:text-red-800 p-2"
+                  title="Remove share"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         ))}
