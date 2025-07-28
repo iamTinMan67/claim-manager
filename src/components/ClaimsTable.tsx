@@ -11,9 +11,10 @@ interface ClaimsTableProps {
   onClaimSelect: (claimId: string | null) => void
   selectedClaim: string | null
   onClaimColorChange: (color: string) => void
+  isGuest?: boolean
 }
 
-const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange }: ClaimsTableProps) => {
+const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest = false }: ClaimsTableProps) => {
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingClaim, setEditingClaim] = useState<Claim | null>(null)
   const [amendMode, setAmendMode] = useState(false)
@@ -33,9 +34,13 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange }: Claim
   const { data: claims, isLoading, error } = useQuery({
     queryKey: ['claims'],
     queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
       const { data, error } = await supabase
         .from('claims')
         .select('*')
+        .eq('user_id', user.id) // Only show user's own claims
         .order('created_at', { ascending: false })
       
       if (error) throw error
@@ -159,18 +164,20 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange }: Claim
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-bold">Claim Details</h2>
           <div className="flex items-center space-x-3">
-            <button
-              onClick={() => setAmendMode(!amendMode)}
-              className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
-                amendMode 
-                  ? 'text-red-600 bg-red-100 hover:bg-red-200' 
-                  : 'text-white hover:opacity-90'
-              }`}
-              style={!amendMode ? { backgroundColor: claim.color || '#3B82F6' } : {}}
-            >
-              <Settings className="w-4 h-4" />
-              <span>{amendMode ? 'Exit Amend' : 'Amend Evidence'}</span>
-            </button>
+            {!isGuest && (
+              <button
+                onClick={() => setAmendMode(!amendMode)}
+                className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
+                  amendMode 
+                    ? 'text-red-600 bg-red-100 hover:bg-red-200' 
+                    : 'text-white hover:opacity-90'
+                }`}
+                style={!amendMode ? { backgroundColor: claim.color || '#3B82F6' } : {}}
+              >
+                <Settings className="w-4 h-4" />
+                <span>{amendMode ? 'Exit Amend' : 'Amend Evidence'}</span>
+              </button>
+            )}
             <button
               onClick={() => onClaimSelect(null)}
               className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center space-x-2"
@@ -205,18 +212,27 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange }: Claim
               )}
             </div>
             <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setEditingClaim(claim)}
-                className="text-blue-600 hover:text-blue-800 p-2"
-              >
-                <Edit className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => deleteClaimMutation.mutate(claim.case_number)}
-                className="text-red-600 hover:text-red-800 p-2"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              {!isGuest && (
+                <>
+                  <button
+                    onClick={() => setEditingClaim(claim)}
+                    className="text-blue-600 hover:text-blue-800 p-2"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => deleteClaimMutation.mutate(claim.case_number)}
+                    className="text-red-600 hover:text-red-800 p-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </>
+              )}
+              {isGuest && (
+                <div className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                  Guest Access
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -226,6 +242,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange }: Claim
           selectedClaim={selectedClaim} 
           claimColor={claim.color || '#3B82F6'} 
           amendMode={amendMode}
+          isGuest={isGuest}
         />
       </div>
     )
@@ -235,17 +252,21 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange }: Claim
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Legal Claims</h2>
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Claim</span>
-        </button>
+        <h2 className="text-2xl font-bold">
+          {isGuest ? 'Shared Claims' : 'Legal Claims'}
+        </h2>
+        {!isGuest && (
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Claim</span>
+          </button>
+        )}
       </div>
 
-      {showAddForm && (
+      {showAddForm && !isGuest && (
         <div className="bg-white p-6 rounded-lg shadow border">
           <h3 className="text-lg font-semibold mb-4">Add New Claim</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -345,7 +366,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange }: Claim
         </div>
       )}
 
-      {editingClaim && (
+      {editingClaim && !isGuest && (
         <div className="bg-white p-6 rounded-lg shadow border">
           <h3 className="text-lg font-semibold mb-4">Edit Claim</h3>
           <form onSubmit={handleUpdate} className="space-y-4">
@@ -460,24 +481,28 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange }: Claim
                 style={{ backgroundColor: claim.color || '#3B82F6' }}
               />
               <div className="flex items-center space-x-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setEditingClaim(claim)
-                  }}
-                  className="text-blue-600 hover:text-blue-800 p-1"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    deleteClaimMutation.mutate(claim.case_number)
-                  }}
-                  className="text-red-600 hover:text-red-800 p-1"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {!isGuest && (
+                  <>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setEditingClaim(claim)
+                      }}
+                      className="text-blue-600 hover:text-blue-800 p-1"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        deleteClaimMutation.mutate(claim.case_number)
+                      }}
+                      className="text-red-600 hover:text-red-800 p-1"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
               </div>
             </div>
             

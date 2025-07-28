@@ -5,9 +5,12 @@ import { useTheme } from 'next-themes'
 interface NavigationProps {
   activeTab: string
   onTabChange: (tab: string) => void
+  isGuest?: boolean
+  showGuestContent?: boolean
+  onToggleGuestContent?: (show: boolean) => void
 }
 
-const Navigation = ({ activeTab, onTabChange }: NavigationProps) => {
+const Navigation = ({ activeTab, onTabChange, isGuest = false, showGuestContent = false, onToggleGuestContent }: NavigationProps) => {
   const { theme, setTheme } = useTheme()
 
   const navItems = [
@@ -41,17 +44,43 @@ const Navigation = ({ activeTab, onTabChange }: NavigationProps) => {
             )
           })}
           </div>
-          <button
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            title="Toggle dark mode"
-          >
-            {theme === 'dark' ? (
-              <Sun className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-            ) : (
-              <Moon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+          <div className="flex items-center space-x-3">
+            {/* Guest Content Toggle - only show for claim owners when viewing todos/calendar */}
+            {!isGuest && (activeTab === 'todos' || activeTab === 'calendar') && onToggleGuestContent && (
+              <button
+                onClick={() => onToggleGuestContent(!showGuestContent)}
+                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                  showGuestContent
+                    ? 'bg-orange-100 text-orange-800 hover:bg-orange-200'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                }`}
+                title={showGuestContent ? 'Switch to your private view' : 'View guest contributions'}
+              >
+                <Users className="w-4 h-4 inline mr-1" />
+                {showGuestContent ? 'Guest View' : 'My View'}
+              </button>
             )}
-          </button>
+            
+            {/* Guest Indicator */}
+            {isGuest && (
+              <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-lg text-sm font-medium">
+                <Users className="w-4 h-4 inline mr-1" />
+                Guest Access
+              </div>
+            )}
+            
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              title="Toggle dark mode"
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+              ) : (
+                <Moon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </nav>

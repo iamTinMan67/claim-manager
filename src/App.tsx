@@ -19,6 +19,8 @@ function App() {
   const [activeTab, setActiveTab] = useState('claims')
   const [selectedClaim, setSelectedClaim] = useState<string | null>(null)
   const [selectedClaimColor, setSelectedClaimColor] = useState<string>('#3B82F6')
+  const [isGuest, setIsGuest] = useState(false) // TODO: Implement guest detection logic
+  const [showGuestContent, setShowGuestContent] = useState(false)
 
   if (!user) {
     return (
@@ -33,17 +35,17 @@ function App() {
   const renderContent = () => {
     switch (activeTab) {
       case 'claims':
-        return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} onClaimColorChange={setSelectedClaimColor} />
+        return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} onClaimColorChange={setSelectedClaimColor} isGuest={isGuest} />
       case 'todos':
-        return <TodoList selectedClaim={selectedClaim} claimColor={selectedClaimColor} />
+        return <TodoList selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={isGuest} showGuestContent={showGuestContent} />
       case 'calendar':
-        return <Calendar selectedClaim={selectedClaim} claimColor={selectedClaimColor} />
+        return <Calendar selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={isGuest} showGuestContent={showGuestContent} />
       case 'collaboration':
         return <SharedClaims selectedClaim={selectedClaim} claimColor={selectedClaimColor} />
       case 'export':
         return <ExportFeatures selectedClaim={selectedClaim} claimColor={selectedClaimColor} />
       default:
-        return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} onClaimColorChange={setSelectedClaimColor} />
+        return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} onClaimColorChange={setSelectedClaimColor} isGuest={isGuest} />
     }
   }
 
@@ -51,7 +53,13 @@ function App() {
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
     <QueryClientProvider client={queryClient}>
       <AuthComponent onAuthChange={setUser}>
-        <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
+        <Navigation 
+          activeTab={activeTab} 
+          onTabChange={setActiveTab} 
+          isGuest={isGuest}
+          showGuestContent={showGuestContent}
+          onToggleGuestContent={setShowGuestContent}
+        />
         {renderContent()}
       </AuthComponent>
     </QueryClientProvider>

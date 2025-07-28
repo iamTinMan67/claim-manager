@@ -18,9 +18,11 @@ interface TodoWithUser extends Todo {
 interface TodoListProps {
   selectedClaim: string | null
   claimColor?: string
+  isGuest?: boolean
+  showGuestContent?: boolean
 }
 
-const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
+const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, showGuestContent = false }: TodoListProps) => {
   const [showAddForm, setShowAddForm] = useState(false)
   const [newTodo, setNewTodo] = useState({
     title: '',
@@ -35,8 +37,11 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
   const queryClient = useQueryClient()
 
   const { data: todos, isLoading } = useQuery({
-    queryKey: ['todos', selectedClaim],
+    queryKey: ['todos', selectedClaim, showGuestContent],
     queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
       let query = supabase
         .from('todos')
         .select(`
@@ -47,6 +52,15 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
       
       if (selectedClaim) {
         query = query.eq('case_number', selectedClaim)
+      }
+      
+      // Filter based on view type
+      if (showGuestContent) {
+        // Show only todos created by guests (not the claim owner)
+        query = query.neq('user_id', user.id)
+      } else {
+        // Show only todos created by the current user (claim owner's private view)
+        query = query.eq('user_id', user.id)
       }
       
       const { data, error } = await query
@@ -74,8 +88,11 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
   })
 
   const { data: todayTodos } = useQuery({
-    queryKey: ['today-todos', selectedClaim],
+    queryKey: ['today-todos', selectedClaim, showGuestContent],
     queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
       const today = new Date()
       today.setHours(0, 0, 0, 0)
       const todayString = today.toISOString().split('T')[0]
@@ -91,6 +108,15 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
       
       if (selectedClaim) {
         query = query.eq('case_number', selectedClaim)
+      }
+      
+      // Filter based on view type
+      if (showGuestContent) {
+        // Show only todos created by guests
+        query = query.neq('user_id', user.id)
+      } else {
+        // Show only todos created by the current user
+        query = query.eq('user_id', user.id)
       }
       
       const { data, error } = await query
@@ -273,15 +299,26 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
       )}
       
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">To-Do Lists</h2>
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
-          style={{ backgroundColor: claimColor }}
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Todo</span>
-        </button>
+        <h2 className="text-2xl font-bold">
+          {showGuestContent ? 'Guest To-Do Lists' : 'To-Do Lists'}
+        </h2>
+        <div className="flex items-center space-x-3">
+          {!isGuest && (
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
+              style={{ backgroundColor: claimColor }}
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Todo</span>
+            </button>
+          )}
+          {isGuest && (
+            <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-lg text-sm">
+              Guest View - Can Add Only
+            </div>
+          )}
+        </div>
       </div>
 
       {showAddForm && (
@@ -484,6 +521,10 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6' }: TodoListProps) => {
                     <button
                       onClick={() => deleteTodoMutation.mutate(todo.id)}
                       className="text-red-500 hover:text-red-700 p-1"
+                      disabled={isGuest}
+                      title={isGuest ? 'Guests cannot delete todos' : 'Delete todo'}
+                      disabled={isGuest}
+                      title={isGuest ? 'Guests cannot delete todos' : 'Delete todo'}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

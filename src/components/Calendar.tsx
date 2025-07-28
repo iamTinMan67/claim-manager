@@ -27,6 +27,8 @@ interface CalendarEventWithUser extends CalendarEvent {
 interface CalendarProps {
   selectedClaim: string | null
   claimColor?: string
+  isGuest?: boolean
+  showGuestContent?: boolean
 }
 
 interface TodoWithUser extends Todo {
@@ -35,7 +37,7 @@ interface TodoWithUser extends Todo {
   }
 }
 
-const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
+const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, showGuestContent = false }: CalendarProps) => {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -65,8 +67,11 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
   })
 
   const { data: events, isLoading } = useQuery({
-    queryKey: ['calendar-events', format(currentDate, 'yyyy-MM'), selectedClaim],
+    queryKey: ['calendar-events', format(currentDate, 'yyyy-MM'), selectedClaim, showGuestContent],
     queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
       const start = startOfMonth(currentDate)
       const end = endOfMonth(currentDate)
       
@@ -81,6 +86,15 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
       
       if (selectedClaim) {
         query = query.eq('claim_id', selectedClaim)
+      }
+      
+      // Filter based on view type
+      if (showGuestContent) {
+        // Show only events created by guests
+        query = query.neq('user_id', user.id)
+      } else {
+        // Show only events created by the current user
+        query = query.eq('user_id', user.id)
       }
       
       const { data, error } = await query
@@ -256,7 +270,9 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
         </div>
       )}
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Calendar</h2>
+        <h2 className="text-2xl font-bold">
+          {showGuestContent ? 'Guest Calendar' : 'Calendar'}
+        </h2>
         <div className="flex items-center space-x-4">
           <button
             onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
@@ -273,18 +289,25 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
           >
             Next
           </button>
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
-            style={{ backgroundColor: claimColor }}
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Event</span>
-          </button>
+          {!isGuest && (
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
+              style={{ backgroundColor: claimColor }}
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Event</span>
+            </button>
+          )}
+          {isGuest && (
+            <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-lg text-sm">
+              Guest View - Can Add Only
+            </div>
+          )}
         </div>
       </div>
 
-      {showAddForm && (
+      {showAddForm && !isGuest && (
         <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold">Add New Event</h3>
@@ -523,9 +546,19 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6' }: CalendarProps) => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              deleteEventMutation.mutate(event.id)
+                              if (isGuest) {
+                                alert('Guests cannot delete events. Contact the claim owner.')
+                                return
+                              }
+                              if (window.confirm('Are you sure you want to delete this event?')) {
+                                deleteEventMutation.mutate(event.id)
+                              }
                             }}
-                            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center"
+                            className={`absolute -top-1 -right-1 w-4 h-4 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center ${
+                              isGuest ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600'
+                            } text-white`}
+                            disabled={isGuest}
+                            title={isGuest ? 'Guests cannot delete events' : 'Delete event'}
                           >
                             <X className="w-2 h-2" />
                           </button>

@@ -9,9 +9,10 @@ interface EvidenceManagerProps {
   selectedClaim: string | null
   claimColor?: string
   amendMode?: boolean
+  isGuest?: boolean
 }
 
-const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = false }: EvidenceManagerProps) => {
+const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = false, isGuest = false }: EvidenceManagerProps) => {
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingEvidence, setEditingEvidence] = useState<Evidence | null>(null)
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
@@ -627,7 +628,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Evidence Management</h2>
         <div className="flex items-center space-x-3">
-          {amendMode && (
+          {amendMode && !isGuest && (
             <button
             onClick={() => setShowAddForm(true)}
             className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
@@ -637,10 +638,15 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
             <span>Add Evidence</span>
           </button>
           )}
+          {isGuest && (
+            <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-lg text-sm">
+              Guest View - Read Only
+            </div>
+          )}
         </div>
       </div>
 
-      {amendMode && showAddForm && (
+      {amendMode && !isGuest && showAddForm && (
         <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4">Add New Evidence</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -803,7 +809,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
         </div>
       )}
 
-      {amendMode && editingEvidence && (
+      {amendMode && !isGuest && editingEvidence && (
         <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4">Edit Evidence</h3>
           <form onSubmit={handleUpdate} className="space-y-4">
@@ -1003,6 +1009,12 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
                 )}
                 <button
                   onClick={() => {
+                    if (isGuest) {
+                      // Guests cannot delete evidence
+                      alert('Guests cannot delete evidence. Contact the claim owner.')
+                      return
+                    }
+                    
                     if (selectedClaim) {
                       // Remove from current claim only
                       if (window.confirm(`Remove this evidence from claim ${selectedClaim}? The evidence will not be deleted, just unassociated from this claim.`)) {
@@ -1015,12 +1027,25 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
                       }
                     }
                   }}
-                  className={`p-2 ${selectedClaim ? 'text-orange-600 hover:text-orange-800' : 'text-red-600 hover:text-red-800'}`}
-                  title={selectedClaim ? 'Remove from current claim' : 'Delete evidence permanently'}
+                  className={`p-2 ${
+                    isGuest 
+                      ? 'text-gray-400 cursor-not-allowed' 
+                      : selectedClaim 
+                        ? 'text-orange-600 hover:text-orange-800' 
+                        : 'text-red-600 hover:text-red-800'
+                  }`}
+                  title={
+                    isGuest 
+                      ? 'Guests cannot delete evidence' 
+                      : selectedClaim 
+                        ? 'Remove from current claim' 
+                        : 'Delete evidence permanently'
+                  }
+                  disabled={isGuest}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
-                {amendMode && (
+                {amendMode && !isGuest && (
                   <>
                     <button
                       onClick={() => handleEdit(item)}
