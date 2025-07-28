@@ -65,11 +65,31 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('claims')
         .select('*')
-        .eq('user_id', user.id) // Only show user's own claims
         .order('created_at', { ascending: false })
+      
+      if (isGuest) {
+        // If user is a guest, show only shared claims they have access to
+        const { data: sharedClaimIds } = await supabase
+          .from('claim_shares')
+          .select('claim_id')
+          .eq('shared_with_id', user.id)
+        
+        if (sharedClaimIds && sharedClaimIds.length > 0) {
+          const claimIds = sharedClaimIds.map(share => share.claim_id)
+          query = query.in('case_number', claimIds)
+        } else {
+          // No shared claims, return empty array
+          return []
+        }
+      } else {
+        // Show user's own claims
+        query = query.eq('user_id', user.id)
+      }
+      
+      const { data, error } = await query
       
       if (error) throw error
       return data as Claim[]

@@ -132,7 +132,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      // First, check if user exists or create a profile
+      // First, check if user exists with an account (must be registered)
       const { data: existingUser } = await supabase
         .from('profiles')
         .select('id')
@@ -140,7 +140,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
         .single()
 
       if (!existingUser) {
-        throw new Error('User with this email does not exist. They need to create an account first.')
+        throw new Error('User with this email does not have an account. They must register first at the app to be added as a guest.')
       }
 
       const { data, error } = await supabase
@@ -327,7 +327,22 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
         <div className="flex items-center space-x-2 mb-4">
           <DollarSign className="w-5 h-5 text-blue-600" />
-          <h3 className="text-lg font-semibold text-blue-900">Guest Access Pricing</h3>
+          <h3 className="text-lg font-semibold text-blue-900">Guest Access Pricing & Account Requirements</h3>
+        </div>
+        <div className="bg-white p-4 rounded border border-blue-300 mb-4">
+          <div className="flex items-center space-x-2 mb-2">
+            <Users className="w-4 h-4 text-blue-600" />
+            <span className="font-medium text-blue-900">Account Requirement</span>
+          </div>
+          <p className="text-blue-800 text-sm">
+            <strong>All guests must have their own registered account</strong> on this app before they can be invited. 
+            This allows them to:
+          </p>
+          <ul className="text-blue-700 text-sm mt-2 ml-4 list-disc">
+            <li>Create and manage their own claims</li>
+            <li>Invite their own guests (with their own donations)</li>
+            <li>Have full account functionality beyond just guest access</li>
+          </ul>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           <div className="bg-white p-3 rounded border">
@@ -348,7 +363,8 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
           </div>
         </div>
         <p className="text-blue-800 text-sm mt-3">
-          <strong>Note:</strong> First guest is FREE! Payment required for additional guests. All payments support app development.
+          <strong>Note:</strong> First guest is FREE! Payment required for additional guests. All payments support app development. 
+          Each user can be both a claim owner (hosting their own claims) and a guest (invited to others' claims).
         </p>
       </div>
 
@@ -393,6 +409,14 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
                 Cost for next guest: <strong>£{calculateDonationAmount((guestCounts?.[selectedClaim || claimToShare] || 0) + 1)}</strong>
               </p>
             )}
+            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
+              <p className="text-blue-800 text-sm font-medium">
+                ⚠️ Account Required: The person you're inviting must have a registered account on this app.
+              </p>
+              <p className="text-blue-700 text-xs mt-1">
+                They can create their own claims and invite their own guests (with their own donations to the app owner).
+              </p>
+            </div>
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -414,12 +438,19 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Email Address *</label>
+              <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
+                <p className="text-blue-800 font-medium">Account Required</p>
+                <p className="text-blue-700 text-xs">
+                  The person must already have an account on this app. If they don't have an account, 
+                  ask them to register first, then you can add them as a guest.
+                </p>
+              </div>
               <input
                 type="email"
                 value={shareData.email}
                 onChange={(e) => setShareData({ ...shareData, email: e.target.value })}
                 className="w-full border rounded-lg px-3 py-2"
-                placeholder="Enter the email of the person to share with"
+                placeholder="Enter the email of a registered user"
                 required
               />
             </div>
