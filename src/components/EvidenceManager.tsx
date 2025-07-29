@@ -77,8 +77,8 @@ const EvidenceManager = ({
           .map(item => item.exhibit_id)
           .filter(id => id && id.toLowerCase().includes('exhibit'))
           .map(id => {
-            const match = id.match(/\d+/)
-            return match ? parseInt(match[0], 10) : 0
+            const match = id.match(/exhibit\s*(\d+)/i)
+            return match ? parseInt(match[1], 10) : 0
           })
           .filter(num => !isNaN(num))
         
@@ -93,7 +93,7 @@ const EvidenceManager = ({
       setNewEvidence(prev => ({
         ...prev,
         exhibit_id: getNextExhibitId(),
-        method: 'To-Do',
+        method: 'Post',
         case_number: selectedClaim || ''
       }))
     }
@@ -488,7 +488,7 @@ const EvidenceManager = ({
                   Date Submitted
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Bundle #
+                  Exhibit ID
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
