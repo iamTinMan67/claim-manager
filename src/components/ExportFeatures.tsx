@@ -107,10 +107,12 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
     try {
       const pdf = new jsPDF()
       const pageHeight = pdf.internal.pageSize.height
-      let yPosition = 40
+      let yPosition = 20
 
-      // Add claim details for evidence export
-      if (title === 'Evidence Report' && selectedClaim) {
+      // Add claim details for evidence export (moved down 2 rows)
+      if (exportType === 'evidence' && selectedClaim) {
+        yPosition += 20 // Move down 2 rows
+        
         const { data: claimDetails } = await supabase
           .from('claims')
           .select('case_number, title, court, plaintiff_name, defendant_name')
@@ -136,19 +138,21 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
           }
           
           yPosition += 15 // Extra space before column headers
-          
-          // Column headers
-          pdf.setFontSize(10)
-          pdf.setFont(undefined, 'bold')
-          pdf.text('EXHIBIT ID', 20, yPosition)
-          pdf.text('FILE NAME', 50, yPosition)
-          pdf.text('PAGES', 100, yPosition)
-          pdf.text('METHOD', 120, yPosition)
-          pdf.text('DATE', 145, yPosition)
-          pdf.text('BUNDLE POS', 170, yPosition)
-          pdf.setFont(undefined, 'normal')
-          yPosition += 10
         }
+      }
+
+      // Add column headers for evidence export
+      if (exportType === 'evidence') {
+        pdf.setFontSize(10)
+        pdf.setFont(undefined, 'bold')
+        pdf.text('EXHIBIT ID', 20, yPosition)
+        pdf.text('FILE NAME', 50, yPosition)
+        pdf.text('PAGES', 100, yPosition)
+        pdf.text('METHOD', 120, yPosition)
+        pdf.text('DATE', 145, yPosition)
+        pdf.text('BUNDLE POS', 170, yPosition)
+        pdf.setFont(undefined, 'normal')
+        yPosition += 10
       }
 
       // Data
@@ -159,7 +163,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
           yPosition = 40
           
           // Add column headers on new page for evidence reports
-          if (title === 'Evidence Report') {
+          if (exportType === 'evidence') {
             pdf.setFont(undefined, 'bold')
             pdf.text('EXHIBIT ID', 20, yPosition)
             pdf.text('FILE NAME', 50, yPosition)
@@ -174,7 +178,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
 
         let text = ''
         
-        if (title === 'Evidence Report') {
+        if (exportType === 'evidence') {
           // For evidence, display in columns
           pdf.text(item.exhibit_id || '', 20, yPosition)
           pdf.text(item.file_name || '', 50, yPosition)
