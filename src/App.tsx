@@ -129,17 +129,9 @@ function LoggedInContent({
       case 'subscription':
         return <SubscriptionManager />
       case 'todos':
-        return (
-          <AccessControl requiredFeature="chat" claimId={selectedClaim}>
-            <TodoList selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={currentlyGuest} showGuestContent={showGuestContent} isGuestFrozen={guestStatus?.is_frozen || false} />
-          </AccessControl>
-        )
+        return <TodoList selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={currentlyGuest} showGuestContent={showGuestContent} isGuestFrozen={guestStatus?.is_frozen || false} />
       case 'calendar':
-        return (
-          <AccessControl requiredFeature="chat" claimId={selectedClaim}>
-            <Calendar selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={currentlyGuest} showGuestContent={showGuestContent} isGuestFrozen={guestStatus?.is_frozen || false} />
-          </AccessControl>
-        )
+        return <Calendar selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={currentlyGuest} showGuestContent={showGuestContent} isGuestFrozen={guestStatus?.is_frozen || false} />
       case 'shared':
         return <SharedClaims selectedClaim={selectedClaim} claimColor={selectedClaimColor} currentUserId={user?.id} />
       case 'export':
