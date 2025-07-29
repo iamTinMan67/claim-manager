@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { Evidence } from '@/types/database'
-import { Plus, Edit, Trash2, Upload, Download, Eye, X, Save, Settings, FileText, Calendar, Hash } from 'lucide-react'
+import { Plus, Edit, Trash2, Upload, Download, Eye, X, Save, Settings, FileText, Calendar, Hash, GripVertical } from 'lucide-react'
 
 interface EvidenceManagerProps {
   selectedClaim: string | null
@@ -43,6 +43,8 @@ const EvidenceManager = ({
   })
   const [uploadingFile, setUploadingFile] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [draggedItem, setDraggedItem] = useState<string | null>(null)
+  const [dragOverItem, setDragOverItem] = useState<string | null>(null)
 
   const queryClient = useQueryClient()
 
@@ -64,6 +66,19 @@ const EvidenceManager = ({
       
       if (error) throw error
       return data as Evidence[]
+    }
+  })
+
+  const updateDisplayOrderMutation = useMutation({
+    mutationFn: async (updates: { id: string; display_order: number }[]) => {
+      const { error } = await supabase
+        .from('evidence')
+        .upsert(updates.map(update => ({ id: update.id, display_order: update.display_order })))
+      
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evidence'] })
     }
   })
 
@@ -232,6 +247,53 @@ const EvidenceManager = ({
     } finally {
       setUploadingFile(false)
     }
+  }
+
+  const handleDragStart = (e: React.DragEvent, itemId: string) => {
+    setDraggedItem(itemId)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e: React.DragEvent, itemId: string) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverItem(itemId)
+  }
+
+  const handleDragLeave = () => {
+    setDragOverItem(null)
+  }
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault()
+    
+    if (!draggedItem || draggedItem === targetId || !evidenceData) return
+    
+    const draggedIndex = evidenceData.findIndex(item => item.id === draggedItem)
+    const targetIndex = evidenceData.findIndex(item => item.id === targetId)
+    
+    if (draggedIndex === -1 || targetIndex === -1) return
+    
+    // Create new order
+    const newOrder = [...evidenceData]
+    const [draggedElement] = newOrder.splice(draggedIndex, 1)
+    newOrder.splice(targetIndex, 0, draggedElement)
+    
+    // Update display_order for all items
+    const updates = newOrder.map((item, index) => ({
+      id: item.id,
+      display_order: index + 1
+    }))
+    
+    updateDisplayOrderMutation.mutate(updates)
+    
+    setDraggedItem(null)
+    setDragOverItem(null)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedItem(null)
+    setDragOverItem(null)
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -572,6 +634,9 @@ const EvidenceManager = ({
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                  Order
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   File Name
                 </th>
@@ -597,11 +662,29 @@ const EvidenceManager = ({
                 evidenceData.map((item) => (
                   <React.Fragment key={item.id}>
                     <tr 
+                      draggable={amendMode && (!isGuest || !isGuestFrozen)}
+                      onDragStart={(e) => handleDragStart(e, item.id)}
+                      onDragOver={(e) => handleDragOver(e, item.id)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDrop(e, item.id)}
+                      onDragEnd={handleDragEnd}
                       className={`hover:bg-gray-50 ${amendMode ? 'cursor-pointer' : ''} ${
                         expandedEvidence === item.id ? 'bg-blue-50' : ''
+                      } ${dragOverItem === item.id ? 'border-t-2 border-blue-500' : ''} ${
+                        draggedItem === item.id ? 'opacity-50' : ''
                       }`}
                       onClick={() => handleRowClick(item)}
                     >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {amendMode && (!isGuest || !isGuestFrozen) ? (
+                        <div className="flex items-center space-x-2">
+                          <GripVertical className="w-4 h-4 text-gray-400 cursor-move" />
+                          <span>{item.display_order || '-'}</span>
+                        </div>
+                      ) : (
+                        <span>{item.display_order || '-'}</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {item.file_name || '-'}
                     </td>
@@ -645,7 +728,7 @@ const EvidenceManager = ({
                     </tr>
                     {expandedEvidence === item.id && editingEvidence && (
                       <tr>
-                        <td colSpan={6} className="px-6 py-4 bg-gray-50 border-t">
+                        <td colSpan={7} className="px-6 py-4 bg-gray-50 border-t">
                           <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
                             <div className="flex justify-between items-center mb-4">
                               <h4 className="text-lg font-semibold">Edit Evidence</h4>
@@ -771,7 +854,7 @@ const EvidenceManager = ({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
                     No evidence found. Add some evidence to get started!
                   </td>
                 </tr>
