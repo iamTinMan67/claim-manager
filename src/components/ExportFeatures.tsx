@@ -147,9 +147,10 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         pdf.setFont(undefined, 'bold')
         pdf.text('EXHIBIT ID', 20, yPosition)
         pdf.text('FILE NAME', 50, yPosition)
-        pdf.text('METHOD', 100, yPosition)
-        pdf.text('DATE', 130, yPosition)
-        pdf.text('BUNDLE POS', 160, yPosition)
+        pdf.text('PAGES', 100, yPosition)
+        pdf.text('METHOD', 120, yPosition)
+        pdf.text('DATE', 145, yPosition)
+        pdf.text('BUNDLE POS', 170, yPosition)
         pdf.setFont(undefined, 'normal')
         yPosition += 10
       }
@@ -181,10 +182,9 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
           // For evidence, display in columns
           pdf.text(item.exhibit_id || '', 20, yPosition)
           pdf.text(item.file_name || '', 50, yPosition)
-          pdf.text(item.number_of_pages ? String(item.number_of_pages) : '', 100, yPosition)
-          pdf.text(item.method || '', 120, yPosition)
-          pdf.text(item.date_submitted ? new Date(item.date_submitted).toLocaleDateString() : '', 145, yPosition)
-          pdf.text(item.book_of_deeds_ref || '', 170, yPosition)
+         pdf.text(item.method || '', 100, yPosition)
+         pdf.text(item.date_submitted ? new Date(item.date_submitted).toLocaleDateString() : '', 130, yPosition)
+         pdf.text(item.book_of_deeds_ref || '', 160, yPosition)
           yPosition += 8
         } else {
           // For other exports, use existing logic but exclude unwanted fields
