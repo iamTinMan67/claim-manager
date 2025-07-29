@@ -37,32 +37,6 @@ export default function AuthComponent({ children, onAuthChange }: AuthComponentP
       }
     })
 
-    // Listen for auth errors
-    const handleAuthError = (error: any) => {
-      if (error?.message?.includes('Invalid login credentials')) {
-        setAuthError('Invalid email or password. Please check your credentials and try again.')
-      } else if (error?.message?.includes('Email not confirmed')) {
-        setAuthError('Please check your email and click the confirmation link before signing in.')
-      } else if (error?.message) {
-        setAuthError(error.message)
-      }
-    }
-
-    // Set up error handling for auth operations
-    const originalSignIn = supabase.auth.signInWithPassword
-    supabase.auth.signInWithPassword = async (credentials) => {
-      try {
-        const result = await originalSignIn.call(supabase.auth, credentials)
-        if (result.error) {
-          handleAuthError(result.error)
-        }
-        return result
-      } catch (error) {
-        handleAuthError(error)
-        throw error
-      }
-    }
-
     return () => subscription.unsubscribe()
   }, [onAuthChange])
 
