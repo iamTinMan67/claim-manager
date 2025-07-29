@@ -107,12 +107,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
     try {
       const pdf = new jsPDF()
       const pageHeight = pdf.internal.pageSize.height
-      let yPosition = 20
-
-      // Title and Claim Details Header (only for evidence export)
-      pdf.setFontSize(16)
-      pdf.text(title, 20, yPosition)
-      yPosition += 20
+      let yPosition = 40
 
       // Add claim details for evidence export
       if (title === 'Evidence Report' && selectedClaim) {
@@ -124,23 +119,35 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         
         if (claimDetails) {
           pdf.setFontSize(12)
+          // Two column layout for claim details
           pdf.text(`Case: ${claimDetails.case_number}`, 20, yPosition)
+          pdf.text(`Title: ${claimDetails.title}`, 110, yPosition)
           yPosition += 10
-          pdf.text(`Title: ${claimDetails.title}`, 20, yPosition)
-          yPosition += 10
-          if (claimDetails.court) {
-            pdf.text(`Court: ${claimDetails.court}`, 20, yPosition)
+          
+          if (claimDetails.court || claimDetails.plaintiff_name) {
+            pdf.text(`Court: ${claimDetails.court || 'N/A'}`, 20, yPosition)
+            pdf.text(`Plaintiff: ${claimDetails.plaintiff_name || 'N/A'}`, 110, yPosition)
             yPosition += 10
           }
-          if (claimDetails.plaintiff_name) {
-            pdf.text(`Plaintiff: ${claimDetails.plaintiff_name}`, 20, yPosition)
-            yPosition += 10
-          }
+          
           if (claimDetails.defendant_name) {
             pdf.text(`Defendant: ${claimDetails.defendant_name}`, 20, yPosition)
             yPosition += 10
           }
-          yPosition += 10 // Extra space before evidence items
+          
+          yPosition += 15 // Extra space before column headers
+          
+          // Column headers
+          pdf.setFontSize(10)
+          pdf.setFont(undefined, 'bold')
+          pdf.text('EXHIBIT ID', 20, yPosition)
+          pdf.text('FILE NAME', 50, yPosition)
+          pdf.text('PAGES', 100, yPosition)
+          pdf.text('METHOD', 120, yPosition)
+          pdf.text('DATE', 145, yPosition)
+          pdf.text('BUNDLE POS', 170, yPosition)
+          pdf.setFont(undefined, 'normal')
+          yPosition += 10
         }
       }
 
@@ -149,28 +156,33 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
       data.forEach((item, index) => {
         if (yPosition > pageHeight - 30) {
           pdf.addPage()
-          yPosition = 20
+          yPosition = 40
+          
+          // Add column headers on new page for evidence reports
+          if (title === 'Evidence Report') {
+            pdf.setFont(undefined, 'bold')
+            pdf.text('EXHIBIT ID', 20, yPosition)
+            pdf.text('FILE NAME', 50, yPosition)
+            pdf.text('PAGES', 100, yPosition)
+            pdf.text('METHOD', 120, yPosition)
+            pdf.text('DATE', 145, yPosition)
+            pdf.text('BUNDLE POS', 170, yPosition)
+            pdf.setFont(undefined, 'normal')
+            yPosition += 10
+          }
         }
 
         let text = ''
         
         if (title === 'Evidence Report') {
-          // For evidence, only include specific fields in specific order
-          const fields = [
-            { key: 'exhibit_id', label: 'EXHIBIT ID' },
-            { key: 'file_name', label: 'FILE NAME' },
-            { key: 'number_of_pages', label: 'PAGES' },
-            { key: 'method', label: 'METHOD' },
-            { key: 'date_submitted', label: 'DATE' },
-            { key: 'book_of_deeds_ref', label: 'BUNDLE POS' }
-          ]
-          
-          const evidenceData = fields
-            .filter(field => item[field.key])
-            .map(field => `${field.label}: ${item[field.key]}`)
-            .join(' | ')
-          
-          text = evidenceData
+          // For evidence, display in columns
+          pdf.text(item.exhibit_id || '', 20, yPosition)
+          pdf.text(item.file_name || '', 50, yPosition)
+          pdf.text(item.number_of_pages ? String(item.number_of_pages) : '', 100, yPosition)
+          pdf.text(item.method || '', 120, yPosition)
+          pdf.text(item.date_submitted ? new Date(item.date_submitted).toLocaleDateString() : '', 145, yPosition)
+          pdf.text(item.book_of_deeds_ref || '', 170, yPosition)
+          yPosition += 8
         } else {
           // For other exports, use existing logic but exclude unwanted fields
           text = Object.entries(item)
@@ -185,11 +197,11 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
             )
             .map(([key, value]) => `${key.replace(/_/g, ' ').toUpperCase()}: ${value}`)
             .join(' | ')
-        }
 
-        const lines = pdf.splitTextToSize(text, 170)
-        pdf.text(lines, 20, yPosition)
-        yPosition += lines.length * 5 + 10
+          const lines = pdf.splitTextToSize(text, 170)
+          pdf.text(lines, 20, yPosition)
+          yPosition += lines.length * 5 + 10
+        }
       })
 
       // Open PDF in browser instead of downloading
