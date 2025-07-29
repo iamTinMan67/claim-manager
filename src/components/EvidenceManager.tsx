@@ -618,7 +618,7 @@ const EvidenceManager = ({
                             <Edit className="w-4 h-4" />
                           </button>
                         )}
-                        {(!isGuest || !isGuestFrozen) && (
+                        {amendMode && (!isGuest || !isGuestFrozen) && (
                           <button
                             onClick={() => deleteEvidenceMutation.mutate(item.id)}
                             className="text-red-600 hover:text-red-900"
