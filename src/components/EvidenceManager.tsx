@@ -29,6 +29,7 @@ const EvidenceManager = ({
 }: EvidenceManagerProps) => {
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingEvidence, setEditingEvidence] = useState<Evidence | null>(null)
+  const [expandedEvidence, setExpandedEvidence] = useState<string | null>(null)
   const [newEvidence, setNewEvidence] = useState({
     file_name: '',
     file_url: '',
@@ -248,6 +249,18 @@ const EvidenceManager = ({
     })
   }
 
+  const handleRowClick = (item: Evidence) => {
+    if (amendMode) {
+      if (expandedEvidence === item.id) {
+        setExpandedEvidence(null)
+        setEditingEvidence(null)
+      } else {
+        setExpandedEvidence(item.id)
+        setEditingEvidence(item)
+      }
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -414,7 +427,7 @@ const EvidenceManager = ({
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Book of Deeds Reference</label>
+              <label className="block text-sm font-medium mb-1">CLC Ref#</label>
               <input
                 type="text"
                 value={newEvidence.book_of_deeds_ref}
@@ -522,7 +535,7 @@ const EvidenceManager = ({
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Book of Deeds Reference</label>
+              <label className="block text-sm font-medium mb-1">CLC Ref#</label>
               <input
                 type="text"
                 value={editingEvidence.book_of_deeds_ref || ''}
@@ -582,7 +595,13 @@ const EvidenceManager = ({
             <tbody className="bg-white divide-y divide-gray-200">
               {evidenceData && evidenceData.length > 0 ? (
                 evidenceData.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
+                  <React.Fragment key={item.id}>
+                    <tr 
+                      className={`hover:bg-gray-50 ${amendMode ? 'cursor-pointer' : ''} ${
+                        expandedEvidence === item.id ? 'bg-blue-50' : ''
+                      }`}
+                      onClick={() => handleRowClick(item)}
+                    >
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {item.file_name || '-'}
                     </td>
@@ -611,16 +630,10 @@ const EvidenceManager = ({
                         )}
                         {amendMode && (!isGuest || !isGuestFrozen) && (
                           <button
-                            onClick={() => setEditingEvidence(item)}
-                            className="text-indigo-600 hover:text-indigo-900"
-                            title="Edit evidence"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                        )}
-                        {amendMode && (!isGuest || !isGuestFrozen) && (
-                          <button
-                            onClick={() => deleteEvidenceMutation.mutate(item.id)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              deleteEvidenceMutation.mutate(item.id)
+                            }}
                             className="text-red-600 hover:text-red-900"
                             title="Delete evidence"
                           >
@@ -629,7 +642,133 @@ const EvidenceManager = ({
                         )}
                       </div>
                     </td>
-                  </tr>
+                    </tr>
+                    {expandedEvidence === item.id && editingEvidence && (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-4 bg-gray-50 border-t">
+                          <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
+                            <div className="flex justify-between items-center mb-4">
+                              <h4 className="text-lg font-semibold">Edit Evidence</h4>
+                              <button
+                                onClick={() => {
+                                  setExpandedEvidence(null)
+                                  setEditingEvidence(null)
+                                }}
+                                className="text-gray-500 hover:text-gray-700"
+                              >
+                                <X className="w-5 h-5" />
+                              </button>
+                            </div>
+                            <form onSubmit={handleUpdate} className="space-y-4">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <label className="block text-sm font-medium mb-1">File Name</label>
+                                  <input
+                                    type="text"
+                                    value={editingEvidence.file_name || ''}
+                                    onChange={(e) => setEditingEvidence({ ...editingEvidence, file_name: e.target.value })}
+                                    className="w-full border rounded-lg px-3 py-2"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium mb-1">File URL</label>
+                                  <input
+                                    type="url"
+                                    value={editingEvidence.file_url || ''}
+                                    onChange={(e) => setEditingEvidence({ ...editingEvidence, file_url: e.target.value })}
+                                    className="w-full border rounded-lg px-3 py-2"
+                                  />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-3 gap-4">
+                                <div>
+                                  <label className="block text-sm font-medium mb-1">Exhibit ID</label>
+                                  <input
+                                    type="text"
+                                    value={editingEvidence.exhibit_id || ''}
+                                    onChange={(e) => setEditingEvidence({ ...editingEvidence, exhibit_id: e.target.value })}
+                                    className="w-full border rounded-lg px-3 py-2"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium mb-1">Number of Pages</label>
+                                  <input
+                                    type="number"
+                                    value={editingEvidence.number_of_pages || ''}
+                                    onChange={(e) => setEditingEvidence({ ...editingEvidence, number_of_pages: parseInt(e.target.value) || null })}
+                                    className="w-full border rounded-lg px-3 py-2"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium mb-1">Date Submitted</label>
+                                  <input
+                                    type="date"
+                                    value={editingEvidence.date_submitted || ''}
+                                    onChange={(e) => setEditingEvidence({ ...editingEvidence, date_submitted: e.target.value })}
+                                    className="w-full border rounded-lg px-3 py-2"
+                                  />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <label className="block text-sm font-medium mb-1">Method</label>
+                                  <select
+                                    value={editingEvidence.method || 'ToDo'}
+                                    onChange={(e) => setEditingEvidence({ ...editingEvidence, method: e.target.value })}
+                                    className="w-full border rounded-lg px-3 py-2"
+                                  >
+                                    <option value="Post">Post</option>
+                                    <option value="ToDo">ToDo</option>
+                                    <option value="Email">Email</option>
+                                    <option value="Hand">Hand</option>
+                                    <option value="Call">Call</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium mb-1">URL Link</label>
+                                  <input
+                                    type="url"
+                                    value={editingEvidence.url_link || ''}
+                                    onChange={(e) => setEditingEvidence({ ...editingEvidence, url_link: e.target.value })}
+                                    className="w-full border rounded-lg px-3 py-2"
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium mb-1">CLC Ref#</label>
+                                <input
+                                  type="text"
+                                  value={editingEvidence.book_of_deeds_ref || ''}
+                                  onChange={(e) => setEditingEvidence({ ...editingEvidence, book_of_deeds_ref: e.target.value })}
+                                  className="w-full border rounded-lg px-3 py-2"
+                                />
+                              </div>
+                              <div className="flex space-x-3">
+                                <button
+                                  type="submit"
+                                  disabled={updateEvidenceMutation.isPending}
+                                  className="text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50"
+                                  style={{ backgroundColor: claimColor }}
+                                >
+                                  {updateEvidenceMutation.isPending ? 'Updating...' : 'Update Evidence'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setExpandedEvidence(null)
+                                    setEditingEvidence(null)
+                                  }}
+                                  className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </form>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))
               ) : (
                 <tr>
