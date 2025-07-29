@@ -284,6 +284,12 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
       queryClient.invalidateQueries({ queryKey: ['pending-evidence'] })
       queryClient.invalidateQueries({ queryKey: ['my-pending-evidence'] })
       queryClient.invalidateQueries({ queryKey: ['todos'] }) // Refresh todos in case a new task was created
+      
+      // After adding new evidence, renumber all exhibits to maintain sequential order
+      setTimeout(() => {
+        moveEvidenceMutation.mutate()
+      }, 100)
+      
       setShowAddForm(false)
       setSelectedFile(null)
       resetForm()
@@ -479,15 +485,30 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
       queryClient.invalidateQueries({ queryKey: ['evidence', null] }) // Also refresh "all evidence" view
     }
   })
+    mutationFn: async () => {
+      // Get all evidence for the current claim (or all evidence if no claim selected)
+      let query = supabase
+        .from('evidence')
+        .select('*')
+      
+      if (selectedClaim) {
+        query = query.eq('case_number', selectedClaim)
+      }
+      
+      const { data: currentEvidence, error: fetchError } = await query
+        .order('display_order', { ascending: true, nullsLast: true })
+        .order('created_at', { ascending: true })
+      
+      if (fetchError) throw fetchError
+      if (!currentEvidence) return []
 
-  const moveEvidenceMutation = useMutation({
-    mutationFn: async ({ evidenceList }: { evidenceList: Evidence[] }) => {
-      // Update all evidence items with new display_order based on their position
-      // Keep exhibit_id unchanged, only update display_order for drag and drop
-      const updates = evidenceList.map((item, index) => {
+      // Update all evidence items with sequential exhibit numbers based on their current order
+      const updates = currentEvidence.map((item, index) => {
+        const newExhibitNumber = index + 1
         return {
           id: item.id,
-          display_order: index + 1
+          exhibit_id: `${newExhibitNumber}`,
+          display_order: newExhibitNumber
         }
       })
 
@@ -495,7 +516,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
       const promises = updates.map(update => 
         supabase
           .from('evidence')
-          .update({ display_order: update.display_order })
+          .update({ exhibit_id: update.exhibit_id, display_order: update.display_order })
           .eq('id', update.id)
       )
 
@@ -536,8 +557,25 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
     const [movedItem] = newEvidenceList.splice(draggedIndex, 1)
     newEvidenceList.splice(targetIndex, 0, movedItem)
     
-    // Update with new exhibit numbers
-    moveEvidenceMutation.mutate({ evidenceList: newEvidenceList })
+    // Update display order for all items based on new positions
+    const updates = newEvidenceList.map((item, index) => ({
+      id: item.id,
+      display_order: index + 1,
+      exhibit_id: `${index + 1}`
+    }))
+
+    // Perform batch update
+    const updatePromises = updates.map(update => 
+      supabase
+        .from('evidence')
+        .update({ display_order: update.display_order, exhibit_id: update.exhibit_id })
+        .eq('id', update.id)
+    )
+
+    Promise.all(updatePromises).then(() => {
+      queryClient.invalidateQueries({ queryKey: ['evidence'] })
+    })
+    
     setDraggedItem(null)
   }
 
