@@ -721,16 +721,6 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
               <span>Add Info</span>
             </button>
           )}
-          {amendMode && !isGuest && (
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
-              style={{ backgroundColor: claimColor }}
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Info</span>
-            </button>
-          )}
           {!isGuest && pendingEvidence && pendingEvidence.length > 0 && (
             <button
               onClick={() => setShowPendingEvidence(!showPendingEvidence)}
@@ -752,16 +742,6 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
             >
               <Settings className="w-4 h-4" />
               <span>{amendMode ? 'Exit Amend' : 'Amend'}</span>
-            </button>
-          )}
-          {amendMode && (!isGuest || !isGuestFrozen) && (
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
-              style={{ backgroundColor: claimColor }}
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Info</span>
             </button>
           )}
           {isGuest && isGuestFrozen && (
