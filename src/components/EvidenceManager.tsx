@@ -713,12 +713,12 @@ const EvidenceManager = ({
                                 <div>
                                   <label className="block text-sm font-medium mb-1">Method</label>
                                   <select
-                                    value={editingEvidence.method || 'ToDo'}
+                                    value={editingEvidence.method || 'To-Do'}
                                     onChange={(e) => setEditingEvidence({ ...editingEvidence, method: e.target.value })}
                                     className="w-full border rounded-lg px-3 py-2"
                                   >
                                     <option value="Post">Post</option>
-                                    <option value="ToDo">ToDo</option>
+                                    <option value="To-Do">To-Do</option>
                                     <option value="Email">Email</option>
                                     <option value="Hand">Hand</option>
                                     <option value="Call">Call</option>
