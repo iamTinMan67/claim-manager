@@ -62,7 +62,7 @@ const EvidenceManager = ({
       
       const { data, error } = await query
         .order('display_order', { ascending: false, nullsFirst: true })
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: true })
       
       if (error) throw error
       return data as Evidence[]
@@ -283,10 +283,10 @@ const EvidenceManager = ({
     const [draggedElement] = newOrder.splice(draggedIndex, 1)
     newOrder.splice(targetIndex, 0, draggedElement)
     
-    // Update display_order for all items
+    // Update display_order for all items (1-based indexing, ascending order)
     const updates = newOrder.map((item, index) => ({
       id: item.id,
-      display_order: index + 1
+      display_order: newOrder.length - index
     }))
     
     updateDisplayOrderMutation.mutate(updates)
