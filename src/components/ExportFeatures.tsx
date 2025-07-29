@@ -109,10 +109,40 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
       const pageHeight = pdf.internal.pageSize.height
       let yPosition = 20
 
-      // Title
+      // Title and Claim Details Header (only for evidence export)
       pdf.setFontSize(16)
       pdf.text(title, 20, yPosition)
       yPosition += 20
+
+      // Add claim details for evidence export
+      if (title === 'Evidence Report' && selectedClaim) {
+        const { data: claimDetails } = await supabase
+          .from('claims')
+          .select('case_number, title, court, plaintiff_name, defendant_name')
+          .eq('case_number', selectedClaim)
+          .single()
+        
+        if (claimDetails) {
+          pdf.setFontSize(12)
+          pdf.text(`Case: ${claimDetails.case_number}`, 20, yPosition)
+          yPosition += 10
+          pdf.text(`Title: ${claimDetails.title}`, 20, yPosition)
+          yPosition += 10
+          if (claimDetails.court) {
+            pdf.text(`Court: ${claimDetails.court}`, 20, yPosition)
+            yPosition += 10
+          }
+          if (claimDetails.plaintiff_name) {
+            pdf.text(`Plaintiff: ${claimDetails.plaintiff_name}`, 20, yPosition)
+            yPosition += 10
+          }
+          if (claimDetails.defendant_name) {
+            pdf.text(`Defendant: ${claimDetails.defendant_name}`, 20, yPosition)
+            yPosition += 10
+          }
+          yPosition += 10 // Extra space before evidence items
+        }
+      }
 
       // Data
       pdf.setFontSize(10)
@@ -122,10 +152,40 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
           yPosition = 20
         }
 
-        const text = Object.entries(item)
-          .filter(([key, value]) => value && !key.includes('id') && !key.includes('user_id'))
-          .map(([key, value]) => `${key.replace(/_/g, ' ').toUpperCase()}: ${value}`)
-          .join(' | ')
+        let text = ''
+        
+        if (title === 'Evidence Report') {
+          // For evidence, only include specific fields in specific order
+          const fields = [
+            { key: 'exhibit_id', label: 'EXHIBIT ID' },
+            { key: 'file_name', label: 'FILE NAME' },
+            { key: 'number_of_pages', label: 'PAGES' },
+            { key: 'method', label: 'METHOD' },
+            { key: 'date_submitted', label: 'DATE' },
+            { key: 'book_of_deeds_ref', label: 'BUNDLE POS' }
+          ]
+          
+          const evidenceData = fields
+            .filter(field => item[field.key])
+            .map(field => `${field.label}: ${item[field.key]}`)
+            .join(' | ')
+          
+          text = evidenceData
+        } else {
+          // For other exports, use existing logic but exclude unwanted fields
+          text = Object.entries(item)
+            .filter(([key, value]) => 
+              value && 
+              !key.includes('id') && 
+              !key.includes('user_id') &&
+              key !== 'file_url' &&
+              key !== 'created_at' &&
+              key !== 'updated_at' &&
+              key !== 'display_order'
+            )
+            .map(([key, value]) => `${key.replace(/_/g, ' ').toUpperCase()}: ${value}`)
+            .join(' | ')
+        }
 
         const lines = pdf.splitTextToSize(text, 170)
         pdf.text(lines, 20, yPosition)
