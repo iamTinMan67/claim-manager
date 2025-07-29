@@ -106,7 +106,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
         .select(`
           *,
           claims!inner(title, case_number, color),
-          profiles!claim_shares_owner_id_fkey(email, full_name)
+          owner_profile:profiles!owner_id(email, full_name)
         `)
         .eq('shared_with_id', user.id)
         .order('created_at', { ascending: false })
@@ -114,7 +114,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
       if (error) throw error
       return data as (ClaimShare & { 
         claims: { title: string; case_number: string; color?: string }
-        profiles: { email: string; full_name?: string }
+        owner_profile: { email: string; full_name?: string }
       })[]
     }
   })
@@ -172,7 +172,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
           case_number, 
           title, 
           color,
-          profiles!user_id(email, full_name)
+          owner_profile:profiles!user_id(email, full_name)
         `)
         .ilike('case_number', `%${joinClaimId}%`)
         .neq('user_id', user.id) // Not my own claims
@@ -467,7 +467,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
                     <h4 className="font-medium">{guestClaim.claims.case_number} - {guestClaim.claims.title}</h4>
                   </div>
                   <div className="text-sm text-gray-600 mt-1">
-                    <span>Hosted by: {guestClaim.profiles.email}</span>
+                    <span>Hosted by: {guestClaim.owner_profile.email}</span>
                     <span className="ml-4">Access: {guestClaim.permission}</span>
                     {guestClaim.can_view_evidence && (
                       <span className="ml-4 text-green-600">Can view evidence</span>
@@ -606,7 +606,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
                         <span className="font-medium">{claim.case_number} - {claim.title}</span>
                       </div>
                       <div className="text-sm text-gray-600">
-                        Hosted by: {claim.profiles?.email || 'Unknown'}
+                        Hosted by: {claim.owner_profile?.email || 'Unknown'}
                       </div>
                     </div>
                     <button
