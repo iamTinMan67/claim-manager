@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import PaymentModal from './PaymentModal'
-import { Users, Mail, Eye, Edit, Trash2, Plus, DollarSign, CreditCard, CheckCircle, Clock, AlertCircle, X, UserPlus, UserMinus } from 'lucide-react'
+import { Users, Mail, Eye, Edit, Trash2, Plus, DollarSign, CreditCard, CheckCircle, Clock, AlertCircle, X, UserPlus, UserMinus, Crown } from 'lucide-react'
 
 interface ClaimShare {
   id: string
@@ -513,6 +513,13 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Shared Claims Collaboration</h2>
         <div className="flex items-center space-x-3">
+          <button
+            onClick={() => window.location.href = '#subscription'}
+            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center space-x-2"
+          >
+            <Crown className="w-4 h-4" />
+            <span>Subscription</span>
+          </button>
           <button
             onClick={() => setShowJoinClaimForm(true)}
             className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2"

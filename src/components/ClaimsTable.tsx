@@ -223,7 +223,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                 style={!amendMode ? { backgroundColor: claim.color || '#3B82F6' } : {}}
               >
                 <Settings className="w-4 h-4" />
-                <span>{amendMode ? 'Exit Amend' : 'Amend Evidence'}</span>
+                <span>{amendMode ? 'Exit Amend' : 'Amend'}</span>
               </button>
             )}
             <button

@@ -15,7 +15,6 @@ const Navigation = ({ activeTab, onTabChange, isGuest = false, showGuestContent 
 
   const navItems = [
     { id: 'claims', label: 'Claims', icon: FileText },
-    { id: 'subscription', label: 'Subscription', icon: Crown },
     { id: 'todos', label: 'To-Do Lists', icon: CheckSquare },
     { id: 'calendar', label: 'Calendar', icon: Calendar },
     { id: 'collaboration', label: 'Collaboration', icon: MessageCircle },

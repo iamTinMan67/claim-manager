@@ -708,6 +708,26 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Evidence Management</h2>
         <div className="flex items-center space-x-3">
+          {(!isGuest || !isGuestFrozen) && (
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
+              style={{ backgroundColor: claimColor }}
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Info</span>
+            </button>
+          )}
+          {amendMode && !isGuest && (
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
+              style={{ backgroundColor: claimColor }}
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Info</span>
+            </button>
+          )}
           {!isGuest && pendingEvidence && pendingEvidence.length > 0 && (
             <button
               onClick={() => setShowPendingEvidence(!showPendingEvidence)}
@@ -731,16 +751,6 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
             <button
               onClick={() => setAmendMode(!amendMode)}
               className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
-                amendMode 
-                  ? 'text-red-600 bg-red-100 hover:bg-red-200' 
-                  : 'text-white hover:opacity-90'
-              }`}
-              style={!amendMode ? { backgroundColor: claimColor } : {}}
-            >
-              <Settings className="w-4 h-4" />
-              <span>Amend</span>
-            </button>
-          )}
           {isGuest && isGuestFrozen && (
             <div className="bg-red-100 text-red-800 px-3 py-1 rounded-lg text-sm">
               Access Frozen

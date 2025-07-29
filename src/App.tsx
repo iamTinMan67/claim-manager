@@ -13,6 +13,7 @@ import SharedClaims from './components/SharedClaims'
 import CollaborationHub from './components/CollaborationHub'
 import ExportFeatures from './components/ExportFeatures'
 import SubscriptionManager from './components/SubscriptionManager'
+import { Crown } from 'lucide-react'
 import AccessControl from './components/AccessControl'
 
 const queryClient = new QueryClient()

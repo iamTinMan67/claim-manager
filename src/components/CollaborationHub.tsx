@@ -25,7 +25,8 @@ import {
   Square,
   Circle,
   Minus,
-  Save
+  Save,
+  Crown
 } from 'lucide-react'
 
 interface CollaborationHubProps {
@@ -362,9 +363,18 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
         borderLeftColor: claimColor,
         backgroundColor: `${claimColor}10`
       }}>
+        <div className="flex justify-between items-center">
         <p style={{ color: claimColor }}>
           Collaboration Hub for claim: <strong>{selectedClaim}</strong>
         </p>
+          <button
+            onClick={() => window.location.href = '#subscription'}
+            className="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700 flex items-center space-x-1"
+          >
+            <Crown className="w-3 h-3" />
+            <span>Subscription</span>
+          </button>
+        </div>
       </div>
 
       {/* Tab Navigation */}
