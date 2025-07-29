@@ -485,6 +485,8 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
       queryClient.invalidateQueries({ queryKey: ['evidence', null] }) // Also refresh "all evidence" view
     }
   })
+
+  const moveEvidenceMutation = useMutation({
     mutationFn: async () => {
       // Get all evidence for the current claim (or all evidence if no claim selected)
       let query = supabase
