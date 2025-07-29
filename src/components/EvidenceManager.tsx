@@ -290,7 +290,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
         .single()
 
       if (error) throw error
-
+    },
       // If method is "To-Do" and date_submitted is not empty and >= today, create a todo task
       if (evidenceData.method === 'To-Do' && evidenceData.date_submitted) {
         const submittedDate = new Date(evidenceData.date_submitted)
