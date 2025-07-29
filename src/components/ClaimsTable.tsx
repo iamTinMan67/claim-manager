@@ -212,20 +212,6 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-bold">Claim Details</h2>
           <div className="flex items-center space-x-3">
-            {!isGuest && (
-              <button
-                onClick={() => setAmendMode(!amendMode)}
-                className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
-                  amendMode 
-                    ? 'text-red-600 bg-red-100 hover:bg-red-200' 
-                    : 'text-white hover:opacity-90'
-                }`}
-                style={amendMode ? {} : { backgroundColor: claim.color || '#3B82F6' }}
-              >
-                <Settings className="w-4 h-4" />
-                <span>{amendMode ? 'Exit Amend' : 'Amend'}</span>
-              </button>
-            )}
             <button
               onClick={() => onClaimSelect(null)}
               className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center space-x-2"
@@ -236,63 +222,16 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
           </div>
         </div>
         
-        {/* Selected Claim Display */}
-        <div 
-          className="p-6 rounded-lg shadow border-l-4"
-          style={{ 
-            borderLeftColor: claim.color || '#3B82F6',
-            backgroundColor: `${claim.color || '#3B82F6'}10`
-          }}
-        >
-          <div className="flex justify-between items-start">
-            <div className="flex-1">
-              <h3 className="text-xl font-semibold mb-2">{claim.title}</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
-                <div><strong>Case Number:</strong> {claim.case_number}</div>
-                <div><strong>Court:</strong> {claim.court || 'N/A'}</div>
-                <div><strong>Plaintiff:</strong> {claim.plaintiff_name || 'N/A'}</div>
-                <div><strong>Defendant:</strong> {claim.defendant_name || 'N/A'}</div>
-              </div>
-              {claim.description && (
-                <div className="mt-3">
-                  <strong>Description:</strong> {claim.description}
-                </div>
-              )}
-            </div>
-            <div className="flex items-center space-x-2">
-              {!isGuest && (
-                <>
-                  <button
-                    onClick={() => setEditingClaim(claim)}
-                    className="text-blue-600 hover:text-blue-800 p-2"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => deleteClaimMutation.mutate(claim.case_number)}
-                    className="text-red-600 hover:text-red-800 p-2"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </>
-              )}
-              {isGuest && (
-                <div className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
-                  Guest Access
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Evidence Management - Always show but with amend mode control */}
+        {/* Evidence Management */}
         <EvidenceManager 
           selectedClaim={selectedClaim} 
           claimColor={claim.color || '#3B82F6'} 
-          amendMode={amendMode}
+          amendMode={false}
           isGuest={isGuest}
           currentUserId={currentUser?.id}
           isGuestFrozen={guestStatus?.is_frozen || false}
+          onEditClaim={() => setEditingClaim(claim)}
+          onDeleteClaim={() => deleteClaimMutation.mutate(claim.case_number)}
         />
       </div>
     )
