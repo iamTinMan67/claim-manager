@@ -19,7 +19,10 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
     queryFn: async () => {
       let query = supabase
         .from('evidence')
-        .select('*')
+        .select(`
+          *,
+          date_submitted::text
+        `)
       
       if (selectedClaim) {
         query = query.eq('case_number', selectedClaim)
@@ -30,7 +33,12 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         .order('created_at', { ascending: true })
       
       if (error) throw error
-      return data
+      
+      // Clean up empty string dates
+      return data?.map(item => ({
+        ...item,
+        date_submitted: item.date_submitted === '' ? null : item.date_submitted
+      })) || []
     }
   })
 

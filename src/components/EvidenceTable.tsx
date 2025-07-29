@@ -9,11 +9,21 @@ const EvidenceTable = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('evidence')
-        .select('*')
+        .select(`
+          *,
+          date_submitted::text
+        `)
         .order('created_at', { ascending: false })
       
       if (error) throw error
-      return data as Evidence[]
+      
+      // Clean up empty string dates
+      const cleanedData = data?.map(item => ({
+        ...item,
+        date_submitted: item.date_submitted === '' ? null : item.date_submitted
+      })) || []
+      
+      return cleanedData as Evidence[]
     }
   })
 
