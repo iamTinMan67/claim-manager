@@ -147,10 +147,9 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         pdf.setFont(undefined, 'bold')
         pdf.text('EXHIBIT ID', 20, yPosition)
         pdf.text('FILE NAME', 50, yPosition)
-        pdf.text('PAGES', 100, yPosition)
-        pdf.text('METHOD', 120, yPosition)
-        pdf.text('DATE', 145, yPosition)
-        pdf.text('BUNDLE POS', 170, yPosition)
+        pdf.text('METHOD', 100, yPosition)
+        pdf.text('DATE', 130, yPosition)
+        pdf.text('BUNDLE POS', 160, yPosition)
         pdf.setFont(undefined, 'normal')
         yPosition += 10
       }
