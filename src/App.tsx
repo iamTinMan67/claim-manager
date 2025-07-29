@@ -12,6 +12,8 @@ import Calendar from './components/Calendar'
 import SharedClaims from './components/SharedClaims'
 import CollaborationHub from './components/CollaborationHub'
 import ExportFeatures from './components/ExportFeatures'
+import SubscriptionManager from './components/SubscriptionManager'
+import AccessControl from './components/AccessControl'
 
 const queryClient = new QueryClient()
 
@@ -123,16 +125,34 @@ function LoggedInContent({
     switch (activeTab) {
       case 'claims':
         return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} onClaimColorChange={setSelectedClaimColor} isGuest={currentlyGuest} />
+      case 'subscription':
+        return <SubscriptionManager />
       case 'todos':
-        return <TodoList selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={currentlyGuest} showGuestContent={showGuestContent} isGuestFrozen={guestStatus?.is_frozen || false} />
+        return (
+          <AccessControl requiredFeature="chat" claimId={selectedClaim}>
+            <TodoList selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={currentlyGuest} showGuestContent={showGuestContent} isGuestFrozen={guestStatus?.is_frozen || false} />
+          </AccessControl>
+        )
       case 'calendar':
-        return <Calendar selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={currentlyGuest} showGuestContent={showGuestContent} isGuestFrozen={guestStatus?.is_frozen || false} />
+        return (
+          <AccessControl requiredFeature="chat" claimId={selectedClaim}>
+            <Calendar selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={currentlyGuest} showGuestContent={showGuestContent} isGuestFrozen={guestStatus?.is_frozen || false} />
+          </AccessControl>
+        )
       case 'collaboration':
-        return <CollaborationHub selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={currentlyGuest} currentUserId={user?.id} />
+        return (
+          <AccessControl requiredFeature="chat" claimId={selectedClaim}>
+            <CollaborationHub selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={currentlyGuest} currentUserId={user?.id} />
+          </AccessControl>
+        )
       case 'shared':
         return <SharedClaims selectedClaim={selectedClaim} claimColor={selectedClaimColor} />
       case 'export':
-        return <ExportFeatures selectedClaim={selectedClaim} claimColor={selectedClaimColor} />
+        return (
+          <AccessControl requiredFeature="export" claimId={selectedClaim}>
+            <ExportFeatures selectedClaim={selectedClaim} claimColor={selectedClaimColor} />
+          </AccessControl>
+        )
       default:
         return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} onClaimColorChange={setSelectedClaimColor} isGuest={currentlyGuest} />
     }

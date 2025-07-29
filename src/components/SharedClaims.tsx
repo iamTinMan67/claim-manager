@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import PaymentModal from './PaymentModal'
 import { Users, Mail, Eye, Edit, Trash2, Plus, DollarSign, CreditCard, CheckCircle, Clock, AlertCircle, X, UserPlus, UserMinus } from 'lucide-react'
 
 interface ClaimShare {
@@ -36,16 +37,14 @@ interface SharedClaimsProps {
 const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsProps) => {
   const [showShareForm, setShowShareForm] = useState(false)
   const [claimToShare, setClaimToShare] = useState('')
-  const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [showJoinClaimForm, setShowJoinClaimForm] = useState(false)
   const [joinClaimId, setJoinClaimId] = useState('')
-  const [pendingPayment, setPendingPayment] = useState<{
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [paymentData, setPaymentData] = useState<{
+    amount: number
     claimId: string
     guestEmail: string
-    amount: number
-    guestCount: number
   } | null>(null)
-  const [processingPayment, setProcessingPayment] = useState(false)
   const [shareData, setShareData] = useState({
     email: '',
     permission: 'view' as const,
@@ -186,7 +185,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
   })
 
   const shareClaimMutation = useMutation({
-    mutationFn: async (shareInfo: typeof shareData & { claim_id: string, donation_amount: number }) => {
+    mutationFn: async (shareInfo: typeof shareData & { claim_id: string }) => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
@@ -201,25 +200,33 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
         throw new Error('User with this email does not have an account. They must register first at the app to be added as a guest.')
       }
 
-      const { data, error } = await supabase
-        .from('claim_shares')
-        .insert([{
-          claim_id: shareInfo.claim_id,
-          owner_id: user.id,
-          shared_with_id: existingUser.id,
-          permission: shareInfo.permission,
-          can_view_evidence: shareInfo.can_view_evidence,
-          is_frozen: false,
-          is_muted: false,
-          donation_required: shareInfo.donation_amount > 0, // Only required if amount > 0
-          donation_paid: shareInfo.donation_amount === 0, // Free guests are automatically "paid"
-          donation_amount: shareInfo.donation_amount
-        }])
-        .select()
-        .single()
+      // Calculate donation amount
+      const currentGuestCount = (guestCounts?.[shareInfo.claim_id] || 0) + 1
+      const donationAmount = calculateDonationAmount(currentGuestCount)
+      
+      if (donationAmount === 0) {
+        // Free guest - create share directly
+        const { data, error } = await supabase
+          .from('claim_shares')
+          .insert([{
+            claim_id: shareInfo.claim_id,
+            owner_id: user.id,
+            shared_with_id: existingUser.id,
+            permission: shareInfo.permission,
+            can_view_evidence: shareInfo.can_view_evidence,
+            payment_verified: true,
+            donation_paid: true,
+            donation_amount: 0
+          }])
+          .select()
+          .single()
 
-      if (error) throw error
-      return data
+        if (error) throw error
+        return data
+      } else {
+        // Paid guest - trigger payment flow
+        throw new Error('PAYMENT_REQUIRED')
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shared-claims'] })
@@ -233,6 +240,20 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
         is_muted: false
       })
       setClaimToShare('')
+    }
+    onError: (error) => {
+      if (error.message === 'PAYMENT_REQUIRED') {
+        // Show payment modal
+        const currentGuestCount = (guestCounts?.[claimToShare] || 0) + 1
+        const amount = calculateDonationAmount(currentGuestCount)
+        
+        setPaymentData({
+          amount: amount,
+          claimId: claimToShare,
+          guestEmail: shareData.email
+        })
+        setShowPaymentModal(true)
+      }
     }
   })
 
@@ -344,83 +365,33 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
     }
   })
 
-  const processPaymentMutation = useMutation({
-    mutationFn: async ({ claimId, guestEmail, amount }: { claimId: string, guestEmail: string, amount: number }) => {
-      setProcessingPayment(true)
-      
-      // In production, this would integrate with your Stripe account
-      // The payment goes to the app owner (you), not the claim owner
-      await new Promise(resolve => setTimeout(resolve, 2000)) // Simulate API call
-      
-      // Mark all pending shares for this claim as paid (since payment covers all guests)
-      const { data, error } = await supabase
-        .from('claim_shares')
-        .update({ 
-          donation_paid: true,
-          donation_paid_at: new Date().toISOString(),
-          stripe_payment_intent_id: `pi_app_owner_${Date.now()}`
-        })
-        .eq('claim_id', claimId)
-        .eq('donation_paid', false)
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['shared-claims'] })
-      queryClient.invalidateQueries({ queryKey: ['guest-counts'] })
-      setShowPaymentModal(false)
-      setPendingPayment(null)
-      setProcessingPayment(false)
-    },
-    onError: () => {
-      setProcessingPayment(false)
-    }
-  })
-
-  const handlePayment = (claimId: string, guestEmail: string) => {
-    const currentGuestCount = (guestCounts?.[claimId] || 0) + 1 // +1 for the new guest
-    const amount = calculateDonationAmount(currentGuestCount)
-    
-    setPendingPayment({
-      claimId,
-      guestEmail,
-      amount,
-      guestCount: currentGuestCount
+  const handlePaymentSuccess = (paymentIntentId: string) => {
+    queryClient.invalidateQueries({ queryKey: ['shared-claims'] })
+    queryClient.invalidateQueries({ queryKey: ['guest-counts'] })
+    setShowPaymentModal(false)
+    setPaymentData(null)
+    setShowShareForm(false)
+    setShareData({
+      email: '',
+      permission: 'view',
+      can_view_evidence: false,
+      is_frozen: false,
+      is_muted: false
     })
-    setShowPaymentModal(true)
   }
 
-  const processPayment = () => {
-    if (!pendingPayment) return
-    processPaymentMutation.mutate({
-      claimId: pendingPayment.claimId,
-      guestEmail: pendingPayment.guestEmail,
-      amount: pendingPayment.amount
-    })
+  const handlePaymentError = (error: string) => {
+    console.error('Payment error:', error)
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!shareData.email.trim() || !claimToShare) return
     
-    // Calculate donation amount based on current guest count
-    const currentGuestCount = (guestCounts?.[claimToShare] || 0) + 1
-    const donationAmount = calculateDonationAmount(currentGuestCount)
-    
-    // If first guest (free), share directly. Otherwise, show payment modal
-    if (donationAmount === 0) {
-      shareClaimMutation.mutate({
-        ...shareData,
-        claim_id: claimToShare,
-        donation_amount: 0
-      })
-    } else {
-      // Show payment modal for paid guests
-      handlePayment(claimToShare, shareData.email)
-    }
+    shareClaimMutation.mutate({
+      ...shareData,
+      claim_id: claimToShare
+    })
   }
 
   const handleJoinClaim = (claimId: string) => {
@@ -738,81 +709,18 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
       )}
 
       {/* Payment Modal */}
-      {showPaymentModal && pendingPayment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Complete Payment</h3>
-              <button
-                onClick={() => setShowPaymentModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-                disabled={processingPayment}
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-medium text-gray-900 mb-2">Guest Access Payment</h4>
-                <div className="text-sm text-gray-600 space-y-1">
-                  <p>Claim: {pendingPayment.claimId}</p>
-                  <p>Guest Email: {pendingPayment.guestEmail}</p>
-                  <p>Total Guests: {pendingPayment.guestCount}</p>
-                  <p>Access Level: {shareData.permission === 'edit' ? 'View & Edit' : 'View Only'}</p>
-                  <p>Evidence Access: {shareData.can_view_evidence ? 'Yes' : 'No'}</p>
-                </div>
-              </div>
-              
-              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                <div className="flex items-center space-x-2">
-                  <DollarSign className="w-5 h-5 text-green-600" />
-                  <span className="text-lg font-semibold text-green-600">
-                    Payment Amount: £{pendingPayment.amount}
-                  </span>
-                </div>
-                <p className="text-sm text-green-700 mt-1">
-                  This payment supports app development and maintenance.
-                </p>
-              </div>
-              
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <h5 className="font-medium text-blue-900 mb-2">Payment Information</h5>
-                <p className="text-sm text-blue-800">
-                  Payment will be processed securely through Stripe and sent to the app owner. 
-                  For demonstration purposes, clicking "Process Payment" will simulate a successful payment.
-                </p>
-              </div>
-              
-              <div className="flex space-x-3">
-                <button
-                  onClick={processPayment}
-                  disabled={processingPayment}
-                  className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center space-x-2"
-                >
-                  {processingPayment ? (
-                    <>
-                      <Clock className="w-4 h-4 animate-spin" />
-                      <span>Processing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="w-4 h-4" />
-                      <span>Process Payment</span>
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => setShowPaymentModal(false)}
-                  disabled={processingPayment}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {showPaymentModal && paymentData && (
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          amount={paymentData.amount}
+          currency="gbp"
+          paymentType="guest_access"
+          claimId={paymentData.claimId}
+          guestEmail={paymentData.guestEmail}
+          onSuccess={handlePaymentSuccess}
+          onError={handlePaymentError}
+        />
       )}
 
       <div className="space-y-4">
