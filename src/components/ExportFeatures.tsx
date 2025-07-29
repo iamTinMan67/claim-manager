@@ -147,7 +147,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
       if (exportType === 'evidence') {
         pdf.setFontSize(10)
         pdf.setFont(undefined, 'bold')
-        pdf.text('EXHIBIT #', 20, yPosition, { align: 'center' })
+        pdf.text('EXHIBIT #', 17, yPosition, { align: 'center' })
         pdf.text('FILE NAME', 50, yPosition)
         pdf.text('METHOD', 100, yPosition, { align: 'center' })
         pdf.text('DATE', 130, yPosition, { align: 'center' })
