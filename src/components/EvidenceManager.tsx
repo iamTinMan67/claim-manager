@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { Upload, FileText, Link, Calendar, Hash, BookOpen, Eye, Trash2, Edit, Plus, Settings, GripVertical, X, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
 import { Evidence } from '@/types/database'
-import { format } from 'date-fns'
+import { Plus, Edit, Trash2, Upload, Download, Eye, X, Save, Settings, FileText, Calendar, Hash } from 'lucide-react'
 
 interface EvidenceManagerProps {
   selectedClaim: string | null
@@ -17,465 +16,149 @@ interface EvidenceManagerProps {
   onSetAmendMode?: (mode: boolean) => void
 }
 
-const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = false, isGuest = false, currentUserId, isGuestFrozen = false, onEditClaim, onDeleteClaim, onSetAmendMode }: EvidenceManagerProps) => {
+const EvidenceManager = ({ 
+  selectedClaim, 
+  claimColor = '#3B82F6', 
+  amendMode = false,
+  isGuest = false,
+  currentUserId,
+  isGuestFrozen = false,
+  onEditClaim,
+  onDeleteClaim,
+  onSetAmendMode
+}: EvidenceManagerProps) => {
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingEvidence, setEditingEvidence] = useState<Evidence | null>(null)
-  const [draggedItem, setDraggedItem] = useState<string | null>(null)
-  const [showClaimSwitcher, setShowClaimSwitcher] = useState(false)
-  const [uploadingFile, setUploadingFile] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [showCleanupDialog, setShowCleanupDialog] = useState(false)
-  const [showPendingEvidence, setShowPendingEvidence] = useState(false)
   const [newEvidence, setNewEvidence] = useState({
     file_name: '',
     file_url: '',
     exhibit_id: '',
     number_of_pages: '',
     date_submitted: '',
-    method: 'To-Do' as const,
+    method: 'Post',
     url_link: '',
     book_of_deeds_ref: '',
     case_number: selectedClaim || ''
   })
-  const [nextExhibitId, setNextExhibitId] = useState<string>('')
 
   const queryClient = useQueryClient()
 
-  // Calculate next exhibit ID when evidence data changes
-  useEffect(() => {
-    if (evidence && evidence.length > 0) {
-      // Find the highest exhibit ID number
-      const exhibitNumbers = evidence
-        .map(item => {
-          const match = item.exhibit_id?.match(/(\d+)/)
-          return match ? parseInt(match[1]) : 0
-        })
-        .filter(num => !isNaN(num))
-      
-      const maxExhibitNumber = exhibitNumbers.length > 0 ? Math.max(...exhibitNumbers) : 0
-      const nextNumber = maxExhibitNumber + 1
-      setNextExhibitId(`Exhibit ${nextNumber}`)
-    } else {
-      setNextExhibitId('Exhibit 1')
-    }
-  }, [evidence])
-
-  // Update newEvidence exhibit_id when nextExhibitId changes and form is shown
-  useEffect(() => {
-    if (showAddForm && nextExhibitId && !newEvidence.exhibit_id) {
-      setNewEvidence(prev => ({ ...prev, exhibit_id: nextExhibitId }))
-    }
-  }, [showAddForm, nextExhibitId])
-
-  // Get current user ID if not provided
-  const { data: currentUser } = useQuery({
-    queryKey: ['current-user'],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      return user
-    },
-    enabled: !currentUserId
-  })
-
-  const actualUserId = currentUserId || currentUser?.id
-
-  const { data: evidence, isLoading } = useQuery({
+  // Get evidence data
+  const { data: evidenceData, isLoading, error } = useQuery({
     queryKey: ['evidence', selectedClaim],
     queryFn: async () => {
-      console.log('Evidence query - selectedClaim:', selectedClaim)
-      
       let query = supabase
         .from('evidence')
         .select('*')
       
       if (selectedClaim) {
-        console.log('Filtering by case_number:', selectedClaim)
         query = query.eq('case_number', selectedClaim)
       }
       
       const { data, error } = await query
-        .order('display_order', { ascending: false, nullsLast: true })
-        .order('created_at', { ascending: false })
-      
-      console.log('Evidence query result:', { data, error, count: data?.length })
+        .order('display_order', { ascending: true, nullsLast: true })
+        .order('created_at', { ascending: true })
       
       if (error) throw error
-      
-      // Return evidence in descending order for management view
       return data as Evidence[]
     }
   })
 
-  // Query for pending evidence (for hosts to review)
-  const { data: pendingEvidence } = useQuery({
-    queryKey: ['pending-evidence', selectedClaim],
-    queryFn: async () => {
-      if (!selectedClaim) return []
-      
-      const { data, error } = await supabase
-        .from('pending_evidence')
-        .select(`
-          *,
-          profiles!submitter_id(email, full_name)
-        `)
-        .eq('claim_id', selectedClaim)
-        .order('submitted_at', { ascending: false })
-      
-      if (error) throw error
-      return data
-    },
-    enabled: !!selectedClaim && !isGuest
-  })
+  // Auto-populate exhibit ID when adding new evidence
+  useEffect(() => {
+    if (showAddForm && evidenceData) {
+      const getNextExhibitId = () => {
+        if (!evidenceData || evidenceData.length === 0) {
+          return 'Exhibit 1'
+        }
+        
+        // Extract numbers from existing exhibit IDs
+        const exhibitNumbers = evidenceData
+          .map(item => item.exhibit_id)
+          .filter(id => id && id.toLowerCase().includes('exhibit'))
+          .map(id => {
+            const match = id.match(/\d+/)
+            return match ? parseInt(match[0], 10) : 0
+          })
+          .filter(num => !isNaN(num))
+        
+        if (exhibitNumbers.length === 0) {
+          return 'Exhibit 1'
+        }
+        
+        const maxNumber = Math.max(...exhibitNumbers)
+        return `Exhibit ${maxNumber + 1}`
+      }
 
-  // Query for user's own pending submissions (for guests)
-  const { data: myPendingEvidence } = useQuery({
-    queryKey: ['my-pending-evidence', selectedClaim, actualUserId],
-    queryFn: async () => {
-      if (!selectedClaim || !actualUserId) return []
-      
-      const { data, error } = await supabase
-        .from('pending_evidence')
-        .select('*')
-        .eq('claim_id', selectedClaim)
-        .eq('submitter_id', actualUserId)
-        .order('submitted_at', { ascending: false })
-      
-      if (error) throw error
-      return data
-    },
-    enabled: !!selectedClaim && !!actualUserId && isGuest
-  })
-
-  const calculateBundleNumber = (evidenceList: Evidence[], currentIndex: number): number => {
-    let bundleNumber = 1
-    for (let i = 0; i < currentIndex; i++) {
-      const pages = evidenceList[i].number_of_pages || 1
-      bundleNumber += pages
+      setNewEvidence(prev => ({
+        ...prev,
+        exhibit_id: getNextExhibitId(),
+        case_number: selectedClaim || ''
+      }))
     }
-    return bundleNumber
-  }
-
-  const { data: claims } = useQuery({
-    queryKey: ['claims-for-evidence'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('claims')
-        .select('case_number, title')
-        .order('title')
-      
-      if (error) throw error
-      return data
-    }
-  })
-
-  // Get evidence counts per claim
-  const { data: evidenceCounts } = useQuery({
-    queryKey: ['evidence-counts'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('evidence')
-        .select('case_number')
-      
-      if (error) throw error
-      
-      // Count evidence per claim
-      const counts: { [key: string]: number } = {}
-      data.forEach(item => {
-        const key = item.case_number || 'unassociated'
-        counts[key] = (counts[key] || 0) + 1
-      })
-      
-      return counts
-    }
-  })
-
-  const handleFileUpload = async (file: File): Promise<string> => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('Not authenticated')
-
-    // Create a unique filename
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${user.id}/${Date.now()}.${fileExt}`
-
-    // Upload file to Supabase storage
-    const { data, error } = await supabase.storage
-      .from('evidence-files')
-      .upload(fileName, file)
-
-    if (error) throw error
-
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('evidence-files')
-      .getPublicUrl(fileName)
-
-    return publicUrl
-  }
+  }, [showAddForm, evidenceData, selectedClaim])
 
   const addEvidenceMutation = useMutation({
     mutationFn: async (evidenceData: typeof newEvidence) => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      let fileUrl = evidenceData.file_url
-
-      // Handle file upload if a file is selected
-      if (selectedFile) {
-        setUploadingFile(true)
-        try {
-          fileUrl = await handleFileUpload(selectedFile)
-        } catch (error) {
-          console.error('File upload error:', error)
-          throw new Error('Failed to upload file')
-        } finally {
-          setUploadingFile(false)
-        }
-      }
-
-      // If user is a guest, submit to pending_evidence table for approval
-      if (isGuest) {
-        const pendingData = {
-          submitter_id: user.id,
-          claim_id: evidenceData.case_number || selectedClaim,
-          file_name: evidenceData.file_name,
-          file_url: fileUrl,
-          exhibit_id: evidenceData.exhibit_id,
-          method: evidenceData.method,
-          url_link: evidenceData.url_link,
-          book_of_deeds_ref: evidenceData.book_of_deeds_ref,
-          number_of_pages: evidenceData.number_of_pages ? parseInt(evidenceData.number_of_pages) : null,
-          date_submitted: evidenceData.date_submitted || null,
-          status: 'pending'
-        }
-
-        const { data, error } = await supabase
-          .from('pending_evidence')
-          .insert([pendingData])
-          .select()
-          .single()
-
-        if (error) throw error
-        return data
-      }
-
-      const processedData = {
+      // Clean the data before submission
+      const cleanData = {
         ...evidenceData,
-        file_url: fileUrl,
         user_id: user.id,
-        case_number: todo.case_number || null
+        case_number: evidenceData.case_number || null,
+        number_of_pages: evidenceData.number_of_pages ? parseInt(evidenceData.number_of_pages) : null,
+        date_submitted: evidenceData.date_submitted || null
       }
 
       const { data, error } = await supabase
         .from('evidence')
-        .insert([processedData])
+        .insert([cleanData])
         .select()
         .single()
 
       if (error) throw error
-
-      // If method is "To-Do" and date_submitted is not empty and >= today, create a todo task
-      if (evidenceData.method === 'To-Do' && evidenceData.date_submitted) {
-        const submittedDate = new Date(evidenceData.date_submitted)
-        const today = new Date()
-        today.setHours(0, 0, 0, 0) // Reset time to start of day for comparison
-        
-        if (submittedDate >= today) {
-          // Create a todo task
-          const todoData = {
-            user_id: user.id,
-            title: `Evidence Task: ${evidenceData.file_name}`,
-            description: `Complete evidence task for ${evidenceData.file_name}${evidenceData.case_number ? ` (Case: ${evidenceData.case_number})` : ''}`,
-            due_date: `${evidenceData.date_submitted}T09:00:00`, // Set to 9 AM on the date
-            priority: 'medium',
-            alarm_enabled: true,
-            alarm_time: `${evidenceData.date_submitted}T08:00:00`, // Set alarm 1 hour before
-            case_number: evidenceData.case_number || null
-          }
-
-          const { error: todoError } = await supabase
-            .from('todos')
-            .insert([todoData])
-
-          if (todoError) {
-            console.error('Error creating todo task:', todoError)
-            // Don't throw error here as evidence was created successfully
-          }
-        }
-      }
-
       return data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evidence'] })
-      queryClient.invalidateQueries({ queryKey: ['pending-evidence'] })
-      queryClient.invalidateQueries({ queryKey: ['my-pending-evidence'] })
-      queryClient.invalidateQueries({ queryKey: ['todos'] }) // Refresh todos in case a new task was created
-      
-      // After adding new evidence, renumber all exhibits to maintain sequential order
-      setTimeout(() => {
-        moveEvidenceMutation.mutate()
-      }, 100)
-      
       setShowAddForm(false)
-      setSelectedFile(null)
-      resetForm()
-    }
-  })
-
-  const approvePendingEvidenceMutation = useMutation({
-    mutationFn: async ({ id, reviewerNotes }: { id: string, reviewerNotes?: string }) => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
-
-      // Get the pending evidence
-      const { data: pending, error: fetchError } = await supabase
-        .from('pending_evidence')
-        .select('*')
-        .eq('id', id)
-        .single()
-
-      if (fetchError) throw fetchError
-
-      // Move to main evidence table
-      const evidenceData = {
-        user_id: user.id, // Host takes legal responsibility
-        case_number: evidence.case_number || null,
-        date_submitted: evidence.date_submitted && evidence.date_submitted.trim() !== '' ? evidence.date_submitted : null
-        case_number: evidence.case_number || null,
-        date_submitted: evidence.date_submitted && evidence.date_submitted.trim() !== '' ? evidence.date_submitted : null
-        exhibit_id: pending.exhibit_id,
-        method: pending.method,
-        url_link: pending.url_link,
-        book_of_deeds_ref: pending.book_of_deeds_ref,
-        number_of_pages: pending.number_of_pages,
-        date_submitted: pending.date_submitted,
-        case_number: pending.claim_id
-      }
-
-      const { data: newEvidence, error: insertError } = await supabase
-        .from('evidence')
-        .insert([evidenceData])
-        .select()
-        .single()
-
-      if (insertError) throw insertError
-
-      // Update pending evidence status
-      const { error: updateError } = await supabase
-        .from('pending_evidence')
-        .update({
-          status: 'approved',
-          reviewed_at: new Date().toISOString(),
-          reviewer_notes: reviewerNotes
-        })
-        .eq('id', id)
-
-      if (updateError) throw updateError
-
-      return newEvidence
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evidence'] })
-      queryClient.invalidateQueries({ queryKey: ['pending-evidence'] })
-    }
-  })
-
-  const rejectPendingEvidenceMutation = useMutation({
-    mutationFn: async ({ id, reviewerNotes }: { id: string, reviewerNotes: string }) => {
-      const { error } = await supabase
-        .from('pending_evidence')
-        .update({
-          status: 'rejected',
-          reviewed_at: new Date().toISOString(),
-          reviewer_notes: reviewerNotes
-        })
-        .eq('id', id)
-
-      if (error) throw error
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pending-evidence'] })
-    }
-  })
-
-  const deletePendingEvidenceMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('pending_evidence')
-        .delete()
-        .eq('id', id)
-
-      if (error) throw error
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pending-evidence'] })
-      queryClient.invalidateQueries({ queryKey: ['my-pending-evidence'] })
+      setNewEvidence({
+        file_name: '',
+        file_url: '',
+        exhibit_id: '',
+        number_of_pages: '',
+        date_submitted: '',
+        method: 'Post',
+        url_link: '',
+        book_of_deeds_ref: '',
+        case_number: selectedClaim || ''
+      })
     }
   })
 
   const updateEvidenceMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string, data: Partial<Evidence> }) => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
-
-      const processedData = {
+      // Clean the data before submission
+      const cleanData = {
         ...data,
-        number_of_pages: data.number_of_pages ? parseInt(data.number_of_pages.toString()) : null
+        number_of_pages: data.number_of_pages ? parseInt(String(data.number_of_pages)) : null,
+        date_submitted: data.date_submitted || null
       }
 
       const { data: result, error } = await supabase
         .from('evidence')
-        .update(processedData)
+        .update(cleanData)
         .eq('id', id)
         .select()
         .single()
 
       if (error) throw error
-
-      // If method is "To-Do" and date_submitted is not empty and >= today, create a todo task
-      if (data.method === 'To-Do' && data.date_submitted) {
-        const submittedDate = new Date(data.date_submitted)
-        const today = new Date()
-        today.setHours(0, 0, 0, 0) // Reset time to start of day for comparison
-        
-        if (submittedDate >= today) {
-          // Check if a todo already exists for this evidence
-          const { data: existingTodos } = await supabase
-            .from('todos')
-            .select('id')
-            .eq('title', `Evidence Task: ${data.file_name || result.file_name}`)
-            .eq('user_id', user.id)
-
-          if (!existingTodos || existingTodos.length === 0) {
-            // Create a todo task
-            const todoData = {
-              user_id: user.id,
-              title: `Evidence Task: ${data.file_name || result.file_name}`,
-              description: `Complete evidence task for ${data.file_name || result.file_name}${data.case_number ? ` (Case: ${data.case_number})` : ''}`,
-              due_date: `${data.date_submitted}T09:00:00`, // Set to 9 AM on the date
-              priority: 'medium',
-              alarm_enabled: true,
-              alarm_time: `${data.date_submitted}T08:00:00`, // Set alarm 1 hour before
-              case_number: data.case_number || result.case_number || null
-            }
-
-            const { error: todoError } = await supabase
-              .from('todos')
-              .insert([todoData])
-
-            if (todoError) {
-              console.error('Error creating todo task:', todoError)
-              // Don't throw error here as evidence was updated successfully
-            }
-          }
-        }
-      }
-
       return result
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evidence'] })
-      queryClient.invalidateQueries({ queryKey: ['todos'] }) // Refresh todos in case a new task was created
       setEditingEvidence(null)
     }
   })
@@ -494,267 +177,10 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
     }
   })
 
-  const unassociateEvidenceMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { data, error } = await supabase
-        .from('evidence')
-        .update({ case_number: null })
-        .eq('id', id)
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evidence'] })
-      queryClient.invalidateQueries({ queryKey: ['evidence-counts'] })
-      queryClient.invalidateQueries({ queryKey: ['evidence', selectedClaim] })
-      queryClient.invalidateQueries({ queryKey: ['evidence', null] }) // Also refresh "all evidence" view
-    }
-  })
-
-  const moveEvidenceMutation = useMutation({
-    mutationFn: async () => {
-      // Get all evidence for the current claim (or all evidence if no claim selected)
-      let query = supabase
-        .from('evidence')
-        .select('*')
-      
-      if (selectedClaim) {
-        query = query.eq('case_number', selectedClaim)
-      }
-      
-      const { data: currentEvidence, error: fetchError } = await query
-        .order('display_order', { ascending: true, nullsLast: true })
-        .order('created_at', { ascending: true })
-      
-      if (fetchError) throw fetchError
-      if (!currentEvidence) return []
-
-      // Update all evidence items with sequential exhibit numbers based on their current order
-      const updates = currentEvidence.map((item, index) => {
-        const newExhibitNumber = index + 1
-        return {
-          id: item.id,
-          exhibit_id: `${newExhibitNumber}`,
-          display_order: newExhibitNumber
-        }
-      })
-
-      // Perform batch update
-      const promises = updates.map(update => 
-        supabase
-          .from('evidence')
-          .update({ exhibit_id: update.exhibit_id, display_order: update.display_order })
-          .eq('id', update.id)
-      )
-
-      const results = await Promise.all(promises)
-      const errors = results.filter(result => result.error)
-      if (errors.length > 0) {
-        throw errors[0].error
-      }
-
-      return results
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evidence'] })
-    }
-  })
-
-  const handleDragStart = (e: React.DragEvent, id: string) => {
-    setDraggedItem(id)
-    e.dataTransfer.effectAllowed = 'move'
-  }
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-  }
-
-  const handleDrop = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault()
-    if (!draggedItem || !evidence || draggedItem === targetId) return
-
-    const draggedIndex = evidence.findIndex(item => item.id === draggedItem)
-    const targetIndex = evidence.findIndex(item => item.id === targetId)
-    
-    if (draggedIndex === -1 || targetIndex === -1) return
-
-    // Create new array with reordered items
-    const newEvidenceList = [...evidence]
-    const [movedItem] = newEvidenceList.splice(draggedIndex, 1)
-    newEvidenceList.splice(targetIndex, 0, movedItem)
-    
-    // Update display order for all items based on new positions
-    const updates = newEvidenceList.map((item, index) => ({
-      id: item.id,
-      display_order: index + 1,
-      exhibit_id: `${index + 1}`
-    }))
-
-    // Perform batch update
-    const updatePromises = updates.map(update => 
-      supabase
-        .from('evidence')
-        .update({ display_order: update.display_order, exhibit_id: update.exhibit_id })
-        .eq('id', update.id)
-    )
-
-    Promise.all(updatePromises).then(() => {
-      queryClient.invalidateQueries({ queryKey: ['evidence'] })
-    })
-    
-    setDraggedItem(null)
-  }
-
-  const handleDragEnd = () => {
-    setDraggedItem(null)
-  }
-
-  const associateEvidenceMutation = useMutation({
-    mutationFn: async ({ evidenceId, caseNumber }: { evidenceId: string, caseNumber: string }) => {
-      const { data, error } = await supabase
-        .from('evidence')
-        .update({ case_number: caseNumber })
-        .eq('id', evidenceId)
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evidence'] })
-    }
-  })
-
-  const associateAllEvidenceMutation = useMutation({
-    mutationFn: async ({ caseNumber }: { caseNumber: string }) => {
-      // Get all evidence items that are not associated with any claim
-      const unassociatedEvidence = evidence?.filter(item => !item.case_number) || []
-      
-      if (unassociatedEvidence.length === 0) return []
-
-      // Update all unassociated evidence to be associated with the current claim
-      const updates = unassociatedEvidence.map(item => 
-        supabase
-          .from('evidence')
-          .update({ case_number: caseNumber })
-          .eq('id', item.id)
-      )
-
-      const results = await Promise.all(updates)
-      const errors = results.filter(result => result.error)
-      if (errors.length > 0) {
-        throw errors[0].error
-      }
-
-      return results
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evidence'] })
-    }
-  })
-
-  const removeAllEvidenceFromClaimMutation = useMutation({
-    mutationFn: async (claimNumber: string) => {
-      // Update all evidence items associated with this claim to have null case_number
-      const { data, error } = await supabase
-        .from('evidence')
-        .update({ case_number: null })
-        .eq('case_number', claimNumber)
-        .select()
-
-      if (error) throw error
-      return data
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['evidence'] })
-      queryClient.invalidateQueries({ queryKey: ['evidence-counts'] })
-      console.log(`Removed ${data.length} evidence items from claim`)
-    }
-  })
-
-  const oldMoveEvidenceMutation = useMutation({
-    mutationFn: async ({ id, newOrder }: { id: string, newOrder: number }) => {
-      const { data, error } = await supabase
-        .from('evidence')
-        .update({ display_order: newOrder })
-        .eq('id', id)
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evidence'] })
-    }
-  })
-
-  const handleAssociateWithClaim = (evidenceId: string) => {
-    if (selectedClaim) {
-      associateEvidenceMutation.mutate({ 
-        evidenceId, 
-        caseNumber: selectedClaim 
-      })
-    }
-  }
-
-  const handleAssociateAllWithClaim = () => {
-    if (selectedClaim) {
-      associateAllEvidenceMutation.mutate({ 
-        caseNumber: selectedClaim 
-      })
-    }
-  }
-
-  const handleRemoveAllFromClaim = (claimNumber: string) => {
-    if (window.confirm(`Are you sure you want to remove ALL evidence from claim ${claimNumber}? This will unassociate all evidence items from this claim.`)) {
-      removeAllEvidenceFromClaimMutation.mutate(claimNumber)
-    }
-  }
-
-  const handleAddClick = () => {
-    setShowAddForm(true)
-    setNewEvidence(prev => ({ 
-      ...prev, 
-      exhibit_id: nextExhibitId,
-      case_number: selectedClaim || ''
-    }))
-  }
-
-  const resetForm = () => {
-    setSelectedFile(null)
-    
-    // Calculate next exhibit number
-    const nextExhibitNumber = evidence && evidence.length > 0 
-      ? Math.max(...evidence.filter(e => e.exhibit_id).map(e => parseInt(e.exhibit_id || '0'))) + 1 
-      : 1
-    
-    setNewEvidence({
-      file_name: '',
-      file_url: '',
-      exhibit_id: nextExhibitId,
-      number_of_pages: '',
-      date_submitted: '',
-      method: 'To-Do',
-      url_link: '',
-      book_of_deeds_ref: '',
-      case_number: selectedClaim || ''
-    })
-  }
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newEvidence.file_name.trim()) return
+    if (!newEvidence.file_name.trim() && !newEvidence.url_link.trim()) return
     addEvidenceMutation.mutate(newEvidence)
-  }
-
-  const handleEdit = (evidence: Evidence) => {
-    setEditingEvidence(evidence)
   }
 
   const handleUpdate = (e: React.FormEvent) => {
@@ -766,19 +192,20 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
     })
   }
 
-  const getMethodIcon = (method?: string) => {
-    switch (method) {
-      case 'Post': return <FileText className="w-4 h-4" />
-      case 'Email': return <FileText className="w-4 h-4" />
-      case 'Hand': return <FileText className="w-4 h-4" />
-      case 'Call': return <FileText className="w-4 h-4" />
-      case 'To-Do': return <FileText className="w-4 h-4" />
-      default: return <FileText className="w-4 h-4" />
-    }
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-gray-600">Loading evidence...</div>
+      </div>
+    )
   }
 
-  if (isLoading) {
-    return <div className="flex justify-center p-8">Loading evidence...</div>
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="text-red-800">Error loading evidence: {error.message}</div>
+      </div>
+    )
   }
 
   return (
@@ -786,37 +213,27 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Evidence Management</h2>
         <div className="flex items-center space-x-3">
+          {onSetAmendMode && (
+            <button
+              onClick={() => onSetAmendMode(!amendMode)}
+              className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
+                amendMode 
+                  ? 'bg-orange-600 text-white hover:bg-orange-700' 
+                  : 'bg-gray-600 text-white hover:bg-gray-700'
+              }`}
+            >
+              <Settings className="w-4 h-4" />
+              <span>{amendMode ? 'Exit Amend Mode' : 'Amend Mode'}</span>
+            </button>
+          )}
           {(!isGuest || !isGuestFrozen) && (
             <button
-              onClick={handleAddClick}
+              onClick={() => setShowAddForm(true)}
               className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
               style={{ backgroundColor: claimColor }}
             >
               <Plus className="w-4 h-4" />
-              <span>Add Info</span>
-            </button>
-          )}
-          {!isGuest && pendingEvidence && pendingEvidence.length > 0 && (
-            <button
-              onClick={() => setShowPendingEvidence(!showPendingEvidence)}
-              className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center space-x-2"
-            >
-              <AlertTriangle className="w-4 h-4" />
-              <span>Review Pending ({pendingEvidence.length})</span>
-            </button>
-          )}
-          {!isGuest && (
-            <button
-              onClick={() => onSetAmendMode?.(!amendMode)}
-              className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
-                amendMode 
-                  ? 'text-red-600 bg-red-100 hover:bg-red-200' 
-                  : 'text-white hover:opacity-90'
-              }`}
-              style={{ backgroundColor: claimColor }}
-            >
-              <Settings className="w-4 h-4" />
-              <span>{amendMode ? 'Exit Amend' : 'Amend'}</span>
+              <span>Add Evidence</span>
             </button>
           )}
           {isGuest && isGuestFrozen && (
@@ -832,269 +249,39 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
         </div>
       </div>
 
-      {/* Show banner if there are unassociated evidence items when a claim is selected */}
-      {selectedClaim && evidence && evidence.some(item => !item.case_number) && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex justify-between items-center">
-          <div>
-            <p className="text-yellow-800 font-medium">
-              {evidence.filter(item => !item.case_number).length} evidence items are not associated with any claim.
-            </p>
-            <p className="text-yellow-700 text-sm mt-1">
-              You can associate them individually or all at once with the current claim.
-            </p>
-          </div>
-          <button
-            onClick={handleAssociateAllWithClaim}
-            disabled={associateAllEvidenceMutation.isPending}
-            className="text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center space-x-2"
-            style={{ backgroundColor: claimColor }}
-          >
-            <span>
-              {associateAllEvidenceMutation.isPending 
-                ? 'Associating All...' 
-                : `Associate All with ${selectedClaim}`
-              }
-            </span>
-          </button>
-        </div>
-      )}
-
-      {/* Pending Evidence Review Section (for hosts) */}
-      {!isGuest && showPendingEvidence && pendingEvidence && pendingEvidence.length > 0 && (
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-orange-900 mb-4">
-            Pending Evidence Submissions - Awaiting Your Approval
-          </h3>
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-            <div className="flex items-center space-x-2">
-              <AlertTriangle className="w-5 h-5 text-yellow-600" />
-              <span className="font-medium text-yellow-900">Legal Responsibility Notice</span>
-            </div>
-            <p className="text-yellow-800 text-sm mt-2">
-              By approving evidence submissions, you accept full legal responsibility for the content. 
-              Only approve evidence that you have verified and are comfortable taking legal responsibility for.
-            </p>
-          </div>
-          <div className="space-y-4">
-            {pendingEvidence.map((pending) => (
-              <div key={pending.id} className="bg-white p-4 rounded-lg border border-orange-300">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <Clock className="w-4 h-4 text-orange-600" />
-                      <h4 className="font-medium">{pending.file_name}</h4>
-                      <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
-                        {pending.status}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm text-gray-600 mb-2">
-                      <div>Submitted by: {pending.profiles?.email}</div>
-                      <div>Method: {pending.method}</div>
-                      <div>Exhibit ID: {pending.exhibit_id || 'N/A'}</div>
-                      <div>Pages: {pending.number_of_pages || 'N/A'}</div>
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      Submitted: {format(new Date(pending.submitted_at), 'MMM d, yyyy h:mm a')}
-                    </div>
-                    {pending.file_url && (
-                      <div className="mt-2">
-                        <a
-                          href={pending.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 text-sm flex items-center space-x-1"
-                        >
-                          <Eye className="w-4 h-4" />
-                          <span>Preview File</span>
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => {
-                        const notes = prompt('Optional approval notes:')
-                        if (notes !== null) {
-                          approvePendingEvidenceMutation.mutate({ id: pending.id, reviewerNotes: notes })
-                        }
-                      }}
-                      className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 flex items-center space-x-1"
-                    >
-                      <CheckCircle className="w-3 h-3" />
-                      <span>Approve</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        const notes = prompt('Rejection reason (required):')
-                        if (notes && notes.trim()) {
-                          rejectPendingEvidenceMutation.mutate({ id: pending.id, reviewerNotes: notes })
-                        }
-                      }}
-                      className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 flex items-center space-x-1"
-                    >
-                      <XCircle className="w-3 h-3" />
-                      <span>Reject</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (window.confirm('Delete this pending submission?')) {
-                          deletePendingEvidenceMutation.mutate(pending.id)
-                        }
-                      }}
-                      className="text-gray-600 hover:text-gray-800 p-1"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Guest's Pending Submissions */}
-      {isGuest && myPendingEvidence && myPendingEvidence.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-4">
-            Your Pending Submissions
-          </h3>
-          <div className="space-y-3">
-            {myPendingEvidence.map((pending) => (
-              <div key={pending.id} className="bg-white p-3 rounded border border-blue-300 flex justify-between items-center">
-                <div>
-                  <div className="flex items-center space-x-2">
-                    <Clock className="w-4 h-4 text-blue-600" />
-                    <span className="font-medium">{pending.file_name}</span>
-                    <span className={`text-xs px-2 py-1 rounded ${
-                      pending.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      pending.status === 'approved' ? 'bg-green-100 text-green-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {pending.status}
-                    </span>
-                  </div>
-                  <div className="text-sm text-gray-600 mt-1">
-                    Submitted: {format(new Date(pending.submitted_at), 'MMM d, yyyy h:mm a')}
-                    {pending.reviewed_at && (
-                      <span className="ml-4">
-                        Reviewed: {format(new Date(pending.reviewed_at), 'MMM d, yyyy h:mm a')}
-                      </span>
-                    )}
-                  </div>
-                  {pending.reviewer_notes && (
-                    <div className="text-sm text-gray-700 mt-1">
-                      <strong>Notes:</strong> {pending.reviewer_notes}
-                    </div>
-                  )}
-                </div>
-                {pending.status === 'pending' && (
-                  <button
-                    onClick={() => {
-                      if (window.confirm('Delete this pending submission?')) {
-                        deletePendingEvidenceMutation.mutate(pending.id)
-                      }
-                    }}
-                    className="text-red-600 hover:text-red-800 p-1"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {(!isGuest || !isGuestFrozen) && showAddForm && (
+      {showAddForm && (!isGuest || !isGuestFrozen) && (
         <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
-          <h3 className="text-lg font-semibold mb-4">
-            {isGuest ? 'Submit Evidence for Approval' : 'Add New Evidence'}
-          </h3>
-          {isGuest && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-              <div className="flex items-center space-x-2">
-                <AlertTriangle className="w-4 h-4 text-yellow-600" />
-                <span className="font-medium text-yellow-900">Approval Required</span>
-              </div>
-              <p className="text-yellow-800 text-sm mt-1">
-                Your evidence submission will be sent to the claim owner for review and approval. 
-                The claim owner accepts legal responsibility for all approved content.
-              </p>
-            </div>
-          )}
+          <h3 className="text-lg font-semibold mb-4">Add New Evidence</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Upload PDF Document</label>
-              <div className="flex items-center space-x-3">
-                <input
-                  type="file"
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (file) {
-                      setSelectedFile(file)
-                      // Auto-fill filename if empty
-                      if (!newEvidence.file_name) {
-                        // Remove file extension from filename
-                        const nameWithoutExtension = file.name.replace(/\.[^/.]+$/, '')
-                        setNewEvidence({ ...newEvidence, file_name: nameWithoutExtension })
-                      }
-                    }
-                  }}
-                  className="flex-1 border rounded-lg px-3 py-2"
-                />
-                {selectedFile && (
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-green-600">✓ {selectedFile.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedFile(null)}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Upload a PDF, Word document, or image file. This will be stored securely and accessible via a link.
-              </p>
-            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">File Name *</label>
+                <label className="block text-sm font-medium mb-1">File Name</label>
                 <input
                   type="text"
                   value={newEvidence.file_name}
                   onChange={(e) => setNewEvidence({ ...newEvidence, file_name: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2"
-                  required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">File URL (or upload above)</label>
+                <label className="block text-sm font-medium mb-1">File URL</label>
                 <input
                   type="url"
                   value={newEvidence.file_url}
                   onChange={(e) => setNewEvidence({ ...newEvidence, file_url: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2"
-                  placeholder="Enter URL or upload file above"
                 />
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Exhibit ID</label>
-                <div className="text-xs text-gray-500 mb-1">
-                  Auto-populated with next sequential number. You can edit this if needed.
-                </div>
                 <input
                   type="text"
                   value={newEvidence.exhibit_id}
                   onChange={(e) => setNewEvidence({ ...newEvidence, exhibit_id: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2 bg-blue-50"
-                  placeholder={nextExhibitId}
+                  placeholder="Auto-generated"
                 />
               </div>
               <div>
@@ -1107,22 +294,6 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Method</label>
-                <select
-                  value={newEvidence.method}
-                  onChange={(e) => setNewEvidence({ ...newEvidence, method: e.target.value as any })}
-                  className="w-full border rounded-lg px-3 py-2"
-                >
-                  <option value="Post">Post</option>
-                  <option value="Email">Email</option>
-                  <option value="Hand">Hand</option>
-                  <option value="Call">Call</option>
-                  <option value="To-Do">To-Do</option>
-                </select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
                 <label className="block text-sm font-medium mb-1">Date Submitted</label>
                 <input
                   type="date"
@@ -1131,31 +302,30 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
                   className="w-full border rounded-lg px-3 py-2"
                 />
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Associated Claim</label>
+                <label className="block text-sm font-medium mb-1">Method</label>
                 <select
-                  value={selectedClaim || newEvidence.case_number}
-                  onChange={(e) => setNewEvidence({ ...newEvidence, case_number: e.target.value })}
+                  value={newEvidence.method}
+                  onChange={(e) => setNewEvidence({ ...newEvidence, method: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2"
-                  disabled={!!selectedClaim}
                 >
-                  <option value="">Select a claim...</option>
-                  {claims?.map((claim) => (
-                    <option key={claim.case_number} value={claim.case_number}>
-                      {claim.case_number} - {claim.title}
-                    </option>
-                  ))}
+                  <option value="Post">Post</option>
+                  <option value="Email">Email</option>
+                  <option value="Hand">Hand</option>
+                  <option value="Call">Call</option>
                 </select>
               </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">URL Link</label>
-              <input
-                type="url"
-                value={newEvidence.url_link}
-                onChange={(e) => setNewEvidence({ ...newEvidence, url_link: e.target.value })}
-                className="w-full border rounded-lg px-3 py-2"
-              />
+              <div>
+                <label className="block text-sm font-medium mb-1">URL Link</label>
+                <input
+                  type="url"
+                  value={newEvidence.url_link}
+                  onChange={(e) => setNewEvidence({ ...newEvidence, url_link: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2"
+                />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Book of Deeds Reference</label>
@@ -1169,13 +339,11 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
             <div className="flex space-x-3">
               <button
                 type="submit"
-                disabled={addEvidenceMutation.isPending || uploadingFile}
+                disabled={addEvidenceMutation.isPending}
                 className="text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50"
                 style={{ backgroundColor: claimColor }}
               >
-                {uploadingFile ? 'Uploading...' : 
-                 addEvidenceMutation.isPending ? (isGuest ? 'Submitting...' : 'Adding...') : 
-                 (isGuest ? 'Submit for Approval' : 'Add Evidence')}
+                {addEvidenceMutation.isPending ? 'Adding...' : 'Add Evidence'}
               </button>
               <button
                 type="button"
@@ -1189,19 +357,18 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
         </div>
       )}
 
-      {(!isGuest || (editingEvidence && editingEvidence.user_id === actualUserId)) && !isGuestFrozen && editingEvidence && (
+      {editingEvidence && (
         <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4">Edit Evidence</h3>
           <form onSubmit={handleUpdate} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">File Name *</label>
+                <label className="block text-sm font-medium mb-1">File Name</label>
                 <input
                   type="text"
                   value={editingEvidence.file_name || ''}
                   onChange={(e) => setEditingEvidence({ ...editingEvidence, file_name: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2"
-                  required
                 />
               </div>
               <div>
@@ -1234,22 +401,6 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Method</label>
-                <select
-                  value={editingEvidence.method || 'Post'}
-                  onChange={(e) => setEditingEvidence({ ...editingEvidence, method: e.target.value as any })}
-                  className="w-full border rounded-lg px-3 py-2"
-                >
-                  <option value="Post">Post</option>
-                  <option value="Email">Email</option>
-                  <option value="Hand">Hand</option>
-                  <option value="Call">Call</option>
-                  <option value="To-Do">To-Do</option>
-                </select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
                 <label className="block text-sm font-medium mb-1">Date Submitted</label>
                 <input
                   type="date"
@@ -1257,6 +408,21 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
                   onChange={(e) => setEditingEvidence({ ...editingEvidence, date_submitted: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2"
                 />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Method</label>
+                <select
+                  value={editingEvidence.method || 'Post'}
+                  onChange={(e) => setEditingEvidence({ ...editingEvidence, method: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2"
+                >
+                  <option value="Post">Post</option>
+                  <option value="Email">Email</option>
+                  <option value="Hand">Hand</option>
+                  <option value="Call">Call</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">URL Link</label>
@@ -1298,158 +464,96 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
         </div>
       )}
 
-      <div className="grid gap-4">
-        {evidence && evidence.length > 0 ? evidence.map((item, index) => (
-          <div 
-            key={item.id} 
-            className={`bg-white p-6 rounded-lg shadow border-l-4 transition-all ${
-              amendMode ? 'cursor-move hover:shadow-lg' : ''
-            } ${draggedItem === item.id ? 'opacity-50' : ''}`}
-            style={{ borderLeftColor: claimColor }}
-            draggable={amendMode}
-            onDragStart={(e) => handleDragStart(e, item.id)}
-            onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, item.id)}
-            onDragEnd={handleDragEnd}
-          >
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <div className="flex items-center space-x-2 mb-2">
-                  {amendMode && (
-                    <GripVertical className="w-4 h-4 text-gray-400" />
-                  )}
-                  {getMethodIcon(item.method)}
-                  <h3 className="text-lg font-semibold">{item.file_name}</h3>
-                </div>
-                <div className="grid grid-cols-5 gap-4 text-sm text-gray-600 mb-3">
-                  <div className="flex items-center space-x-1">
-                    <Hash className="w-4 h-4" />
-                    {item.file_url ? (
-                      <a
-                        href={item.file_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-bold underline hover:opacity-80"
-                        style={{ color: claimColor }}
-                      >
-                        Exhibit {item.exhibit_id || 'N/A'}
-                      </a>
-                    ) : (
-                      <span className="font-bold">Exhibit {item.exhibit_id || 'N/A'}</span>
-                    )}
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <span className="font-medium">Pages:</span>
-                    <span>{item.number_of_pages || 'N/A'}</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <span className="font-medium">Method:</span>
-                    <span>{item.method || 'N/A'}</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <span className="font-medium">Bundle #:</span>
-                    <span>{calculateBundleNumber(evidence, index)}</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <Calendar className="w-4 h-4" />
-                    <span>{item.date_submitted ? new Date(item.date_submitted).toLocaleDateString() : 'N/A'}</span>
-                  </div>
-                </div>
-                {item.book_of_deeds_ref && (
-                  <div className="mt-2 flex items-center space-x-1 text-sm text-gray-600">
-                    <BookOpen className="w-4 h-4" />
-                    <span>Book of Deeds: {item.book_of_deeds_ref}</span>
-                  </div>
-                )}
-                {item.url_link && (
-                  <div className="mt-2">
-                    <a
-                      href={item.url_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-sm"
-                    >
-                      <Link className="w-4 h-4" />
-                      <span>View Link</span>
-                    </a>
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center space-x-2">
-                {item.file_url && (
-                  <a
-                    href={item.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2 hover:opacity-80"
-                    style={{ color: claimColor }}
-                  >
-                    <Eye className="w-4 h-4" />
-                  </a>
-                )}
-                <button
-                  onClick={() => {
-                    if (isGuest && isGuestFrozen) {
-                      alert('Your access has been frozen by the claim owner.')
-                      return
-                    }
-                    
-                    if (isGuest && item.user_id !== actualUserId) {
-                      alert('You can only delete evidence that you created.')
-                      return
-                    }
-                    
-                    if (selectedClaim) {
-                      // Remove from current claim only
-                      if (window.confirm(`Remove this evidence from claim ${selectedClaim}? The evidence will not be deleted, just unassociated from this claim.`)) {
-                        unassociateEvidenceMutation.mutate(item.id)
-                      }
-                    } else {
-                      // Permanent delete when viewing all evidence
-                      if (window.confirm('Are you sure you want to permanently delete this evidence? This cannot be undone.')) {
-                        deleteEvidenceMutation.mutate(item.id)
-                      }
-                    }
-                  }}
-                  className={`p-2 ${
-                    (isGuest && (isGuestFrozen || item.user_id !== actualUserId))
-                      ? 'text-gray-400 cursor-not-allowed'
-                      : selectedClaim 
-                        ? 'text-orange-600 hover:text-orange-800' 
-                        : 'text-red-600 hover:text-red-800'
-                  }`}
-                  title={
-                    isGuest && isGuestFrozen
-                      ? 'Access frozen by claim owner'
-                      : isGuest && item.user_id !== actualUserId
-                        ? 'You can only delete your own evidence'
-                      : selectedClaim 
-                        ? 'Remove from current claim' 
-                        : 'Delete evidence permanently'
-                  }
-                  disabled={isGuest && (isGuestFrozen || item.user_id !== actualUserId)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-                {(!isGuest || item.user_id === actualUserId) && !isGuestFrozen && (
-                  <>
-                    <button
-                      onClick={() => handleEdit(item)}
-                      className="text-gray-600 hover:text-gray-800 p-2"
-                      title="Edit evidence"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        )) : (
-          <div className="text-center py-8 text-gray-500">
-            {isLoading ? 'Loading evidence...' : 'No evidence found. Add your first piece of evidence to get started!'}
-          </div>
-        )}
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">Evidence List</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  File Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Method
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Pages
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Date Submitted
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Bundle #
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {evidenceData && evidenceData.length > 0 ? (
+                evidenceData.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {item.file_name || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {item.method || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {item.number_of_pages || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {item.date_submitted ? new Date(item.date_submitted).toLocaleDateString() : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {item.exhibit_id || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        {item.file_url && (
+                          <button
+                            onClick={() => window.open(item.file_url, '_blank')}
+                            className="text-blue-600 hover:text-blue-900"
+                            title="View file"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        )}
+                        {amendMode && (!isGuest || !isGuestFrozen) && (
+                          <button
+                            onClick={() => setEditingEvidence(item)}
+                            className="text-indigo-600 hover:text-indigo-900"
+                            title="Edit evidence"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                        )}
+                        {(!isGuest || !isGuestFrozen) && (
+                          <button
+                            onClick={() => deleteEvidenceMutation.mutate(item.id)}
+                            className="text-red-600 hover:text-red-900"
+                            title="Delete evidence"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                    No evidence found. Add some evidence to get started!
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   )
