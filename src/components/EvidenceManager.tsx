@@ -262,8 +262,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
         ...evidenceData,
         file_url: fileUrl,
         user_id: user.id,
-        number_of_pages: evidenceData.number_of_pages ? parseInt(evidenceData.number_of_pages) : null,
-        case_number: evidenceData.case_number || null
+        case_number: todo.case_number || null
       }
 
       const { data, error } = await supabase
@@ -340,8 +339,10 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
       // Move to main evidence table
       const evidenceData = {
         user_id: user.id, // Host takes legal responsibility
-        file_name: pending.file_name,
-        file_url: pending.file_url,
+        case_number: evidence.case_number || null,
+        date_submitted: evidence.date_submitted && evidence.date_submitted.trim() !== '' ? evidence.date_submitted : null
+        case_number: evidence.case_number || null,
+        date_submitted: evidence.date_submitted && evidence.date_submitted.trim() !== '' ? evidence.date_submitted : null
         exhibit_id: pending.exhibit_id,
         method: pending.method,
         url_link: pending.url_link,
