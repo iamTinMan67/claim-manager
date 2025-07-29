@@ -109,11 +109,11 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
     try {
       const pdf = new jsPDF()
       const pageHeight = pdf.internal.pageSize.height
-      let yPosition = 20
+      let yPosition = 10
 
       // Add claim details for evidence export (moved down 2 rows)
       if (exportType === 'evidence' && selectedClaim) {
-        yPosition += 20 // Move down 2 rows
+        yPosition += 10 // Move down 1 row
         
         const { data: claimDetails } = await supabase
           .from('claims')
@@ -202,7 +202,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
       data.forEach((item, index) => {
         if (yPosition > pageHeight - 30) {
           pdf.addPage()
-          yPosition = 40
+          yPosition = 20
           
           // Add column headers on new page for evidence reports
           if (exportType === 'evidence') {
