@@ -94,15 +94,27 @@ const EvidenceManager = ({
           return 'Exhibit 1'
         }
         
-        // Extract numbers from existing exhibit IDs
-        const exhibitNumbers = evidenceData
+        // First, try to extract numbers from exhibit IDs that start with "Exhibit"
+        let exhibitNumbers = evidenceData
           .map(item => item.exhibit_id)
-          .filter(id => id && id.toLowerCase().includes('exhibit'))
+          .filter(id => id && id.toLowerCase().startsWith('exhibit'))
           .map(id => {
             const match = id.match(/exhibit\s*(\d+)/i)
             return match ? parseInt(match[1], 10) : 0
           })
           .filter(num => !isNaN(num))
+        
+        // If no "Exhibit N" pattern found, try to extract any numbers from exhibit IDs
+        if (exhibitNumbers.length === 0) {
+          exhibitNumbers = evidenceData
+            .map(item => item.exhibit_id)
+            .filter(id => id && id.trim())
+            .map(id => {
+              const match = id.match(/(\d+)/)
+              return match ? parseInt(match[1], 10) : 0
+            })
+            .filter(num => !isNaN(num) && num > 0)
+        }
         
         if (exhibitNumbers.length === 0) {
           return 'Exhibit 1'
@@ -126,13 +138,31 @@ const EvidenceManager = ({
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
+      // Get the current maximum display_order for this claim
+      let query = supabase
+        .from('evidence')
+        .select('display_order')
+        .eq('user_id', user.id)
+        .not('display_order', 'is', null)
+        .order('display_order', { ascending: false })
+        .limit(1)
+      
+      if (selectedClaim) {
+        query = query.eq('case_number', selectedClaim)
+      }
+      
+      const { data: maxOrderData } = await query
+      const maxDisplayOrder = maxOrderData?.[0]?.display_order || 0
+      const newDisplayOrder = maxDisplayOrder + 1
+
       // Clean the data before submission
       const cleanData = {
         ...evidenceData,
         user_id: user.id,
         case_number: evidenceData.case_number || null,
         number_of_pages: evidenceData.number_of_pages ? parseInt(evidenceData.number_of_pages) : null,
-        date_submitted: evidenceData.date_submitted || null
+        date_submitted: evidenceData.date_submitted || null,
+        display_order: newDisplayOrder
       }
 
       const { data, error } = await supabase
