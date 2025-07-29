@@ -12,9 +12,12 @@ interface EvidenceManagerProps {
   isGuest?: boolean
   currentUserId?: string
   isGuestFrozen?: boolean
+  onEditClaim?: () => void
+  onDeleteClaim?: () => void
+  onSetAmendMode?: (mode: boolean) => void
 }
 
-const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = false, isGuest = false, currentUserId, isGuestFrozen = false }: EvidenceManagerProps) => {
+const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = false, isGuest = false, currentUserId, isGuestFrozen = false, onEditClaim, onDeleteClaim, onSetAmendMode }: EvidenceManagerProps) => {
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingEvidence, setEditingEvidence] = useState<Evidence | null>(null)
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
@@ -739,7 +742,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
           )}
           {!isGuest && (
             <button
-              onClick={() => setAmendMode(!amendMode)}
+              onClick={() => onSetAmendMode?.(!amendMode)}
               className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
                 amendMode 
                   ? 'text-red-600 bg-red-100 hover:bg-red-200' 
