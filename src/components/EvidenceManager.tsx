@@ -482,14 +482,12 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
 
   const moveEvidenceMutation = useMutation({
     mutationFn: async ({ evidenceList }: { evidenceList: Evidence[] }) => {
-      // Update all evidence items with new exhibit_id and display_order based on their position
-      // Since we're showing in descending order, we need to reverse the numbering
+      // Update all evidence items with new display_order based on their position
+      // Keep exhibit_id unchanged, only update display_order for drag and drop
       const updates = evidenceList.map((item, index) => {
-        const newExhibitNumber = evidenceList.length - index
         return {
           id: item.id,
-          exhibit_id: `${newExhibitNumber}`,
-          display_order: newExhibitNumber
+          display_order: index + 1
         }
       })
 
@@ -497,7 +495,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
       const promises = updates.map(update => 
         supabase
           .from('evidence')
-          .update({ exhibit_id: update.exhibit_id, display_order: update.display_order })
+          .update({ display_order: update.display_order })
           .eq('id', update.id)
       )
 
@@ -656,7 +654,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
     
     // Calculate next exhibit number
     const nextExhibitNumber = evidence && evidence.length > 0 
-      ? Math.max(...evidence.map(e => parseInt(e.exhibit_id || '0'))) + 1 
+      ? Math.max(...evidence.filter(e => e.exhibit_id).map(e => parseInt(e.exhibit_id || '0'))) + 1 
       : 1
     
     setNewEvidence({
