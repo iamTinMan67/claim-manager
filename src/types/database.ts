@@ -36,7 +36,7 @@ export interface Evidence {
   exhibit_id?: string
   number_of_pages?: number
   date_submitted?: string
-  method?: string
+  method?: 'Post' | 'Email' | 'Hand' | 'Call'
   url_link?: string
   book_of_deeds_ref?: string
   display_order?: number
