@@ -26,7 +26,8 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
       }
       
       const { data, error } = await query
-        .order('created_at', { ascending: false })
+        .order('display_order', { ascending: true, nullsLast: true })
+        .order('created_at', { ascending: true })
       
       if (error) throw error
       return data

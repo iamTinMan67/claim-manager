@@ -67,14 +67,14 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
       }
       
       const { data, error } = await query
-        .order('display_order', { ascending: true, nullsLast: true })
-        .order('created_at', { ascending: true })
+        .order('display_order', { ascending: false, nullsLast: true })
+        .order('created_at', { ascending: false })
       
       console.log('Evidence query result:', { data, error, count: data?.length })
       
       if (error) throw error
       
-      // Return evidence as-is (ordered by display_order, then created_at)
+      // Return evidence in descending order for management view
       return data as Evidence[]
     }
   })
