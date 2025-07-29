@@ -425,6 +425,28 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
           </p>
         </div>
       )}
+
+      {/* Collaboration Section */}
+      {showCollaboration && selectedClaim && (
+        <div className="bg-white rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
+          <div className="p-4 border-b">
+            <h3 className="text-lg font-semibold" style={{ color: claimColor }}>
+              Collaboration Hub
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
+              Chat, video calls, and whiteboard collaboration for this claim. 
+              <span className="font-medium text-green-600"> Free collaboration included!</span>
+            </p>
+          </div>
+          <div className="p-0">
+            <CollaborationHub 
+              selectedClaim={selectedClaim} 
+              claimColor={claimColor}
+              currentUserId={currentUserId}
+            />
+          </div>
+        </div>
+      )}
       
       {/* Claims I'm a Guest On */}
       {guestClaims && guestClaims.length > 0 && (

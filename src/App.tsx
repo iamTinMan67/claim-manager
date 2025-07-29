@@ -140,14 +140,8 @@ function LoggedInContent({
             <Calendar selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={currentlyGuest} showGuestContent={showGuestContent} isGuestFrozen={guestStatus?.is_frozen || false} />
           </AccessControl>
         )
-      case 'collaboration':
-        return (
-          <AccessControl requiredFeature="chat" claimId={selectedClaim}>
-            <CollaborationHub selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={currentlyGuest} currentUserId={user?.id} />
-          </AccessControl>
-        )
       case 'shared':
-        return <SharedClaims selectedClaim={selectedClaim} claimColor={selectedClaimColor} />
+        return <SharedClaims selectedClaim={selectedClaim} claimColor={selectedClaimColor} currentUserId={user?.id} />
       case 'export':
         return (
           <AccessControl requiredFeature="export" claimId={selectedClaim}>
