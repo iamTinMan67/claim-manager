@@ -10,6 +10,7 @@ import EvidenceManager from './components/EvidenceManager'
 import TodoList from './components/TodoList'
 import Calendar from './components/Calendar'
 import SharedClaims from './components/SharedClaims'
+import CollaborationHub from './components/CollaborationHub'
 import ExportFeatures from './components/ExportFeatures'
 
 const queryClient = new QueryClient()
@@ -127,6 +128,8 @@ function LoggedInContent({
       case 'calendar':
         return <Calendar selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={currentlyGuest} showGuestContent={showGuestContent} isGuestFrozen={guestStatus?.is_frozen || false} />
       case 'collaboration':
+        return <CollaborationHub selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={currentlyGuest} currentUserId={user?.id} />
+      case 'shared':
         return <SharedClaims selectedClaim={selectedClaim} claimColor={selectedClaimColor} />
       case 'export':
         return <ExportFeatures selectedClaim={selectedClaim} claimColor={selectedClaimColor} />

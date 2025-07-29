@@ -1,5 +1,5 @@
 import React from 'react'
-import { Calendar, FileText, Users, CheckSquare, Home, Upload, Download, Moon, Sun } from 'lucide-react'
+import { Calendar, FileText, Users, CheckSquare, Home, Upload, Download, Moon, Sun, MessageCircle } from 'lucide-react'
 import { useTheme } from 'next-themes'
 
 interface NavigationProps {
@@ -17,7 +17,8 @@ const Navigation = ({ activeTab, onTabChange, isGuest = false, showGuestContent 
     { id: 'claims', label: 'Claims', icon: FileText },
     { id: 'todos', label: 'To-Do Lists', icon: CheckSquare },
     { id: 'calendar', label: 'Calendar', icon: Calendar },
-    { id: 'collaboration', label: 'Shared Claims', icon: Users },
+    { id: 'collaboration', label: 'Collaboration', icon: MessageCircle },
+    { id: 'shared', label: 'Shared Claims', icon: Users },
     { id: 'export', label: 'Export', icon: Download },
   ]
 
