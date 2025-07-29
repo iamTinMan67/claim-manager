@@ -147,7 +147,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
       if (exportType === 'evidence') {
         pdf.setFontSize(10)
         pdf.setFont(undefined, 'bold')
-        pdf.text('EXHIBIT #', 17, yPosition, { align: 'center' })
+        pdf.text('EXHIBIT #', 20, yPosition, { align: 'center' })
         pdf.text('FILE NAME', 50, yPosition)
         pdf.text('METHOD', 100, yPosition, { align: 'center' })
         pdf.text('DATE', 130, yPosition, { align: 'center' })
@@ -207,7 +207,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         
         if (exportType === 'evidence') {
           // For evidence, display in columns
-          pdf.text(item.exhibit_id || '', 20, yPosition, { align: 'center' })
+         pdf.text(item.exhibit_id || '', 17, yPosition, { align: 'center' })
           pdf.text(item.file_name || '', 50, yPosition)
           pdf.text(item.method || '', 100, yPosition, { align: 'center' })
           pdf.text(item.date_submitted ? new Date(item.date_submitted).toLocaleDateString() : '', 130, yPosition, { align: 'center' })
