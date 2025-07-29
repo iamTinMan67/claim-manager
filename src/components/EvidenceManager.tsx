@@ -35,7 +35,7 @@ const EvidenceManager = ({
     exhibit_id: '',
     number_of_pages: '',
     date_submitted: '',
-    method: 'Post',
+    method: 'To-Do',
     url_link: '',
     book_of_deeds_ref: '',
     case_number: selectedClaim || ''
@@ -93,6 +93,7 @@ const EvidenceManager = ({
       setNewEvidence(prev => ({
         ...prev,
         exhibit_id: getNextExhibitId(),
+        method: 'To-Do',
         case_number: selectedClaim || ''
       }))
     }
@@ -130,7 +131,7 @@ const EvidenceManager = ({
         exhibit_id: '',
         number_of_pages: '',
         date_submitted: '',
-        method: 'Post',
+        method: 'To-Do',
         url_link: '',
         book_of_deeds_ref: '',
         case_number: selectedClaim || ''
@@ -311,6 +312,7 @@ const EvidenceManager = ({
                   onChange={(e) => setNewEvidence({ ...newEvidence, method: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2"
                 >
+                  <option value="To-Do">To-Do</option>
                   <option value="Post">Post</option>
                   <option value="Email">Email</option>
                   <option value="Hand">Hand</option>
@@ -414,10 +416,11 @@ const EvidenceManager = ({
               <div>
                 <label className="block text-sm font-medium mb-1">Method</label>
                 <select
-                  value={editingEvidence.method || 'Post'}
+                  value={editingEvidence.method || 'To-Do'}
                   onChange={(e) => setEditingEvidence({ ...editingEvidence, method: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2"
                 >
+                  <option value="To-Do">To-Do</option>
                   <option value="Post">Post</option>
                   <option value="Email">Email</option>
                   <option value="Hand">Hand</option>
