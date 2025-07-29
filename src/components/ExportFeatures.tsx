@@ -355,6 +355,24 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
                 <div className="text-sm font-medium">Calendar</div>
                 <div className="text-xs text-gray-500">{events?.length || 0} items</div>
               </button>
+              
+              <button
+                onClick={() => setExportType('table_of_contents')}
+                className={`p-4 border rounded-lg text-center transition-colors ${
+                  exportType === 'table_of_contents' 
+                    ? 'text-white' 
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+                style={exportType === 'table_of_contents' ? { 
+                  borderColor: claimColor, 
+                  backgroundColor: `${claimColor}20`,
+                  color: claimColor
+                } : {}}
+              >
+                <FileText className="w-6 h-6 mx-auto mb-2" />
+                <div className="text-sm font-medium">Table of Contents</div>
+                <div className="text-xs text-gray-500">{evidence?.length || 0} items</div>
+              </button>
             </div>
           </div>
 
