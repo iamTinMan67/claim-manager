@@ -56,8 +56,8 @@ const EvidenceManager = ({
       }
       
       const { data, error } = await query
-        .order('display_order', { ascending: true, nullsLast: true })
-        .order('created_at', { ascending: true })
+        .order('display_order', { ascending: false, nullsFirst: true })
+        .order('created_at', { ascending: false })
       
       if (error) throw error
       return data as Evidence[]
