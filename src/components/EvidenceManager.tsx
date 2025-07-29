@@ -36,7 +36,7 @@ const EvidenceManager = ({
     exhibit_id: '',
     number_of_pages: '',
     date_submitted: '',
-    method: 'ToDo',
+    method: 'To-Do',
     url_link: '',
     book_of_deeds_ref: '',
     case_number: selectedClaim || ''
