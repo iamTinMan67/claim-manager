@@ -76,7 +76,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
         .select(`
           *,
           claims!inner(title, case_number),
-          profiles!shared_with_id(email, full_name)
+          profiles!claim_shares_shared_with_id_fkey(email, full_name)
         `)
       
       if (selectedClaim) {
@@ -103,7 +103,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
         .select(`
           *,
           claims!inner(title, case_number, color),
-          profiles!owner_id(email, full_name)
+          profiles!claim_shares_owner_id_fkey(email, full_name)
         `)
         .eq('shared_with_id', user.id)
         .order('created_at', { ascending: false })
