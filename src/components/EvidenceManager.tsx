@@ -95,7 +95,7 @@ const EvidenceManager = ({
       setNewEvidence(prev => ({
         ...prev,
         exhibit_id: getNextExhibitId(),
-        method: 'To-Do',
+        method: 'Post',
         case_number: selectedClaim || ''
       }))
     }
