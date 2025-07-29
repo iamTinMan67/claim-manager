@@ -713,7 +713,7 @@ const EvidenceManager = ({
                                 <div>
                                   <label className="block text-sm font-medium mb-1">Method</label>
                                   <select
-                                    value={editingEvidence.method || 'To-Do'}
+                                    value={editingEvidence.method || 'Post'}
                                     onChange={(e) => setEditingEvidence({ ...editingEvidence, method: e.target.value })}
                                     className="w-full border rounded-lg px-3 py-2"
                                   >
