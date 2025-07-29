@@ -240,7 +240,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
         is_muted: false
       })
       setClaimToShare('')
-    }
+    },
     onError: (error) => {
       if (error.message === 'PAYMENT_REQUIRED') {
         // Show payment modal
