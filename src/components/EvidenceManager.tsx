@@ -134,7 +134,7 @@ const EvidenceManager = ({
         exhibit_id: '',
         number_of_pages: '',
         date_submitted: '',
-        method: 'Todo',
+        method: 'Post',
         url_link: '',
         book_of_deeds_ref: '',
         case_number: selectedClaim || ''
