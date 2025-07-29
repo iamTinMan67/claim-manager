@@ -226,12 +226,13 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
         <EvidenceManager 
           selectedClaim={selectedClaim} 
           claimColor={claim.color || '#3B82F6'} 
-          amendMode={false}
+          amendMode={amendMode}
           isGuest={isGuest}
           currentUserId={currentUser?.id}
           isGuestFrozen={guestStatus?.is_frozen || false}
           onEditClaim={() => setEditingClaim(claim)}
           onDeleteClaim={() => deleteClaimMutation.mutate(claim.case_number)}
+          onSetAmendMode={setAmendMode}
         />
       </div>
     )
