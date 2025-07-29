@@ -106,7 +106,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
         .select(`
           *,
           claims!inner(title, case_number, color),
-          profiles!claim_shares_owner_id_fkey(email, full_name)
+          profiles!owner_id(email, full_name)
         `)
         .eq('shared_with_id', user.id)
         .order('created_at', { ascending: false })
