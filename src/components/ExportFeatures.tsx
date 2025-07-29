@@ -179,12 +179,13 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
           // Add column headers on new page for evidence reports
           if (exportType === 'evidence') {
             pdf.setFont(undefined, 'bold')
-            pdf.text('EXHIBIT #', 20, yPosition, { align: 'center' })
+            pdf.text('EXHIBIT ID', 20, yPosition)
             pdf.text('FILE NAME', 50, yPosition)
-            pdf.text('METHOD', 90, yPosition, { align: 'center' })
-            pdf.text('DATE', 120, yPosition, { align: 'center' })
-            pdf.text('BUNDLE POS', 150, yPosition, { align: 'center' })
-            pdf.text('CLC REF#', 175, yPosition)
+            pdf.text('METHOD', 90, yPosition)
+            pdf.text('DATE', 120, yPosition)
+            pdf.text('BUNDLE POS', 150, yPosition)
+            pdf.text('BOOK OF DEEDS', 175, yPosition)
+            pdf.text('BUNDLE POS', 170, yPosition)
             pdf.setFont(undefined, 'normal')
             yPosition += 10
           }
@@ -194,11 +195,11 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         
         if (exportType === 'evidence') {
           // For evidence, display in columns
-          pdf.text(item.exhibit_id || '', 20, yPosition)
+          pdf.text(item.exhibit_id || '', 20, yPosition, { align: 'center' })
           pdf.text(item.file_name || '', 50, yPosition)
-          pdf.text(item.method || '', 90, yPosition)
-          pdf.text(item.date_submitted ? new Date(item.date_submitted).toLocaleDateString() : '', 120, yPosition)
-          pdf.text(bundlePositions[item.id]?.toString() || '', 150, yPosition)
+          pdf.text(item.method || '', 90, yPosition, { align: 'center' })
+          pdf.text(item.date_submitted ? new Date(item.date_submitted).toLocaleDateString() : '', 120, yPosition, { align: 'center' })
+          pdf.text(bundlePositions[item.id]?.toString() || '', 150, yPosition, { align: 'center' })
           pdf.text(item.book_of_deeds_ref || '', 175, yPosition)
           yPosition += 8
         } else {
