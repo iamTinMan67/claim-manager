@@ -71,11 +71,15 @@ const EvidenceManager = ({
 
   const updateDisplayOrderMutation = useMutation({
     mutationFn: async (updates: { id: string; display_order: number }[]) => {
-      const { error } = await supabase
-        .from('evidence')
-        .upsert(updates.map(update => ({ id: update.id, display_order: update.display_order })))
-      
-      if (error) throw error
+      // Update each item individually to avoid RLS issues
+      for (const update of updates) {
+        const { error } = await supabase
+          .from('evidence')
+          .update({ display_order: update.display_order })
+          .eq('id', update.id)
+        
+        if (error) throw error
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evidence'] })
