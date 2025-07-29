@@ -754,6 +754,9 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
           {amendMode && (!isGuest || !isGuestFrozen) && (
             <button
               onClick={() => setShowAddForm(true)}
+              className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
+              style={{ backgroundColor: claimColor }}
+            >
               <Plus className="w-4 h-4" />
               <span>Add Info</span>
             </button>
