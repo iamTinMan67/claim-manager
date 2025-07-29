@@ -51,7 +51,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
         .select('is_frozen, is_muted')
         .eq('claim_id', selectedClaim)
         .eq('shared_with_id', currentUser.id)
-        .single()
+        .maybeSingle()
       
       if (error) return null
       return data

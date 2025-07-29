@@ -93,7 +93,7 @@ function LoggedInContent({
         .select('id')
         .eq('claim_id', selectedClaim)
         .eq('shared_with_id', user.id)
-        .single()
+        .maybeSingle()
       
       if (error) return false
       return !!data
@@ -112,7 +112,7 @@ function LoggedInContent({
         .select('is_frozen, is_muted')
         .eq('claim_id', selectedClaim)
         .eq('shared_with_id', user.id)
-        .single()
+        .maybeSingle()
       
       if (error) return null
       return data
