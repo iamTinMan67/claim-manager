@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { Upload, FileText, Link, Calendar, Hash, BookOpen, Eye, Trash2, Edit, Plus, Settings, GripVertical, X, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
@@ -37,8 +37,35 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
     book_of_deeds_ref: '',
     case_number: selectedClaim || ''
   })
+  const [nextExhibitId, setNextExhibitId] = useState<string>('')
 
   const queryClient = useQueryClient()
+
+  // Calculate next exhibit ID when evidence data changes
+  useEffect(() => {
+    if (evidence && evidence.length > 0) {
+      // Find the highest exhibit ID number
+      const exhibitNumbers = evidence
+        .map(item => {
+          const match = item.exhibit_id?.match(/(\d+)/)
+          return match ? parseInt(match[1]) : 0
+        })
+        .filter(num => !isNaN(num))
+      
+      const maxExhibitNumber = exhibitNumbers.length > 0 ? Math.max(...exhibitNumbers) : 0
+      const nextNumber = maxExhibitNumber + 1
+      setNextExhibitId(`Exhibit ${nextNumber}`)
+    } else {
+      setNextExhibitId('Exhibit 1')
+    }
+  }, [evidence])
+
+  // Update newEvidence exhibit_id when nextExhibitId changes and form is shown
+  useEffect(() => {
+    if (showAddForm && nextExhibitId && !newEvidence.exhibit_id) {
+      setNewEvidence(prev => ({ ...prev, exhibit_id: nextExhibitId }))
+    }
+  }, [showAddForm, nextExhibitId])
 
   // Get current user ID if not provided
   const { data: currentUser } = useQuery({
@@ -689,6 +716,15 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
     }
   }
 
+  const handleAddClick = () => {
+    setShowAddForm(true)
+    setNewEvidence(prev => ({ 
+      ...prev, 
+      exhibit_id: nextExhibitId,
+      case_number: selectedClaim || ''
+    }))
+  }
+
   const resetForm = () => {
     setSelectedFile(null)
     
@@ -700,7 +736,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
     setNewEvidence({
       file_name: '',
       file_url: '',
-      exhibit_id: nextExhibitNumber.toString(),
+      exhibit_id: nextExhibitId,
       number_of_pages: '',
       date_submitted: '',
       method: 'To-Do',
@@ -751,7 +787,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
         <div className="flex items-center space-x-3">
           {(!isGuest || !isGuestFrozen) && (
             <button
-              onClick={() => setShowAddForm(true)}
+              onClick={handleAddClick}
               className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
               style={{ backgroundColor: claimColor }}
             >
@@ -1049,11 +1085,15 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Exhibit ID</label>
+                <div className="text-xs text-gray-500 mb-1">
+                  Auto-populated with next sequential number. You can edit this if needed.
+                </div>
                 <input
                   type="text"
                   value={newEvidence.exhibit_id}
                   onChange={(e) => setNewEvidence({ ...newEvidence, exhibit_id: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border rounded-lg px-3 py-2 bg-blue-50"
+                  placeholder={nextExhibitId}
                 />
               </div>
               <div>
