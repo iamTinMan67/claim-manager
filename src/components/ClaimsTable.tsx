@@ -220,7 +220,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                     ? 'text-red-600 bg-red-100 hover:bg-red-200' 
                     : 'text-white hover:opacity-90'
                 }`}
-                style={!amendMode ? { backgroundColor: claim.color || '#3B82F6' } : {}}
+                style={amendMode ? {} : { backgroundColor: claim.color || '#3B82F6' }}
               >
                 <Settings className="w-4 h-4" />
                 <span>{amendMode ? 'Exit Amend' : 'Amend'}</span>

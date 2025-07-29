@@ -17,7 +17,6 @@ const Navigation = ({ activeTab, onTabChange, isGuest = false, showGuestContent 
     { id: 'claims', label: 'Claims', icon: FileText },
     { id: 'todos', label: 'To-Do Lists', icon: CheckSquare },
     { id: 'calendar', label: 'Calendar', icon: Calendar },
-    { id: 'collaboration', label: 'Collaboration', icon: MessageCircle },
     { id: 'shared', label: 'Shared Claims', icon: Users },
     { id: 'export', label: 'Export', icon: Download },
   ]

@@ -737,25 +737,25 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
               <span>Review Pending ({pendingEvidence.length})</span>
             </button>
           )}
-          {(!isGuest || !isGuestFrozen) && (
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
-              style={{ backgroundColor: claimColor }}
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add New Evidence</span>
-            </button>
-          )}
-          {amendMode && (
+          {!isGuest && (
             <button
               onClick={() => setAmendMode(!amendMode)}
               className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
-                amendMode ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-gray-600 text-white hover:bg-gray-700'
+                amendMode 
+                  ? 'text-red-600 bg-red-100 hover:bg-red-200' 
+                  : 'text-white hover:opacity-90'
               }`}
+              style={{ backgroundColor: claimColor }}
             >
               <Settings className="w-4 h-4" />
-              <span>{amendMode ? 'Exit Amend Mode' : 'Amend Mode'}</span>
+              <span>{amendMode ? 'Exit Amend' : 'Amend'}</span>
+            </button>
+          )}
+          {amendMode && (!isGuest || !isGuestFrozen) && (
+            <button
+              onClick={() => setShowAddForm(true)}
+              <Plus className="w-4 h-4" />
+              <span>Add Info</span>
             </button>
           )}
           {isGuest && isGuestFrozen && (

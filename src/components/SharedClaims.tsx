@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import PaymentModal from './PaymentModal'
+import CollaborationHub from './CollaborationHub'
 import { Users, Mail, Eye, Edit, Trash2, Plus, DollarSign, CreditCard, CheckCircle, Clock, AlertCircle, X, UserPlus, UserMinus, Crown } from 'lucide-react'
 
 interface ClaimShare {
@@ -32,14 +33,16 @@ interface ClaimShare {
 interface SharedClaimsProps {
   selectedClaim: string | null
   claimColor?: string
+  currentUserId?: string
 }
 
-const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsProps) => {
+const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: SharedClaimsProps) => {
   const [showShareForm, setShowShareForm] = useState(false)
   const [claimToShare, setClaimToShare] = useState('')
   const [showJoinClaimForm, setShowJoinClaimForm] = useState(false)
   const [joinClaimId, setJoinClaimId] = useState('')
   const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [showCollaboration, setShowCollaboration] = useState(false)
   const [paymentData, setPaymentData] = useState<{
     amount: number
     claimId: string
@@ -513,6 +516,13 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6' }: SharedClaimsPro
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Shared Claims Collaboration</h2>
         <div className="flex items-center space-x-3">
+          <button
+            onClick={() => setShowCollaboration(!showCollaboration)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+          >
+            <Users className="w-4 h-4" />
+            <span>{showCollaboration ? 'Hide' : 'Show'} Collaboration</span>
+          </button>
           <button
             onClick={() => window.location.href = '#subscription'}
             className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center space-x-2"
