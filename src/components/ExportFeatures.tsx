@@ -174,7 +174,23 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
       let bundlePositions: { [key: string]: number } = {}
       if (exportType === 'evidence' && data) {
         let currentPos = 1
-        data.forEach((item) => {
+        // Sort data by display_order first, then by created_at to ensure correct sequence
+        const sortedData = [...data].sort((a, b) => {
+          // First sort by display_order (nulls last)
+          if (a.display_order !== null && b.display_order !== null) {
+            return a.display_order - b.display_order
+          }
+          if (a.display_order !== null && b.display_order === null) {
+            return -1
+          }
+          if (a.display_order === null && b.display_order !== null) {
+            return 1
+          }
+          // If both are null, sort by created_at
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        })
+        
+        sortedData.forEach((item) => {
           bundlePositions[item.id] = currentPos
           const pages = item.number_of_pages || 1
           currentPos += pages
