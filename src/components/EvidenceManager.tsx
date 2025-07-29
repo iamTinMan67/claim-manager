@@ -158,8 +158,55 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
       return counts
     }
   })
-
-  const handleFileUpload = async (file: File): Promise<string> => {
+      
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Evidence Management</h2>
+        <div className="flex items-center space-x-3">
+          {!isGuest && pendingEvidence && pendingEvidence.length > 0 && (
+            <button
+              onClick={() => setShowPendingEvidence(!showPendingEvidence)}
+              className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center space-x-2"
+            >
+              <AlertTriangle className="w-4 h-4" />
+              <span>Review Pending ({pendingEvidence.length})</span>
+            </button>
+          )}
+          {(!isGuest || !isGuestFrozen) && (
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
+              style={{ backgroundColor: claimColor }}
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add New Evidence</span>
+            </button>
+          )}
+          {amendMode && (
+            <button
+              onClick={() => setAmendMode(!amendMode)}
+              className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
+                amendMode 
+                  ? 'text-red-600 bg-red-100 hover:bg-red-200' 
+                  : 'text-white hover:opacity-90'
+              }`}
+              style={!amendMode ? { backgroundColor: claimColor } : {}}
+            >
+              <Settings className="w-4 h-4" />
+              <span>Amend</span>
+            </button>
+          )}
+          {isGuest && isGuestFrozen && (
+            <div className="bg-red-100 text-red-800 px-3 py-1 rounded-lg text-sm">
+              Access Frozen
+            </div>
+          )}
+          {isGuest && !isGuestFrozen && (
+            <div className="bg-green-100 text-green-800 px-3 py-1 rounded-lg text-sm">
+              Guest Access - Can Add/Edit Own Content
+            </div>
+          )}
+        </div>
+      </div>
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('Not authenticated')
 
@@ -705,71 +752,36 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
 
   return (
     <div className="space-y-6">
-      {/* Claim Evidence Summary */}
-      {evidenceCounts && Object.keys(evidenceCounts).length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="font-semibold text-blue-900">Evidence Distribution by Claim</h3>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Evidence Management</h2>
+        <div className="flex items-center space-x-3">
+          {!isGuest && pendingEvidence && pendingEvidence.length > 0 && (
             <button
-              onClick={() => setShowClaimSwitcher(!showClaimSwitcher)}
-              className="text-blue-600 hover:text-blue-800 text-sm"
+              onClick={() => setShowPendingEvidence(!showPendingEvidence)}
+              className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center space-x-2"
             >
-              {showClaimSwitcher ? 'Hide' : 'Show'} Details
+              <AlertTriangle className="w-4 h-4" />
+              <span>Review Pending ({pendingEvidence.length})</span>
             </button>
-          </div>
-          {showClaimSwitcher && (
-            <div className="space-y-2">
-              {Object.entries(evidenceCounts).map(([caseNumber, count]) => {
-                const claimInfo = claims?.find(c => c.case_number === caseNumber)
-                const isCurrentClaim = caseNumber === selectedClaim
-                
-                return (
-                  <div
-                    key={caseNumber}
-                    className={`flex justify-between items-center p-2 rounded ${
-                      isCurrentClaim ? 'bg-blue-100 border border-blue-300' : 'bg-white'
-                    }`}
-                  >
-                    <div>
-                      <span className="font-medium">
-                        {caseNumber === 'unassociated' ? 'Unassociated Evidence' : caseNumber}
-                      </span>
-                      {claimInfo && (
-                        <span className="text-sm text-gray-600 ml-2">- {claimInfo.title}</span>
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                        {count} items
-                      </span>
-                      {caseNumber === '74888685' && (
-                        <button
-                          onClick={() => handleRemoveAllFromClaim(caseNumber)}
-                          disabled={removeAllEvidenceFromClaimMutation.isPending}
-                          className="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 disabled:opacity-50"
-                        >
-                          {removeAllEvidenceFromClaimMutation.isPending ? 'Removing...' : 'Remove All'}
-                        </button>
-                      )}
-                      {caseNumber !== 'unassociated' && caseNumber !== selectedClaim && (
-                        <span className="text-xs text-orange-600 font-medium">
-                          Switch to this claim to view
-                        </span>
-                      )}
-                      {isCurrentClaim && (
-                        <span className="text-xs text-green-600 font-medium">
-                          Currently viewing
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
+          )}
+          {(!isGuest || !isGuestFrozen) && (
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
+              style={{ backgroundColor: claimColor }}
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add New Evidence</span>
+            </button>
+          )}
+          {isGuest && !isGuestFrozen && (
+            <div className="bg-green-100 text-green-800 px-3 py-1 rounded-lg text-sm">
+              Guest Access - Can Add/Edit Own Content
             </div>
           )}
         </div>
-      )}
-      
+      </div>
+
       {/* Show banner if there are unassociated evidence items when a claim is selected */}
       {selectedClaim && evidence && evidence.some(item => !item.case_number) && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex justify-between items-center">
@@ -796,51 +808,6 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
           </button>
         </div>
       )}
-      
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Evidence Management</h2>
-        <div className="flex items-center space-x-3">
-          {!isGuest && pendingEvidence && pendingEvidence.length > 0 && (
-            <button
-              onClick={() => setShowPendingEvidence(!showPendingEvidence)}
-              className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center space-x-2"
-            >
-              <AlertTriangle className="w-4 h-4" />
-              <span>Review Pending ({pendingEvidence.length})</span>
-            </button>
-          )}
-          {amendMode && !isGuest && (
-            <button
-            onClick={() => setShowAddForm(true)}
-            className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
-            style={{ backgroundColor: claimColor }}
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Evidence</span>
-          </button>
-          )}
-          {amendMode && isGuest && !isGuestFrozen && (
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
-              style={{ backgroundColor: claimColor }}
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Evidence</span>
-            </button>
-          )}
-          {isGuest && isGuestFrozen && (
-            <div className="bg-red-100 text-red-800 px-3 py-1 rounded-lg text-sm">
-              Access Frozen
-            </div>
-          )}
-          {isGuest && !isGuestFrozen && (
-            <div className="bg-green-100 text-green-800 px-3 py-1 rounded-lg text-sm">
-              Guest Access - Can Add/Edit Own Content
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* Pending Evidence Review Section (for hosts) */}
       {!isGuest && showPendingEvidence && pendingEvidence && pendingEvidence.length > 0 && (
@@ -989,7 +956,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
         </div>
       )}
 
-      {amendMode && (!isGuest || !isGuestFrozen) && showAddForm && (
+      {(!isGuest || !isGuestFrozen) && showAddForm && (
         <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4">
             {isGuest ? 'Submit Evidence for Approval' : 'Add New Evidence'}
@@ -1168,7 +1135,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
         </div>
       )}
 
-      {amendMode && (!isGuest || (editingEvidence && editingEvidence.user_id === actualUserId)) && !isGuestFrozen && editingEvidence && (
+      {(!isGuest || (editingEvidence && editingEvidence.user_id === actualUserId)) && !isGuestFrozen && editingEvidence && (
         <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4">Edit Evidence</h3>
           <form onSubmit={handleUpdate} className="space-y-4">
@@ -1410,7 +1377,7 @@ const EvidenceManager = ({ selectedClaim, claimColor = '#3B82F6', amendMode = fa
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
-                {amendMode && (!isGuest || item.user_id === actualUserId) && !isGuestFrozen && (
+                {(!isGuest || item.user_id === actualUserId) && !isGuestFrozen && (
                   <>
                     <button
                       onClick={() => handleEdit(item)}
