@@ -4,7 +4,9 @@ import { Elements, CardElement, useStripe, useElements } from '@stripe/react-str
 import { supabase } from '@/lib/supabase'
 import { X, CreditCard, Lock, CheckCircle, AlertCircle } from 'lucide-react'
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
+const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY 
+  ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
+  : null
 
 interface PaymentModalProps {
   isOpen: boolean
@@ -244,18 +246,32 @@ const PaymentModal = (props: PaymentModalProps) => {
         )}
 
         {paymentStatus === 'idle' && (
-          <Elements stripe={stripePromise}>
-            <PaymentForm
-              amount={props.amount}
-              currency={props.currency}
-              paymentType={props.paymentType}
-              claimId={props.claimId}
-              guestEmail={props.guestEmail}
-              onSuccess={handleSuccess}
-              onError={handleError}
-              onClose={props.onClose}
-            />
-          </Elements>
+          <>
+            {!import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ? (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-center space-x-2">
+                  <AlertCircle className="w-5 h-5 text-yellow-600" />
+                  <span className="font-medium text-yellow-900">Payment Configuration Required</span>
+                </div>
+                <p className="text-sm text-yellow-800 mt-1">
+                  Stripe payment processing is not configured. Please contact support to enable payments.
+                </p>
+              </div>
+            ) : (
+              <Elements stripe={stripePromise}>
+                <PaymentForm
+                  amount={props.amount}
+                  currency={props.currency}
+                  paymentType={props.paymentType}
+                  claimId={props.claimId}
+                  guestEmail={props.guestEmail}
+                  onSuccess={handleSuccess}
+                  onError={handleError}
+                  onClose={props.onClose}
+                />
+              </Elements>
+            )}
+          </>
         )}
       </div>
     </div>
