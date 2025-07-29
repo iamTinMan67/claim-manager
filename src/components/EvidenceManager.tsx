@@ -36,7 +36,7 @@ const EvidenceManager = ({
     exhibit_id: '',
     number_of_pages: '',
     date_submitted: '',
-    method: 'To-Do',
+    method: 'Todo',
     url_link: '',
     book_of_deeds_ref: '',
     case_number: selectedClaim || ''
@@ -96,7 +96,7 @@ const EvidenceManager = ({
       setNewEvidence(prev => ({
         ...prev,
         exhibit_id: getNextExhibitId(),
-        method: 'To-Do',
+        method: 'Todo',
         case_number: selectedClaim || ''
       }))
     }
@@ -134,7 +134,7 @@ const EvidenceManager = ({
         exhibit_id: '',
         number_of_pages: '',
         date_submitted: '',
-        method: 'ToDo',
+        method: 'Todo',
         url_link: '',
         book_of_deeds_ref: '',
         case_number: selectedClaim || ''
@@ -410,7 +410,7 @@ const EvidenceManager = ({
                   className="w-full border rounded-lg px-3 py-2"
                 >
                   <option value="Post">Post</option>
-                  <option value="To-Do">To-Do</option>
+                  <option value="Todo">To-Do</option>
                   <option value="Email">Email</option>
                   <option value="Hand">Hand</option>
                   <option value="Call">Call</option>
@@ -513,12 +513,12 @@ const EvidenceManager = ({
               <div>
                 <label className="block text-sm font-medium mb-1">Method</label>
                 <select
-                  value={editingEvidence.method || 'To-Do'}
+                  value={editingEvidence.method || 'Todo'}
                   onChange={(e) => setEditingEvidence({ ...editingEvidence, method: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2"
                 >
                   <option value="Post">Post</option>
-                  <option value="To-Do">To-Do</option>
+                  <option value="Todo">To-Do</option>
                   <option value="Email">Email</option>
                   <option value="Hand">Hand</option>
                   <option value="Call">Call</option>
@@ -718,7 +718,7 @@ const EvidenceManager = ({
                                     className="w-full border rounded-lg px-3 py-2"
                                   >
                                     <option value="Post">Post</option>
-                                    <option value="To-Do">To-Do</option>
+                                    <option value="Todo">To-Do</option>
                                     <option value="Email">Email</option>
                                     <option value="Hand">Hand</option>
                                     <option value="Call">Call</option>
