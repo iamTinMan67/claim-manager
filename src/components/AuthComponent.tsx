@@ -82,7 +82,7 @@ export default function AuthComponent({ children, onAuthChange }: AuthComponentP
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <div className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          <h1 className="text-xl font-semibold dark:text-white">Legal Evidence Management</h1>
+          <h1 className="text-xl font-semibold dark:text-white">Management</h1>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600 dark:text-gray-300">
               Welcome, {user.email}

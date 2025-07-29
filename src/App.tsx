@@ -147,6 +147,7 @@ function LoggedInContent({
         <Navigation 
           activeTab={activeTab} 
           onTabChange={setActiveTab} 
+          selectedClaim={selectedClaim}
           isGuest={currentlyGuest}
           showGuestContent={showGuestContent}
           onToggleGuestContent={setShowGuestContent}
