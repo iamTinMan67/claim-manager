@@ -208,7 +208,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         if (exportType === 'evidence') {
           // For evidence, display in columns
          pdf.text(item.exhibit_id || '', 17, yPosition, { align: 'center' })
-          pdf.text(item.file_name || '', 50, yPosition)
+          pdf.text(item.file_name || '', 45, yPosition)
           pdf.text(item.method || '', 100, yPosition, { align: 'center' })
           pdf.text(item.date_submitted ? new Date(item.date_submitted).toLocaleDateString() : '', 130, yPosition, { align: 'center' })
           pdf.text((item.number_of_pages || '').toString(), 155, yPosition, { align: 'center' })
