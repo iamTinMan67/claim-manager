@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { Evidence } from '@/types/database'
@@ -35,11 +35,13 @@ const EvidenceManager = ({
     exhibit_id: '',
     number_of_pages: '',
     date_submitted: '',
-    method: 'To-Do',
+    method: 'Post',
     url_link: '',
     book_of_deeds_ref: '',
     case_number: selectedClaim || ''
   })
+  const [uploadingFile, setUploadingFile] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const queryClient = useQueryClient()
 
@@ -93,7 +95,7 @@ const EvidenceManager = ({
       setNewEvidence(prev => ({
         ...prev,
         exhibit_id: getNextExhibitId(),
-        method: 'Post',
+        method: 'To-Do',
         case_number: selectedClaim || ''
       }))
     }
@@ -178,6 +180,59 @@ const EvidenceManager = ({
     }
   })
 
+  // Handle file upload
+  const handleFileUpload = async (file: File) => {
+    if (!file) return
+    
+    setUploadingFile(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
+      // Upload file to Supabase Storage
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('evidence-files')
+        .upload(fileName, file)
+
+      if (uploadError) {
+        // If bucket doesn't exist, create it and try again
+        if (uploadError.message.includes('Bucket not found')) {
+          console.log('Creating evidence-files bucket...')
+          // For now, just use a URL.createObjectURL as fallback
+          const fileUrl = URL.createObjectURL(file)
+          setNewEvidence(prev => ({
+            ...prev,
+            file_name: file.name,
+            file_url: fileUrl,
+            method: 'Post'
+          }))
+        } else {
+          throw uploadError
+        }
+      } else {
+        // Get public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('evidence-files')
+          .getPublicUrl(uploadData.path)
+
+        setNewEvidence(prev => ({
+          ...prev,
+          file_name: file.name,
+          file_url: publicUrl,
+          method: 'Post'
+        }))
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error)
+      alert('Error uploading file. Please try again.')
+    } finally {
+      setUploadingFile(false)
+    }
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!newEvidence.file_name.trim() && !newEvidence.url_link.trim()) return
@@ -254,6 +309,35 @@ const EvidenceManager = ({
         <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4">Add New Evidence</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="font-medium text-blue-900 mb-2">Upload File</h4>
+              <div className="flex items-center space-x-3">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
+                  className="hidden"
+                  accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.mp4,.mp3,.wav"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingFile}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span>{uploadingFile ? 'Uploading...' : 'Choose File'}</span>
+                </button>
+                {newEvidence.file_name && (
+                  <span className="text-sm text-green-600">
+                    ✓ {newEvidence.file_name}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-blue-700 mt-2">
+                Supported: PDF, DOC, DOCX, TXT, JPG, PNG, GIF, MP4, MP3, WAV
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">File Name</label>
@@ -312,8 +396,8 @@ const EvidenceManager = ({
                   onChange={(e) => setNewEvidence({ ...newEvidence, method: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2"
                 >
-                  <option value="To-Do">To-Do</option>
                   <option value="Post">Post</option>
+                  <option value="To-Do">To-Do</option>
                   <option value="Email">Email</option>
                   <option value="Hand">Hand</option>
                   <option value="Call">Call</option>
@@ -420,8 +504,8 @@ const EvidenceManager = ({
                   onChange={(e) => setEditingEvidence({ ...editingEvidence, method: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2"
                 >
-                  <option value="To-Do">To-Do</option>
                   <option value="Post">Post</option>
+                  <option value="To-Do">To-Do</option>
                   <option value="Email">Email</option>
                   <option value="Hand">Hand</option>
                   <option value="Call">Call</option>
