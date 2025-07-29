@@ -135,11 +135,7 @@ function LoggedInContent({
       case 'shared':
         return <SharedClaims selectedClaim={selectedClaim} claimColor={selectedClaimColor} currentUserId={user?.id} />
       case 'export':
-        return (
-          <AccessControl requiredFeature="export" claimId={selectedClaim}>
-            <ExportFeatures selectedClaim={selectedClaim} claimColor={selectedClaimColor} />
-          </AccessControl>
-        )
+        return <ExportFeatures selectedClaim={selectedClaim} claimColor={selectedClaimColor} />
       default:
         return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} onClaimColorChange={setSelectedClaimColor} isGuest={currentlyGuest} />
     }
