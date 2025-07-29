@@ -158,6 +158,18 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         yPosition += 10
       }
 
+      // Add column headers for table of contents export
+      if (exportType === 'table_of_contents') {
+        pdf.setFontSize(10)
+        pdf.setFont(undefined, 'bold')
+        pdf.text('EXHIBIT #', 20, yPosition, { align: 'center' })
+        pdf.text('FILE NAME', 60, yPosition)
+        pdf.text('PAGES', 120, yPosition, { align: 'center' })
+        pdf.text('BUNDLE POS', 150, yPosition, { align: 'center' })
+        pdf.setFont(undefined, 'normal')
+        yPosition += 10
+      }
+
       // Calculate bundle positions for evidence
       let bundlePositions: { [key: string]: number } = {}
       if (exportType === 'evidence' && data) {
@@ -201,13 +213,6 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
           pdf.text(item.date_submitted ? new Date(item.date_submitted).toLocaleDateString() : '', 120, yPosition)
           pdf.text(bundlePositions[item.id]?.toString() || '', 150, yPosition)
           pdf.text(item.book_of_deeds_ref || '', 175, yPosition)
-          yPosition += 8
-        } else if (exportType === 'table_of_contents') {
-          // For table of contents, display in columns
-          pdf.text(item.exhibit_id || '', 20, yPosition, { align: 'center' })
-          pdf.text(item.file_name || '', 60, yPosition)
-          pdf.text((item.number_of_pages || 1).toString(), 120, yPosition, { align: 'center' })
-          pdf.text(bundlePositions[item.id]?.toString() || '', 150, yPosition, { align: 'center' })
           yPosition += 8
         } else {
           // For other exports, use existing logic but exclude unwanted fields
