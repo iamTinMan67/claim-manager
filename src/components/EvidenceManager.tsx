@@ -134,7 +134,7 @@ const EvidenceManager = ({
         exhibit_id: '',
         number_of_pages: '',
         date_submitted: '',
-        method: 'Post',
+        method: 'Todo',
         url_link: '',
         book_of_deeds_ref: '',
         case_number: selectedClaim || ''
@@ -718,7 +718,6 @@ const EvidenceManager = ({
                                     className="w-full border rounded-lg px-3 py-2"
                                   >
                                     <option value="Post">Post</option>
-                                    <option value="Todo">To-Do</option>
                                     <option value="Email">Email</option>
                                     <option value="Hand">Hand</option>
                                     <option value="Call">Call</option>
