@@ -35,7 +35,7 @@ const EvidenceManager = ({
     exhibit_id: '',
     number_of_pages: '',
     date_submitted: '',
-    method: 'Post',
+    method: 'ToDo',
     url_link: '',
     book_of_deeds_ref: '',
     case_number: selectedClaim || ''
@@ -95,7 +95,7 @@ const EvidenceManager = ({
       setNewEvidence(prev => ({
         ...prev,
         exhibit_id: getNextExhibitId(),
-        method: 'Post',
+        method: 'ToDo',
         case_number: selectedClaim || ''
       }))
     }
@@ -133,7 +133,7 @@ const EvidenceManager = ({
         exhibit_id: '',
         number_of_pages: '',
         date_submitted: '',
-        method: 'To-Do',
+        method: 'ToDo',
         url_link: '',
         book_of_deeds_ref: '',
         case_number: selectedClaim || ''
@@ -207,7 +207,7 @@ const EvidenceManager = ({
             ...prev,
             file_name: file.name,
             file_url: fileUrl,
-            method: 'Post'
+            method: 'ToDo'
           }))
         } else {
           throw uploadError
@@ -222,7 +222,7 @@ const EvidenceManager = ({
           ...prev,
           file_name: file.name,
           file_url: publicUrl,
-          method: 'Post'
+          method: 'ToDo'
         }))
       }
     } catch (error) {
@@ -397,7 +397,7 @@ const EvidenceManager = ({
                   className="w-full border rounded-lg px-3 py-2"
                 >
                   <option value="Post">Post</option>
-                  <option value="To-Do">To-Do</option>
+                  <option value="ToDo">ToDo</option>
                   <option value="Email">Email</option>
                   <option value="Hand">Hand</option>
                   <option value="Call">Call</option>
@@ -500,12 +500,12 @@ const EvidenceManager = ({
               <div>
                 <label className="block text-sm font-medium mb-1">Method</label>
                 <select
-                  value={editingEvidence.method || 'To-Do'}
+                  value={editingEvidence.method || 'ToDo'}
                   onChange={(e) => setEditingEvidence({ ...editingEvidence, method: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2"
                 >
                   <option value="Post">Post</option>
-                  <option value="To-Do">To-Do</option>
+                  <option value="ToDo">ToDo</option>
                   <option value="Email">Email</option>
                   <option value="Hand">Hand</option>
                   <option value="Call">Call</option>
