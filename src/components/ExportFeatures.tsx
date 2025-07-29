@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { Download, FileText, Calendar, Users, CheckSquare } from 'lucide-react'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
+import JSZip from 'jszip'
 
 interface ExportFeaturesProps {
   selectedClaim: string | null
@@ -13,6 +14,7 @@ interface ExportFeaturesProps {
 const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeaturesProps) => {
   const [exportType, setExportType] = useState<'evidence' | 'todos' | 'calendar'>('evidence')
   const [isExporting, setIsExporting] = useState(false)
+  const [isDownloadingZip, setIsDownloadingZip] = useState(false)
 
   const { data: evidence } = useQuery({
     queryKey: ['evidence-export', selectedClaim],
@@ -266,6 +268,79 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
     }
   }
 
+  const downloadDocumentsZip = async () => {
+    if (!evidence || evidence.length === 0) return
+    
+    setIsDownloadingZip(true)
+    try {
+      const zip = new JSZip()
+      const documentsFolder = zip.folder('evidence-documents')
+      
+      // Filter evidence that has file URLs
+      const evidenceWithFiles = evidence.filter(item => item.file_url && item.file_url.trim())
+      
+      if (evidenceWithFiles.length === 0) {
+        alert('No documents found to download. Evidence items need file URLs to be included in the ZIP.')
+        return
+      }
+      
+      // Download each file and add to ZIP
+      const downloadPromises = evidenceWithFiles.map(async (item, index) => {
+        try {
+          const response = await fetch(item.file_url!)
+          if (!response.ok) {
+            console.warn(`Failed to download ${item.file_name}: ${response.statusText}`)
+            return null
+          }
+          
+          const blob = await response.blob()
+          const fileName = item.file_name || `exhibit-${item.exhibit_id || index + 1}`
+          
+          // Add exhibit ID prefix to filename for organization
+          const prefixedFileName = item.exhibit_id 
+            ? `${item.exhibit_id} - ${fileName}`
+            : fileName
+          
+          documentsFolder?.file(prefixedFileName, blob)
+          return prefixedFileName
+        } catch (error) {
+          console.warn(`Error downloading ${item.file_name}:`, error)
+          return null
+        }
+      })
+      
+      const results = await Promise.all(downloadPromises)
+      const successfulDownloads = results.filter(Boolean)
+      
+      if (successfulDownloads.length === 0) {
+        alert('No documents could be downloaded. Please check that the file URLs are accessible.')
+        return
+      }
+      
+      // Generate and download ZIP
+      const zipBlob = await zip.generateAsync({ type: 'blob' })
+      const zipUrl = URL.createObjectURL(zipBlob)
+      
+      const link = document.createElement('a')
+      link.href = zipUrl
+      link.download = selectedClaim 
+        ? `${selectedClaim}-evidence-documents.zip`
+        : 'evidence-documents.zip'
+      link.click()
+      
+      // Cleanup
+      URL.revokeObjectURL(zipUrl)
+      
+      alert(`Successfully downloaded ${successfulDownloads.length} documents out of ${evidenceWithFiles.length} available.`)
+      
+    } catch (error) {
+      console.error('Error creating ZIP file:', error)
+      alert('Error creating ZIP file. Please try again.')
+    } finally {
+      setIsDownloadingZip(false)
+    }
+  }
+
   const getDataCount = () => {
     switch (exportType) {
       case 'evidence': return evidence?.length || 0
@@ -397,6 +472,17 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
                 <Download className="w-4 h-4" />
                 <span>{isExporting ? 'Generating PDF...' : 'Export as PDF'}</span>
               </button>
+              
+              {exportType === 'evidence' && (
+                <button
+                  onClick={downloadDocumentsZip}
+                  disabled={isDownloadingZip || !evidence || evidence.length === 0}
+                  className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>{isDownloadingZip ? 'Creating ZIP...' : 'Download Documents ZIP'}</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -404,6 +490,14 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <p className="text-yellow-800 text-sm">
                 No data available for the selected export type. Add some data first to enable exports.
+              </p>
+            </div>
+          )}
+          
+          {exportType === 'evidence' && evidence && evidence.filter(item => item.file_url).length === 0 && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <p className="text-orange-800 text-sm">
+                No documents with file URLs found. Upload files or add file URLs to evidence items to enable ZIP download.
               </p>
             </div>
           )}
@@ -415,6 +509,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         <ul className="text-sm text-blue-800 space-y-1">
           <li>• CSV exports are ideal for importing into spreadsheet applications</li>
           <li>• PDF exports provide formatted reports suitable for printing or sharing</li>
+          <li>• ZIP downloads include all uploaded documents organized by exhibit ID</li>
           <li>• All exports exclude sensitive system data like user IDs</li>
           <li>• Large datasets may take a moment to process</li>
         </ul>
