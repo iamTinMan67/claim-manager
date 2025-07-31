@@ -632,7 +632,8 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
       {showShareForm && (
         <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4">Share a Claim</h3>
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+          {(selectedClaim || claimToShare) && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
             <div className="flex items-center space-x-2">
               {calculateDonationAmount((guestCounts?.[selectedClaim || claimToShare] || 0) + 1) === 0 ? (
                 <>
@@ -666,7 +667,8 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
                 They can create their own claims and invite their own guests.
               </p>
             </div>
-          </div>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1">Select Claim *</label>
@@ -684,6 +686,11 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
                   </option>
                 ))}
               </select>
+              {!selectedClaim && !claimToShare && (
+                <p className="text-sm text-gray-600 mt-1">
+                  Please select a claim to share before proceeding.
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Email Address *</label>
