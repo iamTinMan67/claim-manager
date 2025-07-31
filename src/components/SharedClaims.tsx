@@ -197,7 +197,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
         .from('profiles')
         .select('id')
         .eq('email', shareInfo.email)
-        .single()
+        .maybeSingle()
 
       if (!existingUser) {
         throw new Error('User with this email does not have an account. They must register first at the app to be added as a guest.')
