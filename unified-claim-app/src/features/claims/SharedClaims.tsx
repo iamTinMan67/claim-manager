@@ -983,7 +983,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
           <EvidenceManager 
             selectedClaim={selectedSharedClaim} 
             claimColor={claimColor} 
-            isGuest={true}
+            isGuest={isGuest}
             currentUserId={currentUserId}
             isGuestFrozen={false}
           />
