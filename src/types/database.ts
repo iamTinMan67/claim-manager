@@ -33,7 +33,6 @@ export interface Evidence {
   id: string
   user_id: string
   title: string
-  description?: string
   file_name?: string
   file_url?: string
   file_size?: number

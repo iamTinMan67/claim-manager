@@ -32,7 +32,6 @@ const EvidenceManager = ({
   const [expandedEvidence, setExpandedEvidence] = useState<string | null>(null)
   const [newEvidence, setNewEvidence] = useState({
     title: '',
-    description: '',
     file_name: '',
     file_url: '',
     exhibit_id: '',
@@ -174,7 +173,6 @@ const EvidenceManager = ({
       setShowAddForm(false)
       setNewEvidence({
         title: '',
-        description: '',
         file_name: '',
         file_url: '',
         exhibit_id: '',
@@ -459,16 +457,6 @@ const EvidenceManager = ({
               <p className="text-sm text-yellow-800">
                 <strong>Note:</strong> The file name will be used as the title. Make sure your file name is descriptive as it will appear in the evidence list.
               </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gold">Description</label>
-              <textarea
-                value={newEvidence.description}
-                onChange={(e) => setNewEvidence({ ...newEvidence, description: e.target.value })}
-                className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
-                placeholder="Enter evidence description (optional)"
-                rows={3}
-              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
