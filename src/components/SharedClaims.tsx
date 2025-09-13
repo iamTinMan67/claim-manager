@@ -42,8 +42,6 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
   const [showShareForm, setShowShareForm] = useState(false)
   const [selectedSharedClaim, setSelectedSharedClaim] = useState<string | null>(null)
   const [claimToShare, setClaimToShare] = useState('')
-  const [showJoinClaimForm, setShowJoinClaimForm] = useState(false)
-  const [joinClaimId, setJoinClaimId] = useState('')
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [showCollaboration, setShowCollaboration] = useState(false)
   const [paymentData, setPaymentData] = useState<{
@@ -160,36 +158,6 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
     }
   })
 
-  // Query for available claims to join (public claims or by case number)
-  const { data: availableClaims } = useQuery({
-    queryKey: ['available-claims', joinClaimId],
-    queryFn: async () => {
-      if (!joinClaimId.trim()) return []
-      
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return []
-
-      // Search for claims by case number that user is not already part of
-      const { data, error } = await supabase
-        .from('claims')
-        .select(`
-          case_number, 
-          title, 
-          color,
-          owner_profile:profiles!user_id(email, full_name)
-        `)
-        .ilike('case_number', `%${joinClaimId}%`)
-        .neq('user_id', user.id) // Not my own claims
-        .limit(5)
-      
-      if (error) throw error
-      
-      // Filter out claims I'm already a guest on
-      const myGuestClaimIds = guestClaims?.map(gc => gc.claim_id) || []
-      return data.filter(claim => !myGuestClaimIds.includes(claim.case_number))
-    },
-    enabled: joinClaimId.trim().length > 0
-  })
 
   const shareClaimMutation = useMutation({
     mutationFn: async (shareInfo: typeof shareData & { claim_id: string }) => {
@@ -298,49 +266,6 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
     }
   })
 
-  const joinClaimMutation = useMutation({
-    mutationFn: async (claimId: string) => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
-
-      // Check if claim exists and get owner info
-      const { data: claim, error: claimError } = await supabase
-        .from('claims')
-        .select('user_id, title')
-        .eq('case_number', claimId)
-        .single()
-
-      if (claimError || !claim) {
-        throw new Error('Claim not found or you do not have permission to join')
-      }
-
-      // Create a join request (in a real app, this might require approval)
-      const { data, error } = await supabase
-        .from('claim_shares')
-        .insert([{
-          claim_id: claimId,
-          owner_id: claim.user_id,
-          shared_with_id: user.id,
-          permission: 'view',
-          can_view_evidence: false,
-          is_frozen: false,
-          is_muted: false,
-          donation_required: false, // Join requests are free initially
-          donation_paid: true
-        }])
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['guest-claims'] })
-      queryClient.invalidateQueries({ queryKey: ['shared-claims'] })
-      setShowJoinClaimForm(false)
-      setJoinClaimId('')
-    }
-  })
 
   const leaveClaimMutation = useMutation({
     mutationFn: async (shareId: string) => {
@@ -439,11 +364,6 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
     })
   }
 
-  const handleJoinClaim = (claimId: string) => {
-    if (window.confirm(`Do you want to request access to claim ${claimId}?`)) {
-      joinClaimMutation.mutate(claimId)
-    }
-  }
 
   const handleLeaveClaim = (shareId: string, claimId: string) => {
     if (window.confirm(`Are you sure you want to leave claim ${claimId}? You will lose access to all claim data.`)) {
@@ -456,7 +376,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
 
       {/* Collaboration Section */}
       {showCollaboration && selectedClaim && (
@@ -494,68 +414,6 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         </div>
       )}
       
-      {/* Claims I'm a Guest On */}
-      {guestClaims && guestClaims.length > 0 && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-          <div className="flex items-center space-x-2 mb-4">
-            <UserPlus className="w-5 h-5 text-green-600" />
-            <h3 className="text-lg font-semibold text-green-900">Claims I'm a Guest On</h3>
-          </div>
-          <div className="space-y-3">
-            {guestClaims.map((guestClaim) => (
-              <div key={guestClaim.id} className="bg-white p-4 rounded border border-green-300 flex justify-between items-center">
-                <div 
-                  className="flex-1 cursor-pointer hover:bg-gray-50 p-2 rounded"
-                  onClick={() => {
-                    // Set the selected claim for collaboration
-                    if (typeof window !== 'undefined') {
-                      // Update the URL to reflect the selected claim
-                      const url = new URL(window.location.href)
-                      url.searchParams.set('claim', guestClaim.claims.case_number)
-                      window.history.pushState({}, '', url.toString())
-                    }
-                    // Trigger a custom event to notify the parent component
-                    window.dispatchEvent(new CustomEvent('claimSelected', { 
-                      detail: { 
-                        claimId: guestClaim.claims.case_number,
-                        claimColor: guestClaim.claims.color || '#3B82F6'
-                      } 
-                    }))
-                  }}
-                >
-                  <div className="flex items-center space-x-2">
-                    <div 
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: guestClaim.claims.color || '#3B82F6' }}
-                    />
-                    <h4 className="font-medium">{guestClaim.claims.case_number} - {guestClaim.claims.title}</h4>
-                    {selectedClaim === guestClaim.claims.case_number && (
-                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Selected</span>
-                    )}
-                  </div>
-                  <div className="text-sm text-gray-600 mt-1">
-                    <span>Hosted by: {guestClaim.owner_profile.email}</span>
-                    <span className="ml-4">Access: {guestClaim.permission}</span>
-                    {guestClaim.can_view_evidence && (
-                      <span className="ml-4 text-green-600">Can view evidence</span>
-                    )}
-                    {guestClaim.is_frozen && (
-                      <span className="ml-4 text-red-600 font-medium">FROZEN</span>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleLeaveClaim(guestClaim.id, guestClaim.claims.case_number)}
-                  className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 flex items-center space-x-1"
-                >
-                  <UserMinus className="w-3 h-3" />
-                  <span>Leave</span>
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
       
 
       <div className="flex justify-between items-center">
@@ -578,13 +436,6 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
             <Crown className="w-4 h-4" />
             <span>Subscription</span>
           </button>
-          <button
-            onClick={() => setShowJoinClaimForm(true)}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Join Claim</span>
-          </button>
           {!isGuest && (
             <button
               onClick={() => setShowShareForm(true)}
@@ -598,64 +449,6 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         </div>
       </div>
 
-      {showJoinClaimForm && (
-        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">Join a Claim</h3>
-            <button
-              onClick={() => setShowJoinClaimForm(false)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Search by Case Number</label>
-              <input
-                type="text"
-                value={joinClaimId}
-                onChange={(e) => setJoinClaimId(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2"
-                placeholder="Enter case number to search..."
-              />
-            </div>
-            {availableClaims && availableClaims.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="font-medium">Available Claims:</h4>
-                {availableClaims.map((claim) => (
-                  <div key={claim.case_number} className="bg-gray-50 p-3 rounded border flex justify-between items-center">
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <div 
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: claim.color || '#3B82F6' }}
-                        />
-                        <span className="font-medium">{claim.case_number} - {claim.title}</span>
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        Hosted by: {claim.owner_profile?.email || 'Unknown'}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleJoinClaim(claim.case_number)}
-                      disabled={joinClaimMutation.isPending}
-                      className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 disabled:opacity-50"
-                    >
-                      {joinClaimMutation.isPending ? 'Joining...' : 'Join'}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            {joinClaimId.trim() && availableClaims && availableClaims.length === 0 && (
-              <div className="text-center py-4 text-gray-500 text-sm">
-                No available claims found for "{joinClaimId}"
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {showShareForm && (
         <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
@@ -817,9 +610,17 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         />
       )}
 
-      <div className="space-y-4">
-        {sharedClaims?.map((share) => (
-          <div key={share.id} className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
+      <div className="space-y-3">
+        {/* Claims I Own (Host) */}
+        {sharedClaims && sharedClaims.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center space-x-2">
+              <Crown className="w-5 h-5 text-purple-600" />
+              <span>Claims I Own</span>
+            </h3>
+            <div className="space-y-3">
+              {sharedClaims.map((share) => (
+          <div key={share.id} className="bg-white p-4 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
             <div className="flex justify-between items-start">
               <div 
                 className="flex-1 cursor-pointer hover:bg-gray-50 p-2 rounded"
@@ -986,8 +787,109 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
               </div>
             </div>
           </div>
-        ))}
-        {(!sharedClaims || sharedClaims.length === 0) && (
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Claims I'm a Guest On */}
+        {guestClaims && guestClaims.length > 0 && (
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center space-x-2">
+              <UserPlus className="w-5 h-5 text-green-600" />
+              <span>Claims I'm a Guest On</span>
+            </h3>
+            <div className="space-y-3">
+              {guestClaims.map((guestClaim) => (
+                <div key={guestClaim.id} className="bg-white p-4 rounded-lg shadow border-l-4 border-green-400">
+                  <div className="flex justify-between items-start">
+                    <div 
+                      className="flex-1 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                      onClick={() => {
+                        if (typeof window !== 'undefined') {
+                          const url = new URL(window.location.href)
+                          url.searchParams.set('claim', guestClaim.claims.case_number)
+                          window.history.pushState({}, '', url.toString())
+                        }
+                        window.dispatchEvent(new CustomEvent('claimSelected', { 
+                          detail: { 
+                            claimId: guestClaim.claims.case_number,
+                            claimColor: guestClaim.claims.color || '#3B82F6'
+                          } 
+                        }))
+                      }}
+                    >
+                      <div className="flex items-center space-x-2 mb-2">
+                        <div 
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: guestClaim.claims.color || '#3B82F6' }}
+                        />
+                        <h3 className="text-lg font-semibold">
+                          {guestClaim.claims.case_number} - {guestClaim.claims.title}
+                        </h3>
+                        {selectedClaim === guestClaim.claims.case_number && (
+                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Selected</span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                        <div className="flex items-center space-x-1">
+                          <Mail className="w-4 h-4" />
+                          <span>Hosted by: {guestClaim.owner_profile.email}</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          {guestClaim.permission === 'edit' ? (
+                            <Edit className="w-4 h-4 text-green-600" />
+                          ) : (
+                            <Eye className="w-4 h-4 text-blue-600" />
+                          )}
+                          <span className="capitalize">{guestClaim.permission} Access</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            guestClaim.can_view_evidence 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {guestClaim.can_view_evidence ? 'Can View Evidence' : 'No Evidence Access'}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            guestClaim.is_frozen 
+                              ? 'bg-red-100 text-red-800' 
+                              : 'bg-green-100 text-green-800'
+                          }`}>
+                            {guestClaim.is_frozen ? 'Frozen' : 'Active'}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            guestClaim.is_muted 
+                              ? 'bg-orange-100 text-orange-800' 
+                              : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {guestClaim.is_muted ? 'Muted' : 'Can Chat'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleLeaveClaim(guestClaim.id, guestClaim.claims.case_number)}
+                        className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 flex items-center space-x-1"
+                      >
+                        <UserMinus className="w-3 h-3" />
+                        <span>Leave</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {(!sharedClaims || sharedClaims.length === 0) && (!guestClaims || guestClaims.length === 0) && (
           <div className="text-center py-8 text-gray-500">
             No shared claims yet. Share a claim to start collaborating!
           </div>

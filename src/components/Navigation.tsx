@@ -16,9 +16,9 @@ const Navigation = ({ activeTab, onTabChange, selectedClaim, isGuest = false, sh
 
   const navItems = [
     { id: 'claims', label: 'Claims', icon: FileText },
-    { id: 'todos', label: 'To-Do Lists', icon: CheckSquare, requiresClaim: true },
-    { id: 'calendar', label: 'Calendar', icon: Calendar, requiresClaim: true },
-    { id: 'export', label: 'Export', icon: Download, requiresClaim: true },
+    { id: 'todos', label: activeTab === 'shared' ? 'Shared To-Do Lists' : 'To-Do Lists', icon: CheckSquare, requiresClaim: true },
+    { id: 'calendar', label: activeTab === 'shared' ? 'Shared Calendar' : 'Calendar', icon: Calendar, requiresClaim: true },
+    { id: 'export', label: activeTab === 'shared' ? 'Shared Export' : 'Export', icon: Download, requiresClaim: true },
     { id: 'shared', label: 'Shared Claims', icon: Users },
   ]
 
@@ -30,6 +30,12 @@ const Navigation = ({ activeTab, onTabChange, selectedClaim, isGuest = false, sh
           {navItems.map((item) => {
             // Hide nav items that require a claim when on claims page and no claim selected
             if (activeTab === 'claims' && item.requiresClaim && !selectedClaim) {
+              return null
+            }
+            
+            // When on shared claims page, allow navigation to todos, calendar, and export
+            // but only if a claim is selected
+            if (activeTab === 'shared' && item.requiresClaim && !selectedClaim) {
               return null
             }
             

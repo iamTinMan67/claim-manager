@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import VideoConference from './VideoConference'
 import { 
   MessageCircle, 
   Video, 
@@ -385,60 +386,10 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
               <p className="text-gray-600">Start a video call with other collaborators</p>
             </div>
             
-            <div className="bg-gray-900 rounded-lg p-4 mb-4">
-              {mediaStream ? (
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  muted
-                  className="w-full h-64 object-cover rounded"
-                />
-              ) : (
-                <div className="w-full h-64 bg-gray-800 rounded flex items-center justify-center">
-                  <Video className="w-16 h-16 text-gray-400" />
-                </div>
-              )}
-            </div>
-            
-            <div className="flex justify-center space-x-4">
-              {!mediaStream ? (
-                <button
-                  onClick={startVideoCall}
-                  className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2"
-                >
-                  <Phone className="w-5 h-5" />
-                  <span>Start Call</span>
-                </button>
-              ) : (
-                <>
-                  <button
-                    onClick={toggleVideo}
-                    className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
-                      isVideoOn ? 'bg-red-600 text-white' : 'bg-gray-600 text-white'
-                    }`}
-                  >
-                    {isVideoOn ? <CameraOff className="w-4 h-4" /> : <Camera className="w-4 h-4" />}
-                    <span>{isVideoOn ? 'Video Off' : 'Video On'}</span>
-                  </button>
-                  <button
-                    onClick={toggleAudio}
-                    className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
-                      isAudioOn ? 'bg-red-600 text-white' : 'bg-gray-600 text-white'
-                    }`}
-                  >
-                    {isAudioOn ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                    <span>{isAudioOn ? 'Mute' : 'Unmute'}</span>
-                  </button>
-                  <button
-                    onClick={stopVideoCall}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center space-x-2"
-                  >
-                    <PhoneOff className="w-4 h-4" />
-                    <span>End Call</span>
-                  </button>
-                </>
-              )}
-            </div>
+            <VideoConference 
+              claimId={selectedClaim} 
+              onClose={() => setActiveTab('chat')}
+            />
           </div>
         )}
 
