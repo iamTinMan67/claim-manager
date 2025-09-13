@@ -465,15 +465,15 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold dark:text-white">Shared Claims</h2>
         <div className="flex items-center space-x-3">
-          {!isGuest && (
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Claim</span>
-            </button>
-          )}
+        {!isGuest && !selectedClaim && (
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Claim</span>
+          </button>
+        )}
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -914,7 +914,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
       {selectedClaim && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold dark:text-white">Claim Details - {selectedClaim}</h2>
+            <h2 className="text-2xl font-bold dark:text-white">Claim Details</h2>
             <div className="flex items-center space-x-3">
               <button
                 onClick={() => {
@@ -933,12 +933,6 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
             </div>
           </div>
           
-          {/* Debug Info */}
-          <div className="bg-yellow-50 dark:bg-yellow-900 p-4 rounded-lg">
-            <p className="text-sm text-yellow-800 dark:text-yellow-200">
-              Debug: selectedClaim = {selectedClaim}, claimColor = {claimColor}, isGuest = {isGuest ? 'true' : 'false'}
-            </p>
-          </div>
           
           {/* Evidence Management */}
           <EvidenceManager 
