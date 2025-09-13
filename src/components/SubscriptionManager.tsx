@@ -23,16 +23,16 @@ const SubscriptionManager = () => {
           </div>
           <div className="card-enhanced p-3">
             <div className="font-medium text-gold">2nd Guest</div>
-            <div className="text-gold font-bold">£7</div>
+            <div className="text-gold font-bold">£5</div>
           </div>
           <div className="card-enhanced p-3">
             <div className="font-medium text-gold">3-5 Guests</div>
-            <div className="text-gold font-bold">£10</div>
+            <div className="text-gold font-bold">£7</div>
           </div>
           <div className="card-enhanced p-3">
             <div className="font-medium text-gold">6+ Guests</div>
-            <div className="text-gold font-bold">£20</div>
-            <div className="text-xs text-gold-light mt-1">+ Frontend files & database setup</div>
+            <div className="text-gold font-bold">£10</div>
+            <div className="text-xs text-gold-light mt-1">Buy the full rights to the app</div>
           </div>
         </div>
         <div className="mt-4 p-3 card-enhanced">
@@ -44,7 +44,7 @@ const SubscriptionManager = () => {
         </div>
         <p className="text-gold-light text-sm mt-3">
           <strong>Note:</strong> First guest is FREE! Payment required for additional guests. 
-          £20 tier includes complete frontend files and database setup for unlimited storage beyond fair usage policy. 
+          £10 tier includes full rights to the app with complete source code and unlimited usage. 
           All payments support app development. Each user can be both a claim owner (hosting their own claims) and a guest (invited to others' claims).
         </p>
       </div>
