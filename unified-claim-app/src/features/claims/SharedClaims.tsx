@@ -694,291 +694,123 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         />
       )}
 
-      <div className="space-y-4">
-        {/* Claims I Own (Host) */}
-        {sharedClaims && sharedClaims.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center space-x-2">
-              <Crown className="w-5 h-5 text-purple-600" />
-              <span>Claims I Own</span>
-            </h3>
-            <div className="space-y-3">
-              {sharedClaims.map((share) => (
-          <div key={share.id} className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
-            <div className="flex justify-between items-start">
+      {/* Claims Grid - Only show claims you own */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {sharedClaims?.map((share) => (
+          <div
+            key={share.id}
+            className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border-l-4 cursor-pointer hover:shadow-lg transition-shadow"
+            style={{ borderLeftColor: share.claims.color || '#3B82F6' }}
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                const url = new URL(window.location.href)
+                url.searchParams.set('claim', share.claims.case_number)
+                window.history.pushState({}, '', url.toString())
+              }
+              window.dispatchEvent(new CustomEvent('claimSelected', {
+                detail: {
+                  claimId: share.claims.case_number,
+                  claimColor: share.claims.color || '#3B82F6'
+                }
+              }))
+            }}
+          >
+            <div className="flex justify-between items-start mb-4">
               <div 
-                className="flex-1 cursor-pointer hover:bg-gray-50 p-2 rounded"
-                onClick={() => {
-                  if (typeof window !== 'undefined') {
-                    const url = new URL(window.location.href)
-                    url.searchParams.set('claim', share.claims.case_number)
-                    window.history.pushState({}, '', url.toString())
-                  }
-                  window.dispatchEvent(new CustomEvent('claimSelected', {
-                    detail: {
-                      claimId: share.claims.case_number,
-                      claimColor: share.claims.color || '#3B82F6'
-                    }
-                  }))
-                }}
-              >
-                <div className="flex items-center space-x-2 mb-2">
-                  <Users className="w-5 h-5" style={{ color: claimColor }} />
-                  <h3 className="text-lg font-semibold">
-                    {share.claims.case_number} - {share.claims.title}
-                  </h3>
-                  {selectedClaim === share.claims.case_number && (
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Selected</span>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                  <div className="flex items-center space-x-1">
-                    <Mail className="w-4 h-4" />
-                    <span>{share.profiles.email}</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    {share.permission === 'edit' ? (
-                      <Edit className="w-4 h-4 text-green-600" />
-                    ) : (
-                      <Eye className="w-4 h-4 text-blue-600" />
-                    )}
-                    <span className="capitalize">{share.permission} Access</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      share.can_view_evidence 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {share.can_view_evidence ? 'Can View Evidence' : 'No Evidence Access'}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      share.is_frozen 
-                        ? 'bg-red-100 text-red-800' 
-                        : 'bg-green-100 text-green-800'
-                    }`}>
-                      {share.is_frozen ? 'Frozen' : 'Active'}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      share.is_muted 
-                        ? 'bg-orange-100 text-orange-800' 
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {share.is_muted ? 'Muted' : 'Can Chat'}
-                    </span>
-                  </div>
-                </div>
-                {share.donation_required && (
-                  <div className="mt-2 flex items-center space-x-2">
-                    <DollarSign className="w-4 h-4 text-green-600" />
-                    <span className="text-sm text-gray-600">
-                      {share.donation_amount === 0 ? 'First Guest - FREE' : `App Owner Payment: £${share.donation_amount}`}
-                    </span>
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      share.donation_paid 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {share.donation_paid ? (
-                        <div className="flex items-center space-x-1">
-                          <CheckCircle className="w-3 h-3" />
-                          <span>{share.donation_amount === 0 ? 'Free' : 'Paid'}</span>
-                          {share.donation_paid_at && (
-                            <span className="text-xs">
-                              on {new Date(share.donation_paid_at).toLocaleDateString()}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="flex items-center space-x-1">
-                          <Clock className="w-3 h-3" />
-                          <span>Payment Required</span>
-                        </div>
-                      )}
-                    </span>
-                  </div>
+                className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: share.claims.color || '#3B82F6' }}
+              />
+              <div className="flex items-center space-x-2">
+                <Crown className="w-4 h-4 text-purple-600" title="You own this claim" />
+                {selectedClaim === share.claims.case_number && (
+                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Selected</span>
                 )}
-                <div className="mt-2 text-xs text-gray-500">
-                  Shared on {new Date(share.created_at).toLocaleDateString()}
-                </div>
+              </div>
+            </div>
+            
+            <h3 className="text-lg font-semibold mb-2 dark:text-white">
+              {share.claims.case_number}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">{share.claims.title}</p>
+            
+            <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+              <div className="flex items-center space-x-2">
+                <Mail className="w-4 h-4" />
+                <span>Shared with: {share.profiles.email}</span>
               </div>
               <div className="flex items-center space-x-2">
-                {share.can_view_evidence && (
-                  <button
-                    onClick={() => setSelectedSharedClaim(share.claims.case_number)}
-                    className="p-2 text-blue-600 hover:text-blue-800"
-                    title="View Evidence"
-                  >
-                    <FileText className="w-4 h-4" />
-                  </button>
+                {share.permission === 'edit' ? (
+                  <Edit className="w-4 h-4 text-green-600" />
+                ) : (
+                  <Eye className="w-4 h-4 text-blue-600" />
                 )}
-                <button
-                  onClick={() => toggleFreezeGuestMutation.mutate({ 
-                    id: share.id, 
-                    is_frozen: !share.is_frozen 
-                  })}
-                  className={`p-2 ${
-                    share.is_frozen 
-                      ? 'text-green-600 hover:text-green-800' 
-                      : 'text-orange-600 hover:text-orange-800'
-                  }`}
-                  title={share.is_frozen ? 'Unfreeze guest' : 'Freeze guest'}
-                >
-                  {share.is_frozen ? (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zM12 9a3 3 0 110-6 3 3 0 010 6z" />
-                    </svg>
-                  )}
-                </button>
-                <button
-                  onClick={() => toggleMuteGuestMutation.mutate({ 
-                    id: share.id, 
-                    is_muted: !share.is_muted 
-                  })}
-                  className={`p-2 ${
-                    share.is_muted 
-                      ? 'text-green-600 hover:text-green-800' 
-                      : 'text-red-600 hover:text-red-800'
-                  }`}
-                  title={share.is_muted ? 'Unmute guest' : 'Mute guest'}
-                >
-                  {share.is_muted ? (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-                    </svg>
-                  )}
-                </button>
-                <button
-                  onClick={() => deleteShareMutation.mutate(share.id)}
-                  className="text-red-600 hover:text-red-800 p-2"
-                  title="Remove share"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <span className="capitalize">{share.permission} Access</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className={`px-2 py-1 rounded text-xs ${
+                  share.can_view_evidence 
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                }`}>
+                  {share.can_view_evidence ? 'Can View Evidence' : 'No Evidence Access'}
+                </span>
               </div>
             </div>
-          </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Claims I'm a Guest On */}
-        {guestClaims && guestClaims.length > 0 && (
-          <div>
-            <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center space-x-2">
-              <UserPlus className="w-5 h-5 text-green-600" />
-              <span>Claims I'm a Guest On</span>
-            </h3>
-            <div className="space-y-3">
-              {guestClaims.map((guestClaim) => (
-                <div key={guestClaim.id} className="bg-white p-4 rounded-lg shadow border-l-4 border-green-400">
-                  <div className="flex justify-between items-start">
-                    <div 
-                      className="flex-1 cursor-pointer hover:bg-gray-50 p-2 rounded"
-                      onClick={() => {
-                        if (typeof window !== 'undefined') {
-                          const url = new URL(window.location.href)
-                          url.searchParams.set('claim', guestClaim.claims.case_number)
-                          window.history.pushState({}, '', url.toString())
-                        }
-                        window.dispatchEvent(new CustomEvent('claimSelected', { 
-                          detail: { 
-                            claimId: guestClaim.claims.case_number,
-                            claimColor: guestClaim.claims.color || '#3B82F6'
-                          } 
-                        }))
-                      }}
-                    >
-                      <div className="flex items-center space-x-2 mb-2">
-                        <div 
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: guestClaim.claims.color || '#3B82F6' }}
-                        />
-                        <h3 className="text-lg font-semibold">
-                          {guestClaim.claims.case_number} - {guestClaim.claims.title}
-                        </h3>
-                        {selectedClaim === guestClaim.claims.case_number && (
-                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Selected</span>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                        <div className="flex items-center space-x-1">
-                          <Mail className="w-4 h-4" />
-                          <span>Hosted by: {guestClaim.owner_profile.email}</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          {guestClaim.permission === 'edit' ? (
-                            <Edit className="w-4 h-4 text-green-600" />
-                          ) : (
-                            <Eye className="w-4 h-4 text-blue-600" />
-                          )}
-                          <span className="capitalize">{guestClaim.permission} Access</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            guestClaim.can_view_evidence 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-gray-100 text-gray-800'
-                          }`}>
-                            {guestClaim.can_view_evidence ? 'Can View Evidence' : 'No Evidence Access'}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            guestClaim.is_frozen 
-                              ? 'bg-red-100 text-red-800' 
-                              : 'bg-green-100 text-green-800'
-                          }`}>
-                            {guestClaim.is_frozen ? 'Frozen' : 'Active'}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            guestClaim.is_muted 
-                              ? 'bg-orange-100 text-orange-800' 
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
-                            {guestClaim.is_muted ? 'Muted' : 'Can Chat'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleLeaveClaim(guestClaim.id, guestClaim.claims.case_number)}
-                        className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 flex items-center space-x-1"
-                      >
-                        <UserMinus className="w-3 h-3" />
-                        <span>Leave</span>
-                      </button>
-                    </div>
-                  </div>
+            
+            {share.donation_required && (
+              <div className="mt-4 p-2 bg-yellow-50 dark:bg-yellow-900 rounded text-sm">
+                <div className="flex items-center space-x-2">
+                  <DollarSign className="w-4 h-4 text-green-600" />
+                  <span className="text-yellow-800 dark:text-yellow-200">
+                    {share.donation_amount === 0 ? 'First Guest - FREE' : `Payment: £${share.donation_amount}`}
+                  </span>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
-        )}
-
-        {(!sharedClaims || sharedClaims.length === 0) && (!guestClaims || guestClaims.length === 0) && (
-          <div className="text-center py-8 text-gray-500">
-            No shared claims yet. Share a claim to start collaborating!
-          </div>
-        )}
+        ))}
       </div>
+
+      {/* Action Buttons - Show when claim is selected */}
+      {selectedClaim && (
+        <div className="mt-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
+          <h3 className="text-lg font-semibold mb-4 dark:text-white">Claim Actions</h3>
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => setShowCollaboration(!showCollaboration)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+            >
+              <Users className="w-4 h-4" />
+              <span>{showCollaboration ? 'Hide' : 'Show'} Collaboration</span>
+            </button>
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('tabChange', { detail: 'subscription' }))
+              }}
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center space-x-2"
+            >
+              <Crown className="w-4 h-4" />
+              <span>Subscription</span>
+            </button>
+            {!isGuest && (
+              <button
+                onClick={() => setShowShareForm(true)}
+                className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
+                style={{ backgroundColor: claimColor }}
+              >
+                <Plus className="w-4 h-4" />
+                <span>Share Claim</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {(!sharedClaims || sharedClaims.length === 0) && (
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+          No shared claims yet. Add a claim and share it to start collaborating!
+        </div>
+      )}
 
       {/* Evidence Manager for selected shared claim */}
       {selectedSharedClaim && (

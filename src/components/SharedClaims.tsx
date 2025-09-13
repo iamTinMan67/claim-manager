@@ -772,9 +772,8 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         />
       )}
 
-      {/* Claims Grid */}
+      {/* Claims Grid - Only show claims you own */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* Claims I Own (Host) */}
         {sharedClaims?.map((share) => (
           <div
             key={share.id}
@@ -848,70 +847,6 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
             )}
           </div>
         ))}
-
-        {/* Claims I'm a Guest On */}
-        {guestClaims?.map((guestClaim) => (
-          <div
-            key={guestClaim.id}
-            className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border-l-4 cursor-pointer hover:shadow-lg transition-shadow"
-            style={{ borderLeftColor: guestClaim.claims.color || '#3B82F6' }}
-            onClick={() => {
-              if (typeof window !== 'undefined') {
-                const url = new URL(window.location.href)
-                url.searchParams.set('claim', guestClaim.claims.case_number)
-                window.history.pushState({}, '', url.toString())
-              }
-              window.dispatchEvent(new CustomEvent('claimSelected', { 
-                detail: { 
-                  claimId: guestClaim.claims.case_number,
-                  claimColor: guestClaim.claims.color || '#3B82F6'
-                } 
-              }))
-            }}
-          >
-            <div className="flex justify-between items-start mb-4">
-              <div 
-                className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: guestClaim.claims.color || '#3B82F6' }}
-              />
-              <div className="flex items-center space-x-2">
-                <UserPlus className="w-4 h-4 text-green-600" title="You're a guest on this claim" />
-                {selectedClaim === guestClaim.claims.case_number && (
-                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Selected</span>
-                )}
-              </div>
-            </div>
-            
-            <h3 className="text-lg font-semibold mb-2 dark:text-white">
-              {guestClaim.claims.case_number}
-            </h3>
-            <p className="text-gray-600 dark:text-gray-300 mb-4">{guestClaim.claims.title}</p>
-            
-            <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-              <div className="flex items-center space-x-2">
-                <Mail className="w-4 h-4" />
-                <span>Hosted by: {guestClaim.owner_profile.email}</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                {guestClaim.permission === 'edit' ? (
-                  <Edit className="w-4 h-4 text-green-600" />
-                ) : (
-                  <Eye className="w-4 h-4 text-blue-600" />
-                )}
-                <span className="capitalize">{guestClaim.permission} Access</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className={`px-2 py-1 rounded text-xs ${
-                  guestClaim.can_view_evidence 
-                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                }`}>
-                  {guestClaim.can_view_evidence ? 'Can View Evidence' : 'No Evidence Access'}
-                </span>
-              </div>
-            </div>
-          </div>
-        ))}
       </div>
 
       {/* Action Buttons - Show when claim is selected */}
@@ -949,9 +884,9 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         </div>
       )}
 
-      {(!sharedClaims || sharedClaims.length === 0) && (!guestClaims || guestClaims.length === 0) && (
+      {(!sharedClaims || sharedClaims.length === 0) && (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-          No shared claims yet. Share a claim to start collaborating!
+          No shared claims yet. Add a claim and share it to start collaborating!
         </div>
       )}
 
