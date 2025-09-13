@@ -41,16 +41,27 @@ const SubscriptionManager = () => {
   const queryClient = useQueryClient()
 
   // Get available subscription tiers
-  const { data: tiers, isLoading: tiersLoading } = useQuery({
+  const { data: tiers, isLoading: tiersLoading, error: tiersError } = useQuery({
     queryKey: ['subscription-tiers'],
     queryFn: async () => {
+      console.log('Fetching subscription tiers...')
       const { data, error } = await supabase
         .from('subscription_tiers')
         .select('*')
         .eq('is_active', true)
         .order('price_monthly', { ascending: true })
       
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching subscription tiers:', error)
+        // Return empty array if table doesn't exist
+        if (error.code === '42P01') {
+          console.log('Subscription tiers table does not exist, returning empty array')
+          return []
+        }
+        throw error
+      }
+      
+      console.log('Subscription tiers fetched:', data)
       return data as SubscriptionTier[]
     }
   })
@@ -143,7 +154,51 @@ const SubscriptionManager = () => {
   }
 
   if (tiersLoading) {
-    return <div className="flex justify-center p-8">Loading subscription plans...</div>
+    return (
+      <div className="space-y-8">
+        <div className="flex justify-center p-8">Loading subscription plans...</div>
+        
+        {/* Show Guest Access Pricing even while loading */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+          <div className="flex items-center space-x-2 mb-4">
+            <DollarSign className="w-5 h-5 text-blue-600" />
+            <h3 className="text-lg font-semibold text-blue-900">Guest Access Pricing</h3>
+          </div>
+          <p className="text-blue-800 text-sm mb-4">
+            When sharing claims with additional guests beyond your first free guest, the following pricing applies:
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div className="bg-white p-3 rounded border">
+              <div className="font-medium text-gray-900">First Guest</div>
+              <div className="text-green-600 font-bold">FREE</div>
+            </div>
+            <div className="bg-white p-3 rounded border">
+              <div className="font-medium text-gray-900">2nd Guest</div>
+              <div className="text-blue-600 font-bold">£7</div>
+            </div>
+            <div className="bg-white p-3 rounded border">
+              <div className="font-medium text-gray-900">3-5 Guests</div>
+              <div className="text-blue-600 font-bold">£10</div>
+            </div>
+            <div className="bg-white p-3 rounded border">
+              <div className="font-medium text-gray-900">6+ Guests</div>
+              <div className="text-blue-600 font-bold">£20-£50</div>
+            </div>
+          </div>
+          <div className="mt-4 p-3 bg-white rounded border">
+            <h4 className="font-medium text-gray-900 mb-2">Account Requirements</h4>
+            <p className="text-sm text-gray-700">
+              <strong>All guests must have their own registered account</strong> on this app before they can be invited. 
+              This allows them to create and manage their own claims and have full account functionality beyond just guest access.
+            </p>
+          </div>
+          <p className="text-blue-800 text-sm mt-3">
+            <strong>Note:</strong> First guest is FREE! Payment required for additional guests. All payments support app development. 
+            Each user can be both a claim owner (hosting their own claims) and a guest (invited to others' claims).
+          </p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -153,6 +208,16 @@ const SubscriptionManager = () => {
         <p className="text-lg text-gray-600 mb-8">
           Unlock powerful features for your legal practice
         </p>
+        
+        {/* Show error message if subscription tiers failed to load */}
+        {tiersError && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <p className="text-yellow-800 text-sm">
+              <strong>Note:</strong> Subscription plans are not available at the moment. 
+              You can still use the guest access pricing below to add collaborators to your claims.
+            </p>
+          </div>
+        )}
         
         {/* Billing Toggle */}
         <div className="flex items-center justify-center space-x-4 mb-8">
@@ -204,8 +269,9 @@ const SubscriptionManager = () => {
       )}
 
       {/* Subscription Tiers */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {tiers?.map((tier) => {
+      {tiers && tiers.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {tiers.map((tier) => {
           const price = billingCycle === 'yearly' ? tier.price_yearly : tier.price_monthly
           const isPopular = tier.tier_name === 'professional'
           const isCurrent = isCurrentTier(tier)
@@ -302,7 +368,19 @@ const SubscriptionManager = () => {
             </div>
           )
         })}
-      </div>
+        </div>
+      ) : (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Subscription Plans Coming Soon</h3>
+          <p className="text-gray-600 mb-4">
+            We're working on subscription plans. For now, you can use the guest access pricing below to add collaborators to your claims.
+          </p>
+          <div className="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-800 rounded-lg">
+            <Crown className="w-4 h-4 mr-2" />
+            <span className="text-sm font-medium">Free to use with guest access pricing</span>
+          </div>
+        </div>
+      )}
 
       {/* Payment Modal */}
       {showPaymentModal && selectedTier && (
