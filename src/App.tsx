@@ -82,6 +82,21 @@ function LoggedInContent({
   setShowGuestContent: (show: boolean) => void
   user: any
 }) {
+  // Listen for claim selection events from SharedClaims component
+  React.useEffect(() => {
+    const handleClaimSelected = (event: CustomEvent) => {
+      const { claimId, claimColor } = event.detail
+      setSelectedClaim(claimId)
+      if (claimColor) {
+        setSelectedClaimColor(claimColor)
+      }
+    }
+
+    window.addEventListener('claimSelected', handleClaimSelected as EventListener)
+    return () => {
+      window.removeEventListener('claimSelected', handleClaimSelected as EventListener)
+    }
+  }, [setSelectedClaim, setSelectedClaimColor])
   // Check if current user is viewing a shared claim (guest mode)
   const { data: isGuestForClaim } = useQuery({
     queryKey: ['is-guest-for-claim', selectedClaim, user?.id],

@@ -513,13 +513,34 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
           <div className="space-y-3">
             {guestClaims.map((guestClaim) => (
               <div key={guestClaim.id} className="bg-white p-4 rounded border border-green-300 flex justify-between items-center">
-                <div className="flex-1">
+                <div 
+                  className="flex-1 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                  onClick={() => {
+                    // Set the selected claim for collaboration
+                    if (typeof window !== 'undefined') {
+                      // Update the URL to reflect the selected claim
+                      const url = new URL(window.location.href)
+                      url.searchParams.set('claim', guestClaim.claims.case_number)
+                      window.history.pushState({}, '', url.toString())
+                    }
+                    // Trigger a custom event to notify the parent component
+                    window.dispatchEvent(new CustomEvent('claimSelected', { 
+                      detail: { 
+                        claimId: guestClaim.claims.case_number,
+                        claimColor: guestClaim.claims.color || '#3B82F6'
+                      } 
+                    }))
+                  }}
+                >
                   <div className="flex items-center space-x-2">
                     <div 
                       className="w-3 h-3 rounded-full"
                       style={{ backgroundColor: guestClaim.claims.color || '#3B82F6' }}
                     />
                     <h4 className="font-medium">{guestClaim.claims.case_number} - {guestClaim.claims.title}</h4>
+                    {selectedClaim === guestClaim.claims.case_number && (
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Selected</span>
+                    )}
                   </div>
                   <div className="text-sm text-gray-600 mt-1">
                     <span>Hosted by: {guestClaim.owner_profile.email}</span>
@@ -574,6 +595,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
           <strong>Note:</strong> First guest is FREE! Payment required for additional guests. All payments support app development. 
           Each user can be both a claim owner (hosting their own claims) and a guest (invited to others' claims).
         </p>
+        </div>
         </div>
       )}
 
