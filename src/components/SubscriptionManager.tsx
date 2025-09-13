@@ -31,7 +31,8 @@ const SubscriptionManager = () => {
           </div>
           <div className="bg-white p-3 rounded border">
             <div className="font-medium text-gray-900">6+ Guests</div>
-            <div className="text-blue-600 font-bold">£20-£50</div>
+            <div className="text-blue-600 font-bold">£20</div>
+            <div className="text-xs text-gray-500 mt-1">+ Frontend files & database setup</div>
           </div>
         </div>
         <div className="mt-4 p-3 bg-white rounded border">
@@ -42,8 +43,9 @@ const SubscriptionManager = () => {
           </p>
         </div>
         <p className="text-blue-800 text-sm mt-3">
-          <strong>Note:</strong> First guest is FREE! Payment required for additional guests. All payments support app development. 
-          Each user can be both a claim owner (hosting their own claims) and a guest (invited to others' claims).
+          <strong>Note:</strong> First guest is FREE! Payment required for additional guests. 
+          £20 tier includes complete frontend files and database setup for unlimited storage beyond fair usage policy. 
+          All payments support app development. Each user can be both a claim owner (hosting their own claims) and a guest (invited to others' claims).
         </p>
       </div>
 
