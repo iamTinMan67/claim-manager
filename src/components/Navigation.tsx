@@ -5,19 +5,20 @@ import { useTheme } from 'next-themes'
 interface NavigationProps {
   activeTab: string
   onTabChange: (tab: string) => void
+  selectedClaim?: string | null
   isGuest?: boolean
   showGuestContent?: boolean
   onToggleGuestContent?: (show: boolean) => void
 }
 
-const Navigation = ({ activeTab, onTabChange, isGuest = false, showGuestContent = false, onToggleGuestContent }: NavigationProps) => {
+const Navigation = ({ activeTab, onTabChange, selectedClaim, isGuest = false, showGuestContent = false, onToggleGuestContent }: NavigationProps) => {
   const { theme, setTheme } = useTheme()
 
   const navItems = [
     { id: 'claims', label: 'Claims', icon: FileText },
-    { id: 'todos', label: 'To-Do Lists', icon: CheckSquare },
-    { id: 'calendar', label: 'Calendar', icon: Calendar },
-    { id: 'export', label: 'Export', icon: Download },
+    { id: 'todos', label: 'To-Do Lists', icon: CheckSquare, requiresClaim: true },
+    { id: 'calendar', label: 'Calendar', icon: Calendar, requiresClaim: true },
+    { id: 'export', label: 'Export', icon: Download, requiresClaim: true },
     { id: 'shared', label: 'Shared Claims', icon: Users },
   ]
 
@@ -27,6 +28,11 @@ const Navigation = ({ activeTab, onTabChange, isGuest = false, showGuestContent 
         <div className="flex justify-between items-center">
           <div className="flex space-x-8">
           {navItems.map((item) => {
+            // Hide nav items that require a claim when on claims page and no claim selected
+            if (activeTab === 'claims' && item.requiresClaim && !selectedClaim) {
+              return null
+            }
+            
             const Icon = item.icon
             return (
               <button

@@ -34,6 +34,10 @@ export default function AuthComponent({ children, onAuthChange }: AuthComponentP
         setAuthError(null)
       } else if (event === 'SIGNED_OUT') {
         setAuthError(null)
+      } else if (event === 'SIGN_IN_ERROR') {
+        setAuthError('Invalid email or password. Please check your credentials or sign up if you don\'t have an account.')
+      } else if (event === 'SIGN_UP_ERROR') {
+        setAuthError('Failed to create account. Please try again.')
       }
     })
 
@@ -64,7 +68,12 @@ export default function AuthComponent({ children, onAuthChange }: AuthComponentP
             </div>
           )}
           <div className="mb-4 p-3 bg-blue-100 border border-blue-400 text-blue-700 rounded text-sm">
-            <strong>New user?</strong> Create an account by entering your email and password, then click "Sign up" instead of "Sign in".
+            <div className="mb-2">
+              <strong>New user?</strong> Create an account by entering your email and password, then click "Sign up" instead of "Sign in".
+            </div>
+            <div>
+              <strong>Existing user?</strong> Enter your registered email and password, then click "Sign in".
+            </div>
           </div>
           <Auth
             supabaseClient={supabase}
@@ -82,7 +91,7 @@ export default function AuthComponent({ children, onAuthChange }: AuthComponentP
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <div className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          <h1 className="text-xl font-semibold dark:text-white">Legal Evidence Management</h1>
+          <h1 className="text-xl font-semibold dark:text-white">Management</h1>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600 dark:text-gray-300">
               Welcome, {user.email}

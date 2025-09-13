@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
 import type { User } from '@supabase/supabase-js'
+import { supabase } from '@/lib/supabase'
 import AuthComponent from './components/AuthComponent'
 import Navigation from './components/Navigation'
 import ClaimsTable from './components/ClaimsTable'
@@ -92,7 +93,7 @@ function LoggedInContent({
         .select('id')
         .eq('claim_id', selectedClaim)
         .eq('shared_with_id', user.id)
-        .single()
+        .maybeSingle()
       
       if (error) return false
       return !!data
@@ -111,7 +112,7 @@ function LoggedInContent({
         .select('is_frozen, is_muted')
         .eq('claim_id', selectedClaim)
         .eq('shared_with_id', user.id)
-        .single()
+        .maybeSingle()
       
       if (error) return null
       return data
@@ -146,6 +147,7 @@ function LoggedInContent({
         <Navigation 
           activeTab={activeTab} 
           onTabChange={setActiveTab} 
+          selectedClaim={selectedClaim}
           isGuest={currentlyGuest}
           showGuestContent={showGuestContent}
           onToggleGuestContent={setShowGuestContent}

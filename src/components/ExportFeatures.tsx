@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { Download, FileText, Calendar, Users, CheckSquare } from 'lucide-react'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
+import JSZip from 'jszip'
 
 interface ExportFeaturesProps {
   selectedClaim: string | null
@@ -13,13 +14,17 @@ interface ExportFeaturesProps {
 const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeaturesProps) => {
   const [exportType, setExportType] = useState<'evidence' | 'todos' | 'calendar'>('evidence')
   const [isExporting, setIsExporting] = useState(false)
+  const [isDownloadingZip, setIsDownloadingZip] = useState(false)
 
   const { data: evidence } = useQuery({
     queryKey: ['evidence-export', selectedClaim],
     queryFn: async () => {
       let query = supabase
         .from('evidence')
-        .select('*')
+        .select(`
+          *,
+          date_submitted::text
+        `)
       
       if (selectedClaim) {
         query = query.eq('case_number', selectedClaim)
@@ -30,7 +35,12 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         .order('created_at', { ascending: true })
       
       if (error) throw error
-      return data
+      
+      // Clean up empty string dates
+      return data?.map(item => ({
+        ...item,
+        date_submitted: item.date_submitted === '' ? null : item.date_submitted
+      })) || []
     }
   })
 
@@ -99,12 +109,93 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
     try {
       const pdf = new jsPDF()
       const pageHeight = pdf.internal.pageSize.height
-      let yPosition = 20
+      let yPosition = 10
 
-      // Title
-      pdf.setFontSize(16)
-      pdf.text(title, 20, yPosition)
-      yPosition += 20
+      // Add claim details for evidence export (moved down 2 rows)
+      if (exportType === 'evidence' && selectedClaim) {
+        yPosition += 10 // Move down 1 row
+        
+        const { data: claimDetails } = await supabase
+          .from('claims')
+          .select('case_number, title, court, plaintiff_name, defendant_name')
+          .eq('case_number', selectedClaim)
+          .single()
+        
+        if (claimDetails) {
+          pdf.setFontSize(12)
+          // Two column layout for claim details
+          pdf.text(`Case: ${claimDetails.case_number}`, 20, yPosition)
+          pdf.text(`Title: ${claimDetails.title}`, 110, yPosition)
+          yPosition += 10
+          
+          if (claimDetails.court || claimDetails.plaintiff_name) {
+            pdf.text(`Court: ${claimDetails.court || 'N/A'}`, 20, yPosition)
+            pdf.text(`Plaintiff: ${claimDetails.plaintiff_name || 'N/A'}`, 110, yPosition)
+            yPosition += 10
+          }
+          
+          if (claimDetails.defendant_name) {
+            pdf.text(`Defendant: ${claimDetails.defendant_name}`, 20, yPosition)
+            yPosition += 10
+          }
+          
+          yPosition += 15 // Extra space before column headers
+        }
+      }
+
+      // Add column headers for evidence export
+      if (exportType === 'evidence') {
+        pdf.setFontSize(10)
+        pdf.setFont(undefined, 'bold')
+        pdf.text('EXHIBIT #', 20, yPosition, { align: 'center' })
+        pdf.text('FILE NAME', 50, yPosition)
+        pdf.text('METHOD', 100, yPosition, { align: 'center' })
+        pdf.text('DATE', 130, yPosition, { align: 'center' })
+        pdf.text('PAGES', 155, yPosition, { align: 'center' })
+        pdf.text('BUNDLE POS', 175, yPosition, { align: 'center' })
+        pdf.text('CLC REF#', 195, yPosition, { align: 'center' })
+        pdf.setFont(undefined, 'normal')
+        yPosition += 10
+      }
+
+      // Add column headers for table of contents export
+      if (exportType === 'table_of_contents') {
+        pdf.setFontSize(10)
+        pdf.setFont(undefined, 'bold')
+        pdf.text('EXHIBIT #', 20, yPosition, { align: 'center' })
+        pdf.text('FILE NAME', 60, yPosition)
+        pdf.text('PAGES', 120, yPosition, { align: 'center' })
+        pdf.text('BUNDLE POS', 150, yPosition, { align: 'center' })
+        pdf.setFont(undefined, 'normal')
+        yPosition += 10
+      }
+
+      // Calculate bundle positions for evidence
+      let bundlePositions: { [key: string]: number } = {}
+      if (exportType === 'evidence' && data) {
+        let currentPos = 1
+        // Sort data by display_order first, then by created_at to ensure correct sequence
+        const sortedData = [...data].sort((a, b) => {
+          // First sort by display_order (nulls last)
+          if (a.display_order !== null && b.display_order !== null) {
+            return a.display_order - b.display_order
+          }
+          if (a.display_order !== null && b.display_order === null) {
+            return -1
+          }
+          if (a.display_order === null && b.display_order !== null) {
+            return 1
+          }
+          // If both are null, sort by created_at
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        })
+        
+        sortedData.forEach((item) => {
+          bundlePositions[item.id] = currentPos
+          const pages = item.number_of_pages || 1
+          currentPos += pages
+        })
+      }
 
       // Data
       pdf.setFontSize(10)
@@ -112,16 +203,53 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         if (yPosition > pageHeight - 30) {
           pdf.addPage()
           yPosition = 20
+          
+          // Add column headers on new page for evidence reports
+          if (exportType === 'evidence') {
+            pdf.setFont(undefined, 'bold')
+            pdf.text('EXHIBIT #', 20, yPosition, { align: 'center' })
+            pdf.text('FILE NAME', 50, yPosition)
+            pdf.text('METHOD', 100, yPosition, { align: 'center' })
+            pdf.text('DATE', 130, yPosition, { align: 'center' })
+            pdf.text('PAGES', 155, yPosition, { align: 'center' })
+            pdf.text('BUNDLE POS', 175, yPosition, { align: 'center' })
+            pdf.text('CLC REF#', 195, yPosition, { align: 'center' })
+            pdf.setFont(undefined, 'normal')
+            yPosition += 10
+          }
         }
 
-        const text = Object.entries(item)
-          .filter(([key, value]) => value && !key.includes('id') && !key.includes('user_id'))
-          .map(([key, value]) => `${key.replace(/_/g, ' ').toUpperCase()}: ${value}`)
-          .join(' | ')
+        let text = ''
+        
+        if (exportType === 'evidence') {
+          // For evidence, display in columns
+         pdf.text(item.exhibit_id || '', 17, yPosition, { align: 'center' })
+          pdf.text(item.file_name || '', 45, yPosition)
+          pdf.text(item.method || '', 100, yPosition, { align: 'center' })
+          pdf.text(item.date_submitted ? new Date(item.date_submitted).toLocaleDateString() : '', 130, yPosition, { align: 'center' })
+          pdf.text((item.number_of_pages || '').toString(), 155, yPosition, { align: 'center' })
+          pdf.text(bundlePositions[item.id]?.toString() || '', 175, yPosition, { align: 'center' })
+          pdf.text(item.book_of_deeds_ref || '', 195, yPosition, { align: 'center' })
+          yPosition += 8
+        } else {
+          // For other exports, use existing logic but exclude unwanted fields
+          text = Object.entries(item)
+            .filter(([key, value]) => 
+              value && 
+              !key.includes('id') && 
+              !key.includes('user_id') &&
+              key !== 'file_url' &&
+              key !== 'created_at' &&
+              key !== 'updated_at' &&
+              key !== 'display_order'
+            )
+            .map(([key, value]) => `${key.replace(/_/g, ' ').toUpperCase()}: ${value}`)
+            .join(' | ')
 
-        const lines = pdf.splitTextToSize(text, 170)
-        pdf.text(lines, 20, yPosition)
-        yPosition += lines.length * 5 + 10
+          const lines = pdf.splitTextToSize(text, 170)
+          pdf.text(lines, 20, yPosition)
+          yPosition += lines.length * 5 + 10
+        }
       })
 
       // Open PDF in browser instead of downloading
@@ -166,6 +294,79 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
           }
         }
         break
+    }
+  }
+
+  const downloadDocumentsZip = async () => {
+    if (!evidence || evidence.length === 0) return
+    
+    setIsDownloadingZip(true)
+    try {
+      const zip = new JSZip()
+      const documentsFolder = zip.folder('evidence-documents')
+      
+      // Filter evidence that has file URLs
+      const evidenceWithFiles = evidence.filter(item => item.file_url && item.file_url.trim())
+      
+      if (evidenceWithFiles.length === 0) {
+        alert('No documents found to download. Evidence items need file URLs to be included in the ZIP.')
+        return
+      }
+      
+      // Download each file and add to ZIP
+      const downloadPromises = evidenceWithFiles.map(async (item, index) => {
+        try {
+          const response = await fetch(item.file_url!)
+          if (!response.ok) {
+            console.warn(`Failed to download ${item.file_name}: ${response.statusText}`)
+            return null
+          }
+          
+          const blob = await response.blob()
+          const fileName = item.file_name || `exhibit-${item.exhibit_id || index + 1}`
+          
+          // Add exhibit ID prefix to filename for organization
+          const prefixedFileName = item.exhibit_id 
+            ? `${item.exhibit_id} - ${fileName}`
+            : fileName
+          
+          documentsFolder?.file(prefixedFileName, blob)
+          return prefixedFileName
+        } catch (error) {
+          console.warn(`Error downloading ${item.file_name}:`, error)
+          return null
+        }
+      })
+      
+      const results = await Promise.all(downloadPromises)
+      const successfulDownloads = results.filter(Boolean)
+      
+      if (successfulDownloads.length === 0) {
+        alert('No documents could be downloaded. Please check that the file URLs are accessible.')
+        return
+      }
+      
+      // Generate and download ZIP
+      const zipBlob = await zip.generateAsync({ type: 'blob' })
+      const zipUrl = URL.createObjectURL(zipBlob)
+      
+      const link = document.createElement('a')
+      link.href = zipUrl
+      link.download = selectedClaim 
+        ? `${selectedClaim}-evidence-documents.zip`
+        : 'evidence-documents.zip'
+      link.click()
+      
+      // Cleanup
+      URL.revokeObjectURL(zipUrl)
+      
+      alert(`Successfully downloaded ${successfulDownloads.length} documents out of ${evidenceWithFiles.length} available.`)
+      
+    } catch (error) {
+      console.error('Error creating ZIP file:', error)
+      alert('Error creating ZIP file. Please try again.')
+    } finally {
+      setIsDownloadingZip(false)
     }
   }
 
@@ -258,6 +459,24 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
                 <div className="text-sm font-medium">Calendar</div>
                 <div className="text-xs text-gray-500">{events?.length || 0} items</div>
               </button>
+              
+              <button
+                onClick={() => setExportType('table_of_contents')}
+                className={`p-4 border rounded-lg text-center transition-colors ${
+                  exportType === 'table_of_contents' 
+                    ? 'text-white' 
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+                style={exportType === 'table_of_contents' ? { 
+                  borderColor: claimColor, 
+                  backgroundColor: `${claimColor}20`,
+                  color: claimColor
+                } : {}}
+              >
+                <FileText className="w-6 h-6 mx-auto mb-2" />
+                <div className="text-sm font-medium">Table of Contents</div>
+                <div className="text-xs text-gray-500">{evidence?.length || 0} items</div>
+              </button>
             </div>
           </div>
 
@@ -282,6 +501,17 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
                 <Download className="w-4 h-4" />
                 <span>{isExporting ? 'Generating PDF...' : 'Export as PDF'}</span>
               </button>
+              
+              {exportType === 'evidence' && (
+                <button
+                  onClick={downloadDocumentsZip}
+                  disabled={isDownloadingZip || !evidence || evidence.length === 0}
+                  className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>{isDownloadingZip ? 'Creating ZIP...' : 'Download Documents ZIP'}</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -289,6 +519,14 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <p className="text-yellow-800 text-sm">
                 No data available for the selected export type. Add some data first to enable exports.
+              </p>
+            </div>
+          )}
+          
+          {exportType === 'evidence' && evidence && evidence.filter(item => item.file_url).length === 0 && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <p className="text-orange-800 text-sm">
+                No documents with file URLs found. Upload files or add file URLs to evidence items to enable ZIP download.
               </p>
             </div>
           )}
@@ -300,6 +538,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         <ul className="text-sm text-blue-800 space-y-1">
           <li>• CSV exports are ideal for importing into spreadsheet applications</li>
           <li>• PDF exports provide formatted reports suitable for printing or sharing</li>
+          <li>• ZIP downloads include all uploaded documents organized by exhibit ID</li>
           <li>• All exports exclude sensitive system data like user IDs</li>
           <li>• Large datasets may take a moment to process</li>
         </ul>
