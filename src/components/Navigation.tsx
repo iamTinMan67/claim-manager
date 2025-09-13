@@ -20,6 +20,7 @@ const Navigation = ({ activeTab, onTabChange, selectedClaim, isGuest = false, sh
     { id: 'calendar', label: 'Calendar', icon: Calendar, requiresClaim: true },
     { id: 'export', label: 'Export', icon: Download, requiresClaim: true },
     { id: 'shared', label: 'Shared Claims', icon: Users },
+    { id: 'subscription', label: 'Subscription', icon: Crown },
   ]
 
   return (
