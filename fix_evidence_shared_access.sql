@@ -6,6 +6,10 @@ DROP POLICY IF EXISTS "Users can view their own evidence" ON evidence;
 DROP POLICY IF EXISTS "Users can create their own evidence" ON evidence;
 DROP POLICY IF EXISTS "Users can update their own evidence" ON evidence;
 DROP POLICY IF EXISTS "Users can delete their own evidence" ON evidence;
+DROP POLICY IF EXISTS "Users can view evidence from their claims and shared claims" ON evidence;
+DROP POLICY IF EXISTS "Users can create evidence for their claims and shared claims" ON evidence;
+DROP POLICY IF EXISTS "Users can update evidence they created or have edit access to" ON evidence;
+DROP POLICY IF EXISTS "Users can delete evidence they created or own the claim" ON evidence;
 
 -- Create new evidence policies that support shared claims
 CREATE POLICY "Users can view evidence from their claims and shared claims"
