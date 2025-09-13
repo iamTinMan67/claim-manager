@@ -92,11 +92,18 @@ function LoggedInContent({
       }
     }
 
+    const handleTabChange = (event: CustomEvent) => {
+      const tab = event.detail
+      setActiveTab(tab)
+    }
+
     window.addEventListener('claimSelected', handleClaimSelected as EventListener)
+    window.addEventListener('tabChange', handleTabChange as EventListener)
     return () => {
       window.removeEventListener('claimSelected', handleClaimSelected as EventListener)
+      window.removeEventListener('tabChange', handleTabChange as EventListener)
     }
-  }, [setSelectedClaim, setSelectedClaimColor])
+  }, [setSelectedClaim, setSelectedClaimColor, setActiveTab])
   // Check if current user is viewing a shared claim (guest mode)
   const { data: isGuestForClaim } = useQuery({
     queryKey: ['is-guest-for-claim', selectedClaim, user?.id],

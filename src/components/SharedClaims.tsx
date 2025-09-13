@@ -457,16 +457,6 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
 
   return (
     <div className="space-y-6">
-      {selectedClaim && (
-        <div className="border-l-4 rounded-lg p-4" style={{ 
-          borderLeftColor: claimColor,
-          backgroundColor: `${claimColor}10`
-        }}>
-          <p style={{ color: claimColor }}>
-            Showing shared access for selected claim: <strong>{selectedClaim}</strong>
-          </p>
-        </div>
-      )}
 
       {/* Collaboration Section */}
       {showCollaboration && selectedClaim && (
@@ -578,7 +568,10 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
             <span>{showCollaboration ? 'Hide' : 'Show'} Collaboration</span>
           </button>
           <button
-            onClick={() => window.location.href = '#subscription'}
+            onClick={() => {
+              // Dispatch custom event to change tab to subscription
+              window.dispatchEvent(new CustomEvent('tabChange', { detail: 'subscription' }))
+            }}
             className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center space-x-2"
           >
             <Crown className="w-4 h-4" />

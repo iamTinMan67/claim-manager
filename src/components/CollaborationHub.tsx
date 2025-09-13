@@ -398,7 +398,10 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
           Collaboration Hub for claim: <strong>{selectedClaim}</strong>
         </p>
           <button
-            onClick={() => window.location.href = '#subscription'}
+            onClick={() => {
+              // Dispatch custom event to change tab to subscription
+              window.dispatchEvent(new CustomEvent('tabChange', { detail: 'subscription' }))
+            }}
             className="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700 flex items-center space-x-1"
           >
             <Crown className="w-3 h-3" />
