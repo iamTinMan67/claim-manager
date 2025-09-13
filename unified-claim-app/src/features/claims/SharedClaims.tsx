@@ -694,12 +694,13 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         />
       )}
 
-      {/* Claims Grid - Show both owned and guest claims, filtering duplicates */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* Claims I Own (Host) - Filter out any that also appear as guest claims */}
-        {sharedClaims?.filter(share => 
-          !guestClaims?.some(guest => guest.claims.case_number === share.claims.case_number)
-        ).map((share) => (
+      {/* Claims Grid - Only show when no claim is selected */}
+      {!selectedClaim && (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {/* Claims I Own (Host) - Filter out any that also appear as guest claims */}
+          {sharedClaims?.filter(share => 
+            !guestClaims?.some(guest => guest.claims.case_number === share.claims.case_number)
+          ).map((share) => (
           <div
             key={share.id}
             className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border-l-4 cursor-pointer hover:shadow-lg transition-shadow"
@@ -725,9 +726,6 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
               />
               <div className="flex items-center space-x-2">
                 <Crown className="w-4 h-4 text-purple-600" title="You own this claim" />
-                {selectedClaim === share.claims.case_number && (
-                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Selected</span>
-                )}
               </div>
             </div>
             
@@ -800,9 +798,6 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
               />
               <div className="flex items-center space-x-2">
                 <UserPlus className="w-4 h-4 text-green-600" title="You're a guest on this claim" />
-                {selectedClaim === guestClaim.claims.case_number && (
-                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Selected</span>
-                )}
               </div>
             </div>
             
@@ -836,7 +831,8 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
 
       {/* Claim Details View - Show when claim is selected */}
       {selectedClaim && (
@@ -909,7 +905,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         </div>
       )}
 
-      {(!sharedClaims || sharedClaims.length === 0) && (!guestClaims || guestClaims.length === 0) && (
+      {!selectedClaim && (!sharedClaims || sharedClaims.length === 0) && (!guestClaims || guestClaims.length === 0) && (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
           No shared claims yet. Add a claim and share it, or wait for someone to share with you!
         </div>
