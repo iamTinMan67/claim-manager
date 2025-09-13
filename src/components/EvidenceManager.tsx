@@ -37,7 +37,7 @@ const EvidenceManager = ({
     exhibit_id: '',
     number_of_pages: '',
     date_submitted: '',
-    method: 'Todo',
+    method: 'upload',
     url_link: '',
     book_of_deeds_ref: '',
     case_number: selectedClaim || ''
@@ -117,7 +117,7 @@ const EvidenceManager = ({
       setNewEvidence(prev => ({
         ...prev,
         exhibit_id: getNextExhibitId(),
-        method: 'Todo',
+        method: 'upload',
         case_number: selectedClaim || ''
       }))
     }
@@ -178,7 +178,7 @@ const EvidenceManager = ({
         exhibit_id: '',
         number_of_pages: '',
         date_submitted: '',
-        method: 'Todo',
+        method: 'upload',
         url_link: '',
         book_of_deeds_ref: '',
         case_number: selectedClaim || ''
