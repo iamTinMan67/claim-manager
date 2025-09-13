@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { Claim } from '@/types/database'
-import { Edit, Trash2, Plus, X, Settings } from 'lucide-react'
+import { Edit, Trash2, Plus, X, Settings, Home } from 'lucide-react'
 import EvidenceManager from './EvidenceManager'
 
 interface ClaimsTableProps {
@@ -213,11 +213,18 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
           <h2 className="text-2xl font-bold text-gold">Claim Details</h2>
           <div className="flex items-center space-x-3">
             <button
-              onClick={() => onClaimSelect(null)}
+              onClick={() => window.history.back()}
               className="btn-gold px-4 py-2 rounded-lg flex items-center space-x-2"
             >
               <X className="w-4 h-4" />
-              <span>Back to All Claims</span>
+              <span>Back</span>
+            </button>
+            <button
+              onClick={() => onClaimSelect(null)}
+              className="btn-gold px-4 py-2 rounded-lg flex items-center space-x-2"
+            >
+              <Home className="w-4 h-4" />
+              <span>Home</span>
             </button>
           </div>
         </div>

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import PaymentModal from './PaymentModal'
 import CollaborationHub from './CollaborationHub'
-import { Users, Mail, Eye, Edit, Trash2, Plus, DollarSign, CreditCard, CheckCircle, Clock, AlertCircle, X, UserPlus, UserMinus, Crown, FileText, Moon, Sun } from 'lucide-react'
+import { Users, Mail, Eye, Edit, Trash2, Plus, DollarSign, CreditCard, CheckCircle, Clock, AlertCircle, X, UserPlus, UserMinus, Crown, FileText, Moon, Sun, Home } from 'lucide-react'
 import EvidenceManager from './EvidenceManager'
 import { useTheme } from 'next-themes'
 
@@ -933,6 +933,13 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
             <h2 className="text-2xl font-bold text-gold">Claim Details</h2>
             <div className="flex items-center space-x-3">
               <button
+                onClick={() => window.history.back()}
+                className="btn-gold px-4 py-2 rounded-lg flex items-center space-x-2"
+              >
+                <X className="w-4 h-4" />
+                <span>Back</span>
+              </button>
+              <button
                 onClick={() => {
                   if (typeof window !== 'undefined') {
                     const url = new URL(window.location.href)
@@ -943,8 +950,8 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                 }}
                 className="btn-gold px-4 py-2 rounded-lg flex items-center space-x-2"
               >
-                <X className="w-4 h-4" />
-                <span>Back to All Claims</span>
+                <Home className="w-4 h-4" />
+                <span>Home</span>
               </button>
             </div>
           </div>
