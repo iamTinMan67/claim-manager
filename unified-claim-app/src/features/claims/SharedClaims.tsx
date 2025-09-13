@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import PaymentModal from './PaymentModal'
 import CollaborationHub from './CollaborationHub'
-import { Users, Mail, Eye, Edit, Trash2, Plus, DollarSign, CreditCard, CheckCircle, Clock, AlertCircle, X, UserPlus, UserMinus, Crown } from 'lucide-react'
+import { Users, Mail, Eye, Edit, Trash2, Plus, DollarSign, CreditCard, CheckCircle, Clock, AlertCircle, X, UserPlus, UserMinus, Crown, FileText } from 'lucide-react'
+import EvidenceManager from '../../../components/EvidenceManager'
 
 interface ClaimShare {
   id: string
@@ -34,10 +35,12 @@ interface SharedClaimsProps {
   selectedClaim: string | null
   claimColor?: string
   currentUserId?: string
+  isGuest?: boolean
 }
 
-const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: SharedClaimsProps) => {
+const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, isGuest = false }: SharedClaimsProps) => {
   const [showShareForm, setShowShareForm] = useState(false)
+  const [selectedSharedClaim, setSelectedSharedClaim] = useState<string | null>(null)
   const [claimToShare, setClaimToShare] = useState('')
   const [showJoinClaimForm, setShowJoinClaimForm] = useState(false)
   const [joinClaimId, setJoinClaimId] = useState('')
@@ -510,8 +513,9 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
         </div>
       )}
       
-      {/* Pricing Information */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+      {/* Pricing Information - Hidden when collaboration is shown */}
+      {!showCollaboration && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
         <div className="flex items-center space-x-2 mb-4">
           <DollarSign className="w-5 h-5 text-blue-600" />
           <h3 className="text-lg font-semibold text-blue-900">Guest Access Pricing & Account Requirements</h3>
@@ -554,6 +558,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
           Each user can be both a claim owner (hosting their own claims) and a guest (invited to others' claims).
         </p>
       </div>
+      )}
 
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Shared Claims Collaboration</h2>
@@ -579,14 +584,16 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
             <UserPlus className="w-4 h-4" />
             <span>Join Claim</span>
           </button>
-          <button
-            onClick={() => setShowShareForm(true)}
-            className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
-            style={{ backgroundColor: claimColor }}
-          >
-            <Plus className="w-4 h-4" />
-            <span>Share Claim</span>
-          </button>
+          {!isGuest && (
+            <button
+              onClick={() => setShowShareForm(true)}
+              className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
+              style={{ backgroundColor: claimColor }}
+            >
+              <Plus className="w-4 h-4" />
+              <span>Share Claim</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -876,6 +883,15 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
                 </div>
               </div>
               <div className="flex items-center space-x-2">
+                {share.can_view_evidence && (
+                  <button
+                    onClick={() => setSelectedSharedClaim(share.claims.case_number)}
+                    className="p-2 text-blue-600 hover:text-blue-800"
+                    title="View Evidence"
+                  >
+                    <FileText className="w-4 h-4" />
+                  </button>
+                )}
                 <button
                   onClick={() => toggleFreezeGuestMutation.mutate({ 
                     id: share.id, 
@@ -938,6 +954,29 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
           </div>
         )}
       </div>
+
+      {/* Evidence Manager for selected shared claim */}
+      {selectedSharedClaim && (
+        <div className="mt-8">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-semibold">Evidence for {selectedSharedClaim}</h3>
+            <button
+              onClick={() => setSelectedSharedClaim(null)}
+              className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center space-x-2"
+            >
+              <X className="w-4 h-4" />
+              <span>Close Evidence</span>
+            </button>
+          </div>
+          <EvidenceManager 
+            selectedClaim={selectedSharedClaim} 
+            claimColor={claimColor} 
+            isGuest={true}
+            currentUserId={currentUserId}
+            isGuestFrozen={false}
+          />
+        </div>
+      )}
     </div>
   )
 }

@@ -134,7 +134,7 @@ function LoggedInContent({
       case 'calendar':
         return <Calendar selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={currentlyGuest} showGuestContent={showGuestContent} isGuestFrozen={guestStatus?.is_frozen || false} />
       case 'shared':
-        return <SharedClaims selectedClaim={selectedClaim} claimColor={selectedClaimColor} currentUserId={user?.id} />
+        return <SharedClaims selectedClaim={selectedClaim} claimColor={selectedClaimColor} currentUserId={user?.id} isGuest={currentlyGuest} />
       case 'export':
         return <ExportFeatures selectedClaim={selectedClaim} claimColor={selectedClaimColor} />
       default:
