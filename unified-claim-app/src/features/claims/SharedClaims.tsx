@@ -3,8 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import PaymentModal from './PaymentModal'
 import CollaborationHub from './CollaborationHub'
-import { Users, Mail, Eye, Edit, Trash2, Plus, DollarSign, CreditCard, CheckCircle, Clock, AlertCircle, X, UserPlus, UserMinus, Crown, FileText } from 'lucide-react'
+import { Users, Mail, Eye, Edit, Trash2, Plus, DollarSign, CreditCard, CheckCircle, Clock, AlertCircle, X, UserPlus, UserMinus, Crown, FileText, Moon, Sun } from 'lucide-react'
 import EvidenceManager from '../../../components/EvidenceManager'
+import { useTheme } from 'next-themes'
 
 interface ClaimShare {
   id: string
@@ -58,6 +59,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
   })
 
   const queryClient = useQueryClient()
+  const { theme, setTheme } = useTheme()
 
   // Calculate pricing based on guest count
   const calculateDonationAmount = (guestCount: number): number => {
