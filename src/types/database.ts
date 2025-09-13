@@ -32,8 +32,12 @@ export interface Todo {
 export interface Evidence {
   id: string
   user_id: string
+  title: string
+  description?: string
   file_name?: string
   file_url?: string
+  file_size?: number
+  file_type?: string
   exhibit_id?: string
   number_of_pages?: number
   date_submitted?: string
