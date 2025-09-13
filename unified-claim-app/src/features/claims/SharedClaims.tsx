@@ -694,8 +694,84 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         />
       )}
 
-      {/* Claims Grid - Show claims you're a guest on */}
+      {/* Claims Grid - Show both owned and guest claims */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {/* Claims I Own (Host) */}
+        {sharedClaims?.map((share) => (
+          <div
+            key={share.id}
+            className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border-l-4 cursor-pointer hover:shadow-lg transition-shadow"
+            style={{ borderLeftColor: share.claims.color || '#3B82F6' }}
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                const url = new URL(window.location.href)
+                url.searchParams.set('claim', share.claims.case_number)
+                window.history.pushState({}, '', url.toString())
+              }
+              window.dispatchEvent(new CustomEvent('claimSelected', {
+                detail: {
+                  claimId: share.claims.case_number,
+                  claimColor: share.claims.color || '#3B82F6'
+                }
+              }))
+            }}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <div 
+                className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: share.claims.color || '#3B82F6' }}
+              />
+              <div className="flex items-center space-x-2">
+                <Crown className="w-4 h-4 text-purple-600" title="You own this claim" />
+                {selectedClaim === share.claims.case_number && (
+                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Selected</span>
+                )}
+              </div>
+            </div>
+            
+            <h3 className="text-lg font-semibold mb-2 dark:text-white">
+              {share.claims.case_number}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">{share.claims.title}</p>
+            
+            <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+              <div className="flex items-center space-x-2">
+                <Mail className="w-4 h-4" />
+                <span>Shared with: {share.profiles.email}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                {share.permission === 'edit' ? (
+                  <Edit className="w-4 h-4 text-green-600" />
+                ) : (
+                  <Eye className="w-4 h-4 text-blue-600" />
+                )}
+                <span className="capitalize">{share.permission} Access</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className={`px-2 py-1 rounded text-xs ${
+                  share.can_view_evidence 
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                }`}>
+                  {share.can_view_evidence ? 'Can View Evidence' : 'No Evidence Access'}
+                </span>
+              </div>
+            </div>
+            
+            {share.donation_required && (
+              <div className="mt-4 p-2 bg-yellow-50 dark:bg-yellow-900 rounded text-sm">
+                <div className="flex items-center space-x-2">
+                  <DollarSign className="w-4 h-4 text-green-600" />
+                  <span className="text-yellow-800 dark:text-yellow-200">
+                    {share.donation_amount === 0 ? 'First Guest - FREE' : `Payment: £${share.donation_amount}`}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+
+        {/* Claims I'm a Guest On */}
         {guestClaims?.map((guestClaim) => (
           <div
             key={guestClaim.id}
@@ -795,9 +871,9 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         </div>
       )}
 
-      {(!guestClaims || guestClaims.length === 0) && (
+      {(!sharedClaims || sharedClaims.length === 0) && (!guestClaims || guestClaims.length === 0) && (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-          No shared claims yet. You'll see claims here when someone shares them with you!
+          No shared claims yet. Add a claim and share it, or wait for someone to share with you!
         </div>
       )}
 
