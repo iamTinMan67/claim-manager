@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import PaymentModal from './PaymentModal'
-import CollaborationHub from './CollaborationHub'
 import { Users, Mail, Eye, Edit, Trash2, Plus, DollarSign, CreditCard, CheckCircle, Clock, AlertCircle, X, UserPlus, UserMinus, Crown, FileText } from 'lucide-react'
 import EvidenceManager from './EvidenceManager'
 
@@ -469,13 +468,6 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
               Chat, video calls, and whiteboard collaboration for this claim. 
               <span className="font-medium text-green-600"> Free collaboration included!</span>
             </p>
-          </div>
-          <div className="p-0">
-            <CollaborationHub 
-              selectedClaim={selectedClaim} 
-              claimColor={claimColor}
-              currentUserId={currentUserId}
-            />
           </div>
         </div>
       )}
