@@ -480,12 +480,12 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
       
 
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold dark:text-white">Shared Claims</h2>
+        <h2 className="text-2xl font-bold text-gold">Shared Claims</h2>
         <div className="flex items-center space-x-3">
         {!isGuest && !selectedClaim && (
           <button
             onClick={() => setShowAddForm(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+            className="btn-gold px-4 py-2 rounded-lg flex items-center space-x-2"
           >
             <Plus className="w-4 h-4" />
             <span>Add Claim</span>
@@ -493,13 +493,13 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         )}
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="p-2 rounded-lg hover:bg-yellow-400/20 transition-colors text-gold"
             title="Toggle dark mode"
           >
             {theme === 'dark' ? (
-              <Sun className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+              <Sun className="w-5 h-5" />
             ) : (
-              <Moon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+              <Moon className="w-5 h-5" />
             )}
           </button>
         </div>
@@ -507,8 +507,8 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
 
 
       {showShareForm && (
-        <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
-          <h3 className="text-lg font-semibold mb-4">Share a Claim</h3>
+        <div className="card-enhanced p-6 border-l-4" style={{ borderLeftColor: claimColor }}>
+          <h3 className="text-lg font-semibold mb-4 text-gold">Share a Claim</h3>
           {(selectedClaim || claimToShare) && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
             <div className="flex items-center space-x-2">
@@ -552,7 +552,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
               <select
                 value={selectedClaim || claimToShare}
                 onChange={(e) => setClaimToShare(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2"
+                className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 disabled={!!selectedClaim}
                 required
               >
@@ -585,7 +585,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                   setShareData({ ...shareData, email: e.target.value })
                   if (shareError) setShareError(null) // Clear error when user types
                 }}
-                className="w-full border rounded-lg px-3 py-2"
+                className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 placeholder="Enter the email of a registered user"
                 required
               />
@@ -595,7 +595,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
               <select
                 value={shareData.permission}
                 onChange={(e) => setShareData({ ...shareData, permission: e.target.value as any })}
-                className="w-full border rounded-lg px-3 py-2"
+                className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
               >
                 <option value="view">View Only</option>
                 <option value="edit">View & Edit</option>
@@ -642,7 +642,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
               <button
                 type="button"
                 onClick={() => setShowShareForm(false)}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400"
+                className="bg-yellow-400/20 text-gold px-4 py-2 rounded-lg hover:bg-yellow-400/30"
               >
                 Cancel
               </button>
@@ -796,7 +796,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
           ).map((share) => (
             <div
               key={share.id}
-              className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border-l-4 cursor-pointer hover:shadow-lg transition-shadow"
+              className="card-enhanced p-6 cursor-pointer hover:shadow-lg transition-shadow border-l-4"
               style={{ borderLeftColor: share.claims.color || '#3B82F6' }}
               onClick={() => {
                 if (typeof window !== 'undefined') {
@@ -868,7 +868,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
           {guestClaims?.map((guestClaim) => (
             <div
               key={guestClaim.id}
-              className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border-l-4 cursor-pointer hover:shadow-lg transition-shadow"
+              className="card-enhanced p-6 cursor-pointer hover:shadow-lg transition-shadow border-l-4"
               style={{ borderLeftColor: guestClaim.claims.color || '#3B82F6' }}
               onClick={() => {
                 if (typeof window !== 'undefined') {
@@ -931,7 +931,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
       {selectedClaim && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold dark:text-white">Claim Details</h2>
+            <h2 className="text-2xl font-bold text-gold">Claim Details</h2>
             <div className="flex items-center space-x-3">
               <button
                 onClick={() => {
@@ -942,7 +942,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                   }
                   window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null, claimColor: '#3B82F6' } }))
                 }}
-                className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center space-x-2"
+                className="btn-gold px-4 py-2 rounded-lg flex items-center space-x-2"
               >
                 <X className="w-4 h-4" />
                 <span>Back to All Claims</span>
@@ -965,12 +965,12 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
           />
 
           {/* Action Buttons */}
-          <div className="mt-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
-            <h3 className="text-lg font-semibold mb-4 dark:text-white">Claim Actions</h3>
+          <div className="mt-8 p-6 card-enhanced">
+            <h3 className="text-lg font-semibold mb-4 text-gold">Claim Actions</h3>
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => setShowCollaboration(!showCollaboration)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+                className="btn-gold px-4 py-2 rounded-lg flex items-center space-x-2"
               >
                 <Users className="w-4 h-4" />
                 <span>{showCollaboration ? 'Hide' : 'Show'} Collaboration</span>
@@ -979,7 +979,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                 onClick={() => {
                   window.dispatchEvent(new CustomEvent('tabChange', { detail: 'subscription' }))
                 }}
-                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center space-x-2"
+                className="btn-gold px-4 py-2 rounded-lg flex items-center space-x-2"
               >
                 <Crown className="w-4 h-4" />
                 <span>Subscription</span>
@@ -1000,7 +1000,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
       )}
 
       {!selectedClaim && (!sharedClaims || sharedClaims.length === 0) && (!guestClaims || guestClaims.length === 0) && (
-        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+        <div className="text-center py-8 text-gold-light">
           No shared claims yet. Add a claim and share it, or wait for someone to share with you!
         </div>
       )}

@@ -196,8 +196,8 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <div className="text-red-800">Error loading claims: {error.message}</div>
+      <div className="card-enhanced p-4 border-red-400/50">
+        <div className="text-red-200">Error loading claims: {error.message}</div>
       </div>
     )
   }
@@ -210,11 +210,11 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">Claim Details</h2>
+          <h2 className="text-2xl font-bold text-gold">Claim Details</h2>
           <div className="flex items-center space-x-3">
             <button
               onClick={() => onClaimSelect(null)}
-              className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center space-x-2"
+              className="btn-gold px-4 py-2 rounded-lg flex items-center space-x-2"
             >
               <X className="w-4 h-4" />
               <span>Back to All Claims</span>
@@ -242,13 +242,13 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">
+        <h2 className="text-2xl font-bold text-gold">
           {isGuest ? 'Shared Claims' : 'Claims'}
         </h2>
         {!isGuest && (
           <button
             onClick={() => setShowAddForm(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+            className="btn-gold px-4 py-2 rounded-lg flex items-center space-x-2"
           >
             <Plus className="w-4 h-4" />
             <span>Add Claim</span>
@@ -257,8 +257,8 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
       </div>
 
       {showAddForm && !isGuest && (
-        <div className="bg-white p-6 rounded-lg shadow border">
-          <h3 className="text-lg font-semibold mb-4">Add New Claim</h3>
+        <div className="card-enhanced p-6">
+          <h3 className="text-lg font-semibold mb-4 text-gold">Add New Claim</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -267,7 +267,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                   type="text"
                   value={newClaim.case_number}
                   onChange={(e) => setNewClaim({ ...newClaim, case_number: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                   required
                 />
               </div>
@@ -277,7 +277,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                   type="text"
                   value={newClaim.title}
                   onChange={(e) => setNewClaim({ ...newClaim, title: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                   required
                 />
               </div>
@@ -289,7 +289,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                   type="text"
                   value={newClaim.court}
                   onChange={(e) => setNewClaim({ ...newClaim, court: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
               <div>
@@ -298,7 +298,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                   type="text"
                   value={newClaim.plaintiff_name}
                   onChange={(e) => setNewClaim({ ...newClaim, plaintiff_name: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
               <div>
@@ -307,7 +307,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                   type="text"
                   value={newClaim.defendant_name}
                   onChange={(e) => setNewClaim({ ...newClaim, defendant_name: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
             </div>
@@ -316,7 +316,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
               <textarea
                 value={newClaim.description}
                 onChange={(e) => setNewClaim({ ...newClaim, description: e.target.value })}
-                className="w-full border rounded-lg px-3 py-2"
+                className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 rows={3}
               />
             </div>
@@ -340,14 +340,14 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
               <button
                 type="submit"
                 disabled={addClaimMutation.isPending}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="btn-gold px-4 py-2 rounded-lg disabled:opacity-50"
               >
                 {addClaimMutation.isPending ? 'Adding...' : 'Add Claim'}
               </button>
               <button
                 type="button"
                 onClick={() => setShowAddForm(false)}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400"
+                className="bg-yellow-400/20 text-gold px-4 py-2 rounded-lg hover:bg-yellow-400/30"
               >
                 Cancel
               </button>
@@ -357,8 +357,8 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
       )}
 
       {editingClaim && !isGuest && (
-        <div className="bg-white p-6 rounded-lg shadow border">
-          <h3 className="text-lg font-semibold mb-4">Edit Claim</h3>
+        <div className="card-enhanced p-6">
+          <h3 className="text-lg font-semibold mb-4 text-gold">Edit Claim</h3>
           <form onSubmit={handleUpdate} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -367,7 +367,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                   type="text"
                   value={editingClaim.case_number}
                   onChange={(e) => setEditingClaim({ ...editingClaim, case_number: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                   disabled
                 />
               </div>
@@ -377,7 +377,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                   type="text"
                   value={editingClaim.title}
                   onChange={(e) => setEditingClaim({ ...editingClaim, title: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                   required
                 />
               </div>
@@ -389,7 +389,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                   type="text"
                   value={editingClaim.court || ''}
                   onChange={(e) => setEditingClaim({ ...editingClaim, court: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
               <div>
@@ -398,7 +398,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                   type="text"
                   value={editingClaim.plaintiff_name || ''}
                   onChange={(e) => setEditingClaim({ ...editingClaim, plaintiff_name: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
               <div>
@@ -407,7 +407,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                   type="text"
                   value={editingClaim.defendant_name || ''}
                   onChange={(e) => setEditingClaim({ ...editingClaim, defendant_name: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
             </div>
@@ -416,7 +416,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
               <textarea
                 value={editingClaim.description || ''}
                 onChange={(e) => setEditingClaim({ ...editingClaim, description: e.target.value })}
-                className="w-full border rounded-lg px-3 py-2"
+                className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 rows={3}
               />
             </div>
@@ -440,14 +440,14 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
               <button
                 type="submit"
                 disabled={updateClaimMutation.isPending}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="btn-gold px-4 py-2 rounded-lg disabled:opacity-50"
               >
                 {updateClaimMutation.isPending ? 'Updating...' : 'Update Claim'}
               </button>
               <button
                 type="button"
                 onClick={() => setEditingClaim(null)}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400"
+                className="bg-yellow-400/20 text-gold px-4 py-2 rounded-lg hover:bg-yellow-400/30"
               >
                 Cancel
               </button>
@@ -461,7 +461,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
         {claims?.map((claim) => (
           <div
             key={claim.case_number}
-            className="bg-white p-6 rounded-lg shadow border-l-4 cursor-pointer hover:shadow-lg transition-shadow"
+            className="card-enhanced p-6 cursor-pointer hover:shadow-lg transition-shadow border-l-4"
             style={{ borderLeftColor: claim.color || '#3B82F6' }}
             onClick={() => handleClaimSelect(claim)}
           >
@@ -519,8 +519,8 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
       </div>
       
       {(!claims || claims.length === 0) && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
-          <div className="text-gray-600">No claims found. Create your first claim to get started!</div>
+        <div className="card-enhanced p-8 text-center">
+          <div className="text-gold-light">No claims found. Create your first claim to get started!</div>
         </div>
       )}
     </div>

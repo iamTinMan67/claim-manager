@@ -374,7 +374,7 @@ const EvidenceManager = ({
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Evidence Management</h2>
+        <h2 className="text-2xl font-bold text-gold">Evidence Management</h2>
         <div className="flex items-center space-x-3">
           {onSetAmendMode && (
             <button
@@ -392,7 +392,7 @@ const EvidenceManager = ({
           {(!isGuest || (isGuest && !isGuestFrozen)) && (
             <button
               onClick={() => setShowAddForm(true)}
-              className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
+              className="btn-gold px-4 py-2 rounded-lg flex items-center space-x-2"
               style={{ backgroundColor: claimColor }}
             >
               <Plus className="w-4 h-4" />
@@ -413,8 +413,8 @@ const EvidenceManager = ({
       </div>
 
       {showAddForm && (!isGuest || (isGuest && !isGuestFrozen)) && (
-        <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
-          <h3 className="text-lg font-semibold mb-4">Add New Evidence</h3>
+        <div className="card-enhanced p-6 border-l-4" style={{ borderLeftColor: claimColor }}>
+          <h3 className="text-lg font-semibold mb-4 text-gold">Add New Evidence</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h4 className="font-medium text-blue-900 mb-2">Upload File</h4>
@@ -430,7 +430,7 @@ const EvidenceManager = ({
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingFile}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
+                  className="btn-gold px-4 py-2 rounded-lg disabled:opacity-50 flex items-center space-x-2"
                 >
                   <Upload className="w-4 h-4" />
                   <span>{uploadingFile ? 'Uploading...' : 'Choose File'}</span>
@@ -452,7 +452,7 @@ const EvidenceManager = ({
                   type="text"
                   value={newEvidence.file_name}
                   onChange={(e) => setNewEvidence({ ...newEvidence, file_name: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
               <div>
@@ -461,7 +461,7 @@ const EvidenceManager = ({
                   type="url"
                   value={newEvidence.file_url}
                   onChange={(e) => setNewEvidence({ ...newEvidence, file_url: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
             </div>
@@ -482,7 +482,7 @@ const EvidenceManager = ({
                   type="number"
                   value={newEvidence.number_of_pages}
                   onChange={(e) => setNewEvidence({ ...newEvidence, number_of_pages: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
               <div>
@@ -491,7 +491,7 @@ const EvidenceManager = ({
                   type="date"
                   value={newEvidence.date_submitted}
                   onChange={(e) => setNewEvidence({ ...newEvidence, date_submitted: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
             </div>
@@ -501,7 +501,7 @@ const EvidenceManager = ({
                 <select
                   value={newEvidence.method}
                   onChange={(e) => setNewEvidence({ ...newEvidence, method: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 >
                   <option value="Post">Post</option>
                   <option value="Todo">To-Do</option>
@@ -516,7 +516,7 @@ const EvidenceManager = ({
                   type="url"
                   value={newEvidence.url_link}
                   onChange={(e) => setNewEvidence({ ...newEvidence, url_link: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
             </div>
@@ -526,14 +526,14 @@ const EvidenceManager = ({
                 type="text"
                 value={newEvidence.book_of_deeds_ref}
                 onChange={(e) => setNewEvidence({ ...newEvidence, book_of_deeds_ref: e.target.value })}
-                className="w-full border rounded-lg px-3 py-2"
+                className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
               />
             </div>
             <div className="flex space-x-3">
               <button
                 type="submit"
                 disabled={addEvidenceMutation.isPending}
-                className="text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50"
+                className="btn-gold px-4 py-2 rounded-lg disabled:opacity-50"
                 style={{ backgroundColor: claimColor }}
               >
                 {addEvidenceMutation.isPending ? 'Adding...' : 'Add Evidence'}
@@ -541,7 +541,7 @@ const EvidenceManager = ({
               <button
                 type="button"
                 onClick={() => setShowAddForm(false)}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400"
+                className="bg-yellow-400/20 text-gold px-4 py-2 rounded-lg hover:bg-yellow-400/30"
               >
                 Cancel
               </button>
@@ -551,7 +551,7 @@ const EvidenceManager = ({
       )}
 
       {editingEvidence && (
-        <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
+        <div className="card-enhanced p-6 border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4">Edit Evidence</h3>
           <form onSubmit={handleUpdate} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -561,7 +561,7 @@ const EvidenceManager = ({
                   type="text"
                   value={editingEvidence.file_name || ''}
                   onChange={(e) => setEditingEvidence({ ...editingEvidence, file_name: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
               <div>
@@ -570,7 +570,7 @@ const EvidenceManager = ({
                   type="url"
                   value={editingEvidence.file_url || ''}
                   onChange={(e) => setEditingEvidence({ ...editingEvidence, file_url: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
             </div>
@@ -581,7 +581,7 @@ const EvidenceManager = ({
                   type="text"
                   value={editingEvidence.exhibit_id || ''}
                   onChange={(e) => setEditingEvidence({ ...editingEvidence, exhibit_id: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
               <div>
@@ -590,7 +590,7 @@ const EvidenceManager = ({
                   type="number"
                   value={editingEvidence.number_of_pages || ''}
                   onChange={(e) => setEditingEvidence({ ...editingEvidence, number_of_pages: parseInt(e.target.value) || null })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
               <div>
@@ -599,7 +599,7 @@ const EvidenceManager = ({
                   type="date"
                   value={editingEvidence.date_submitted || ''}
                   onChange={(e) => setEditingEvidence({ ...editingEvidence, date_submitted: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
             </div>
@@ -609,7 +609,7 @@ const EvidenceManager = ({
                 <select
                   value={editingEvidence.method || 'Todo'}
                   onChange={(e) => setEditingEvidence({ ...editingEvidence, method: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 >
                   <option value="Post">Post</option>
                   <option value="Todo">To-Do</option>
@@ -624,7 +624,7 @@ const EvidenceManager = ({
                   type="url"
                   value={editingEvidence.url_link || ''}
                   onChange={(e) => setEditingEvidence({ ...editingEvidence, url_link: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
             </div>
@@ -634,14 +634,14 @@ const EvidenceManager = ({
                 type="text"
                 value={editingEvidence.book_of_deeds_ref || ''}
                 onChange={(e) => setEditingEvidence({ ...editingEvidence, book_of_deeds_ref: e.target.value })}
-                className="w-full border rounded-lg px-3 py-2"
+                className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
               />
             </div>
             <div className="flex space-x-3">
               <button
                 type="submit"
                 disabled={updateEvidenceMutation.isPending}
-                className="text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50"
+                className="btn-gold px-4 py-2 rounded-lg disabled:opacity-50"
                 style={{ backgroundColor: claimColor }}
               >
                 {updateEvidenceMutation.isPending ? 'Updating...' : 'Update Evidence'}
@@ -649,7 +649,7 @@ const EvidenceManager = ({
               <button
                 type="button"
                 onClick={() => setEditingEvidence(null)}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400"
+                className="bg-yellow-400/20 text-gold px-4 py-2 rounded-lg hover:bg-yellow-400/30"
               >
                 Cancel
               </button>
@@ -658,33 +658,33 @@ const EvidenceManager = ({
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Evidence List</h3>
+      <div className="card-enhanced overflow-hidden">
+        <div className="px-6 py-4 border-b border-yellow-400/20">
+          <h3 className="text-lg font-semibold text-gold">Evidence List</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-yellow-400/20">
+            <thead className="bg-yellow-400/10">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider w-12">
                   Order
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider">
                   File Name
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider">
                   Method
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider">
                   Pages
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider">
                   Date Submitted
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider">
                   Exhibit ID
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -700,8 +700,8 @@ const EvidenceManager = ({
                       onDragLeave={handleDragLeave}
                       onDrop={(e) => handleDrop(e, item.id)}
                       onDragEnd={handleDragEnd}
-                      className={`hover:bg-gray-50 ${amendMode ? 'cursor-pointer' : ''} ${
-                        expandedEvidence === item.id ? 'bg-blue-50' : ''
+                      className={`hover:bg-yellow-400/10 ${amendMode ? 'cursor-pointer' : ''} ${
+                        expandedEvidence === item.id ? 'bg-yellow-400/20' : ''
                       } ${dragOverItem === item.id ? 'border-t-2 border-blue-500' : ''} ${
                         draggedItem === item.id ? 'opacity-50' : ''
                       }`}
@@ -760,8 +760,8 @@ const EvidenceManager = ({
                     </tr>
                     {expandedEvidence === item.id && editingEvidence && (
                       <tr>
-                        <td colSpan={7} className="px-6 py-4 bg-gray-50 border-t">
-                          <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
+                        <td colSpan={7} className="px-6 py-4 bg-yellow-400/10 border-t">
+                          <div className="card-enhanced p-6 border-l-4" style={{ borderLeftColor: claimColor }}>
                             <div className="flex justify-between items-center mb-4">
                               <h4 className="text-lg font-semibold">Edit Evidence</h4>
                               <button
@@ -782,7 +782,7 @@ const EvidenceManager = ({
                                     type="text"
                                     value={editingEvidence.file_name || ''}
                                     onChange={(e) => setEditingEvidence({ ...editingEvidence, file_name: e.target.value })}
-                                    className="w-full border rounded-lg px-3 py-2"
+                                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                                   />
                                 </div>
                                 <div>
@@ -791,7 +791,7 @@ const EvidenceManager = ({
                                     type="url"
                                     value={editingEvidence.file_url || ''}
                                     onChange={(e) => setEditingEvidence({ ...editingEvidence, file_url: e.target.value })}
-                                    className="w-full border rounded-lg px-3 py-2"
+                                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                                   />
                                 </div>
                               </div>
@@ -802,7 +802,7 @@ const EvidenceManager = ({
                                     type="text"
                                     value={editingEvidence.exhibit_id || ''}
                                     onChange={(e) => setEditingEvidence({ ...editingEvidence, exhibit_id: e.target.value })}
-                                    className="w-full border rounded-lg px-3 py-2"
+                                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                                   />
                                 </div>
                                 <div>
@@ -811,7 +811,7 @@ const EvidenceManager = ({
                                     type="number"
                                     value={editingEvidence.number_of_pages || ''}
                                     onChange={(e) => setEditingEvidence({ ...editingEvidence, number_of_pages: parseInt(e.target.value) || null })}
-                                    className="w-full border rounded-lg px-3 py-2"
+                                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                                   />
                                 </div>
                                 <div>
@@ -820,7 +820,7 @@ const EvidenceManager = ({
                                     type="date"
                                     value={editingEvidence.date_submitted || ''}
                                     onChange={(e) => setEditingEvidence({ ...editingEvidence, date_submitted: e.target.value })}
-                                    className="w-full border rounded-lg px-3 py-2"
+                                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                                   />
                                 </div>
                               </div>
@@ -830,7 +830,7 @@ const EvidenceManager = ({
                                   <select
                                     value={editingEvidence.method || 'Post'}
                                     onChange={(e) => setEditingEvidence({ ...editingEvidence, method: e.target.value })}
-                                    className="w-full border rounded-lg px-3 py-2"
+                                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                                   >
                                     <option value="Post">Post</option>
                                     <option value="Email">Email</option>
@@ -844,7 +844,7 @@ const EvidenceManager = ({
                                     type="url"
                                     value={editingEvidence.url_link || ''}
                                     onChange={(e) => setEditingEvidence({ ...editingEvidence, url_link: e.target.value })}
-                                    className="w-full border rounded-lg px-3 py-2"
+                                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                                   />
                                 </div>
                               </div>
@@ -854,14 +854,14 @@ const EvidenceManager = ({
                                   type="text"
                                   value={editingEvidence.book_of_deeds_ref || ''}
                                   onChange={(e) => setEditingEvidence({ ...editingEvidence, book_of_deeds_ref: e.target.value })}
-                                  className="w-full border rounded-lg px-3 py-2"
+                                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                                 />
                               </div>
                               <div className="flex space-x-3">
                                 <button
                                   type="submit"
                                   disabled={updateEvidenceMutation.isPending}
-                                  className="text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50"
+                                  className="btn-gold px-4 py-2 rounded-lg disabled:opacity-50"
                                   style={{ backgroundColor: claimColor }}
                                 >
                                   {updateEvidenceMutation.isPending ? 'Updating...' : 'Update Evidence'}
@@ -872,7 +872,7 @@ const EvidenceManager = ({
                                     setExpandedEvidence(null)
                                     setEditingEvidence(null)
                                   }}
-                                  className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400"
+                                  className="bg-yellow-400/20 text-gold px-4 py-2 rounded-lg hover:bg-yellow-400/30"
                                 >
                                   Cancel
                                 </button>

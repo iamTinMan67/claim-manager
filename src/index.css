@@ -64,6 +64,81 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    background: linear-gradient(135deg, #10b981 0%, #059669 25%, #047857 50%, #065f46 75%, #064e3b 100%);
+    background-attachment: fixed;
+    color: #fbbf24;
+    min-height: 100vh;
+  }
+  
+  /* Smudge effect for cards */
+  .card-smudge {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .card-smudge::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+    animation: smudge 8s ease-in-out infinite;
+    pointer-events: none;
+  }
+  
+  @keyframes smudge {
+    0%, 100% { transform: translate(-20%, -20%) rotate(0deg); }
+    25% { transform: translate(20%, -10%) rotate(90deg); }
+    50% { transform: translate(-10%, 20%) rotate(180deg); }
+    75% { transform: translate(10%, 10%) rotate(270deg); }
+  }
+  
+  /* Enhanced card styles */
+  .card-enhanced {
+    @apply card-smudge rounded-2xl;
+    border-radius: 24px;
+    transition: all 0.3s ease;
+  }
+  
+  .card-enhanced:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+      0 12px 40px rgba(0, 0, 0, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+  
+  /* Text styling */
+  .text-gold {
+    color: #fbbf24;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+  
+  .text-gold-light {
+    color: #fcd34d;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Button enhancements */
+  .btn-gold {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    color: #064e3b;
+    font-weight: 600;
+    text-shadow: none;
+    box-shadow: 0 4px 15px rgba(251, 191, 36, 0.3);
+    transition: all 0.3s ease;
+  }
+  
+  .btn-gold:hover {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(251, 191, 36, 0.4);
   }
 }

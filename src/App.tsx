@@ -196,7 +196,7 @@ function LoggedInContent({
   }
 
   return (
-    <>
+    <div className="min-h-screen">
         <Navigation 
           activeTab={activeTab} 
           onTabChange={setActiveTab} 
@@ -205,8 +205,10 @@ function LoggedInContent({
           showGuestContent={showGuestContent}
           onToggleGuestContent={setShowGuestContent}
         />
-        {renderContent()}
-    </>
+        <main className="container mx-auto px-4 py-8">
+          {renderContent()}
+        </main>
+    </div>
   )
 }
 
