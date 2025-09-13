@@ -47,7 +47,7 @@ interface ChatMessage {
   file_size?: number
   metadata?: any
   created_at: string
-  profiles: {
+  sender: {
     email: string
     full_name?: string
   }
@@ -97,17 +97,28 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
     queryFn: async () => {
       if (!selectedClaim) return []
       
-      const { data, error } = await supabase
+      const { data: messages, error } = await supabase
         .from('chat_messages')
-        .select(`
-          *,
-          profiles!sender_id(email, full_name)
-        `)
+        .select('*')
         .eq('claim_id', selectedClaim)
         .order('created_at', { ascending: true })
       
       if (error) throw error
-      return data as ChatMessage[]
+      
+      // Fetch sender details separately
+      const messagesWithSenders = await Promise.all(
+        (messages || []).map(async (message) => {
+          const { data: sender } = await supabase
+            .from('profiles')
+            .select('email, full_name')
+            .eq('id', message.sender_id)
+            .single()
+          
+          return { ...message, sender }
+        })
+      )
+      
+      return messagesWithSenders as ChatMessage[]
     },
     enabled: !!selectedClaim
   })
@@ -445,12 +456,12 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
                           className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
                           style={{ backgroundColor: claimColor }}
                         >
-                          {message.profiles.email.charAt(0).toUpperCase()}
+                          {message.sender.email.charAt(0).toUpperCase()}
                         </div>
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center space-x-2">
-                          <span className="font-medium text-sm">{message.profiles.email}</span>
+                          <span className="font-medium text-sm">{message.sender.email}</span>
                           <span className="text-xs text-gray-500">
                             {new Date(message.created_at).toLocaleTimeString()}
                           </span>

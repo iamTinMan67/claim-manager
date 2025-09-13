@@ -200,7 +200,20 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
         .maybeSingle()
 
       if (!existingUser) {
-        throw new Error('User with this email does not have an account. They must register first at the app to be added as a guest.')
+        // Show a more user-friendly error message
+        throw new Error(`The email "${shareInfo.email}" is not registered. Please ask them to sign up at the app first, then try sharing again.`)
+      }
+
+      // Check if claim is already shared with this user
+      const { data: existingShare } = await supabase
+        .from('claim_shares')
+        .select('id')
+        .eq('claim_id', shareInfo.claim_id)
+        .eq('shared_with_id', existingUser.id)
+        .maybeSingle()
+
+      if (existingShare) {
+        throw new Error(`This claim is already shared with ${shareInfo.email}`)
       }
 
       // Calculate donation amount
@@ -217,14 +230,18 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
             shared_with_id: existingUser.id,
             permission: shareInfo.permission,
             can_view_evidence: shareInfo.can_view_evidence,
-            payment_verified: true,
+            is_frozen: shareInfo.is_frozen,
+            is_muted: shareInfo.is_muted,
             donation_paid: true,
             donation_amount: 0
           }])
           .select()
           .single()
 
-        if (error) throw error
+        if (error) {
+          console.error('Claim share insert error:', error)
+          throw error
+        }
         return data
       } else {
         // Paid guest - trigger payment flow
@@ -256,6 +273,9 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
           guestEmail: shareData.email
         })
         setShowPaymentModal(true)
+      } else {
+        // Show error message for other errors (like user not found)
+        alert(error.message)
       }
     }
   })

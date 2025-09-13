@@ -55,6 +55,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
     is_frozen: false,
     is_muted: false
   })
+  const [shareError, setShareError] = useState<string | null>(null)
 
   const queryClient = useQueryClient()
 
@@ -193,14 +194,37 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
       if (!user) throw new Error('Not authenticated')
 
       // First, check if user exists with an account (must be registered)
-      const { data: existingUser } = await supabase
+      const { data: existingUser, error: userLookupError } = await supabase
         .from('profiles')
         .select('id')
         .eq('email', shareInfo.email)
         .maybeSingle()
 
+      if (userLookupError) {
+        console.error('Error looking up user:', userLookupError)
+        throw new Error(`Error looking up user: ${userLookupError.message}`)
+      }
+
       if (!existingUser) {
-        throw new Error('User with this email does not have an account. They must register first at the app to be added as a guest.')
+        // Show a more user-friendly error message
+        throw new Error(`The email "${shareInfo.email}" is not registered. Please ask them to sign up at the app first, then try sharing again.`)
+      }
+
+      // Check if user is trying to share with themselves
+      if (existingUser.id === user.id) {
+        throw new Error('You cannot share a claim with yourself')
+      }
+
+      // Check if claim is already shared with this user
+      const { data: existingShare } = await supabase
+        .from('claim_shares')
+        .select('id')
+        .eq('claim_id', shareInfo.claim_id)
+        .eq('shared_with_id', existingUser.id)
+        .maybeSingle()
+
+      if (existingShare) {
+        throw new Error(`This claim is already shared with ${shareInfo.email}`)
       }
 
       // Calculate donation amount
@@ -209,22 +233,29 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
       
       if (donationAmount === 0) {
         // Free guest - create share directly
+        const insertData = {
+          claim_id: shareInfo.claim_id,
+          owner_id: user.id,
+          shared_with_id: existingUser.id,
+          permission: shareInfo.permission,
+          can_view_evidence: shareInfo.can_view_evidence,
+          is_frozen: shareInfo.is_frozen,
+          is_muted: shareInfo.is_muted,
+          donation_paid: true,
+          donation_amount: 0
+        }
+        
         const { data, error } = await supabase
           .from('claim_shares')
-          .insert([{
-            claim_id: shareInfo.claim_id,
-            owner_id: user.id,
-            shared_with_id: existingUser.id,
-            permission: shareInfo.permission,
-            can_view_evidence: shareInfo.can_view_evidence,
-            payment_verified: true,
-            donation_paid: true,
-            donation_amount: 0
-          }])
+          .insert([insertData])
           .select()
           .single()
 
-        if (error) throw error
+        if (error) {
+          console.error('Claim share insert error:', error)
+          throw error
+        }
+        
         return data
       } else {
         // Paid guest - trigger payment flow
@@ -235,6 +266,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
       queryClient.invalidateQueries({ queryKey: ['shared-claims'] })
       queryClient.invalidateQueries({ queryKey: ['guest-counts'] })
       setShowShareForm(false)
+      setShareError(null)
       setShareData({
         email: '',
         permission: 'view',
@@ -256,6 +288,9 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
           guestEmail: shareData.email
         })
         setShowPaymentModal(true)
+      } else {
+        // Show error message for other errors (like user not found)
+        setShareError(error.message)
       }
     }
   })
@@ -389,11 +424,15 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!shareData.email.trim() || !claimToShare) return
+    const claimId = selectedClaim || claimToShare
+    
+    if (!shareData.email.trim() || !claimId) {
+      return
+    }
     
     shareClaimMutation.mutate({
       ...shareData,
-      claim_id: claimToShare
+      claim_id: claimId
     })
   }
 
@@ -704,7 +743,10 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
               <input
                 type="email"
                 value={shareData.email}
-                onChange={(e) => setShareData({ ...shareData, email: e.target.value })}
+                onChange={(e) => {
+                  setShareData({ ...shareData, email: e.target.value })
+                  if (shareError) setShareError(null) // Clear error when user types
+                }}
                 className="w-full border rounded-lg px-3 py-2"
                 placeholder="Enter the email of a registered user"
                 required
@@ -731,6 +773,23 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId }: 
               />
               <label htmlFor="can-view-evidence" className="text-sm">Allow viewing evidence</label>
             </div>
+            
+            {/* Error Display */}
+            {shareError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <div className="flex items-center">
+                  <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+                  <p className="text-red-700 text-sm">{shareError}</p>
+                </div>
+                <button
+                  onClick={() => setShareError(null)}
+                  className="mt-2 text-red-600 hover:text-red-800 text-sm underline"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+            
             <div className="flex space-x-3">
               <button
                 type="submit"

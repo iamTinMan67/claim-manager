@@ -18,31 +18,51 @@ export default function AuthComponent({ children, onAuthChange }: AuthComponentP
   const [confirmPassword, setConfirmPassword] = useState('')
   const [resetLoading, setResetLoading] = useState(false)
   const [resetSuccess, setResetSuccess] = useState(false)
+  const [resetTokens, setResetTokens] = useState<{accessToken: string, refreshToken: string} | null>(null)
 
   useEffect(() => {
-    // Check if this is a password reset flow
-    const urlParams = new URLSearchParams(window.location.search)
-    const accessToken = urlParams.get('access_token')
-    const refreshToken = urlParams.get('refresh_token')
-    const type = urlParams.get('type')
+    // Check if this is a password reset flow - do this FIRST before any auth calls
+    console.log('Full URL:', window.location.href)
+    console.log('Search params:', window.location.search)
+    console.log('Hash:', window.location.hash)
     
-    if (type === 'recovery' && accessToken && refreshToken) {
-      setIsPasswordReset(true)
-      // Set the session with the tokens from the URL
-      supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken
-      }).then(({ error }) => {
-        if (error) {
-          setAuthError('Invalid or expired reset link. Please request a new password reset.')
-        }
+    // Parse hash parameters (Supabase often uses hash for auth tokens)
+    const hashParams = new URLSearchParams(window.location.hash.substring(1))
+    const searchParams = new URLSearchParams(window.location.search)
+    
+    // Check both search params and hash for tokens
+    const accessToken = searchParams.get('access_token') || hashParams.get('access_token')
+    const refreshToken = searchParams.get('refresh_token') || hashParams.get('refresh_token')
+    const type = searchParams.get('type') || hashParams.get('type')
+    
+    console.log('Parsed params:', { 
+      type, 
+      hasAccessToken: !!accessToken, 
+      hasRefreshToken: !!refreshToken,
+      accessTokenLength: accessToken?.length || 0,
+      refreshTokenLength: refreshToken?.length || 0
+    })
+    
+    // Check for password reset tokens
+    if (accessToken && refreshToken) {
+      console.log('Auth tokens detected - checking if password reset')
+      
+      // If we have tokens but no explicit type, check if this looks like a password reset
+      // Password reset tokens are typically longer and have a specific format
+      if (type === 'recovery' || (accessToken.length > 100 && refreshToken.length > 100)) {
+        console.log('Password reset flow detected - preventing auto-login')
+        setIsPasswordReset(true)
+        setResetTokens({ accessToken, refreshToken })
         setLoading(false)
-      })
-      return
+        // Clear the URL to prevent auto-login
+        window.history.replaceState({}, document.title, window.location.pathname)
+        return
+      }
     }
 
-    // Get initial session
+    // Only get session if it's not a password reset flow
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session:', session?.user?.email || 'No user')
       setUser(session?.user ?? null)
       onAuthChange(session?.user ?? null)
       setLoading(false)
@@ -92,6 +112,26 @@ export default function AuthComponent({ children, onAuthChange }: AuthComponentP
     setResetLoading(true)
 
     try {
+      // Use the stored tokens
+      if (!resetTokens) {
+        setAuthError('Invalid reset link. Please request a new password reset.')
+        setResetLoading(false)
+        return
+      }
+
+      // First, set the session with the stored tokens
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: resetTokens.accessToken,
+        refresh_token: resetTokens.refreshToken
+      })
+
+      if (sessionError) {
+        setAuthError('Invalid or expired reset link. Please request a new password reset.')
+        setResetLoading(false)
+        return
+      }
+
+      // Now update the password
       const { error } = await supabase.auth.updateUser({
         password: password
       })
@@ -235,7 +275,7 @@ export default function AuthComponent({ children, onAuthChange }: AuthComponentP
             supabaseClient={supabase}
             appearance={{ theme: ThemeSupa }}
             providers={[]}
-            redirectTo={`${window.location.origin}?type=recovery`}
+            redirectTo={`${window.location.origin}`}
             onlyThirdPartyProviders={false}
           />
         </div>

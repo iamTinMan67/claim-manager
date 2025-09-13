@@ -24,6 +24,7 @@ export interface Todo {
   alarm_enabled: boolean
   alarm_time?: string
   case_number?: string
+  responsible_user_id?: string
   created_at: string
   updated_at: string
 }

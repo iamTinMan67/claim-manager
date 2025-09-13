@@ -36,6 +36,11 @@ interface TodoWithUser extends Todo {
   profiles?: {
     email: string
   }
+  responsible_user?: {
+    id: string
+    email: string
+    full_name?: string
+  }
 }
 
 const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, showGuestContent = false, isGuestFrozen = false }: CalendarProps) => {
@@ -122,11 +127,15 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       today.setHours(0, 0, 0, 0)
       const todayString = today.toISOString().split('T')[0]
       
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
       let query = supabase
         .from('todos')
         .select(`
           *,
-          profiles(email)
+          profiles(email),
+          responsible_user:responsible_user_id(id, email, full_name)
         `)
         .gte('due_date', todayString)
         .eq('completed', false)
@@ -134,6 +143,9 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       if (selectedClaim) {
         query = query.eq('case_number', selectedClaim)
       }
+      
+      // Show todos created by the current user OR assigned to the current user
+      query = query.or(`user_id.eq.${user.id},responsible_user_id.eq.${user.id}`)
       
       const { data, error } = await query
         .order('due_date', { ascending: true })
@@ -284,6 +296,10 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
           {showGuestContent ? 'Guest Calendar' : 'Calendar'}
         </h2>
         <div className="flex items-center space-x-4">
+          {/* Debug info */}
+          <div className="text-xs text-gray-500">
+            Debug: isGuest={isGuest.toString()}, isGuestFrozen={isGuestFrozen.toString()}, showGuestContent={showGuestContent.toString()}
+          </div>
           <button
             onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
             className="px-3 py-1 border rounded hover:bg-gray-50"
@@ -299,14 +315,14 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
           >
             Next
           </button>
-          {(!isGuest || !isGuestFrozen) && (
+          {!isGuest && (
             <button
               onClick={() => setShowAddForm(true)}
               className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
               style={{ backgroundColor: claimColor }}
             >
               <Plus className="w-4 h-4" />
-              <span>Add Event</span>
+              <span>Add New Event</span>
             </button>
           )}
           {isGuest && isGuestFrozen && (
@@ -322,7 +338,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         </div>
       </div>
 
-      {showAddForm && (!isGuest || !isGuestFrozen) && (
+      {showAddForm && !isGuest && (
         <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold">Add New Event</h3>
@@ -481,8 +497,14 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                             <div className="flex flex-col space-y-1 mt-1 text-xs text-gray-600">
                               <div className="flex items-center space-x-1">
                                 <User className="w-3 h-3" />
-                                <span>{todo.profiles?.email || 'Unknown user'}</span>
+                                <span>By: {todo.profiles?.email || 'Unknown user'}</span>
                               </div>
+                              {todo.responsible_user && (
+                                <div className="flex items-center space-x-1">
+                                  <User className="w-3 h-3 text-blue-400" />
+                                  <span className="text-blue-600">Assigned to: {todo.responsible_user.full_name || todo.responsible_user.email}</span>
+                                </div>
+                              )}
                               <div className="flex items-center space-x-1">
                                 <Clock className="w-3 h-3" />
                                 <span>{format(dueDate, 'MMM d, h:mm a')}</span>

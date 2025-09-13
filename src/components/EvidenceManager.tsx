@@ -391,7 +391,7 @@ const EvidenceManager = ({
               <span>{amendMode ? 'Exit Amend Mode' : 'Amend Mode'}</span>
             </button>
           )}
-          {(!isGuest || !isGuestFrozen) && (
+          {!isGuest && (
             <button
               onClick={() => setShowAddForm(true)}
               className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
@@ -414,7 +414,7 @@ const EvidenceManager = ({
         </div>
       </div>
 
-      {showAddForm && (!isGuest || !isGuestFrozen) && (
+      {showAddForm && !isGuest && (
         <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4">Add New Evidence</h3>
           <form onSubmit={handleSubmit} className="space-y-4">

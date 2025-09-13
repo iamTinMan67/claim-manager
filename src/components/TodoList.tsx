@@ -13,6 +13,11 @@ interface TodoWithUser extends Todo {
     title: string
     status: string
   }
+  responsible_user?: {
+    id: string
+    email: string
+    full_name?: string
+  }
 }
 
 interface TodoListProps {
@@ -32,10 +37,20 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
     priority: 'medium' as const,
     alarm_enabled: false,
     alarm_time: '',
-    case_number: selectedClaim || ''
+    case_number: selectedClaim || '',
+    responsible_user_id: ''
   })
 
   const queryClient = useQueryClient()
+
+  // Get current user for permission checks
+  const { data: currentUser } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      return user
+    }
+  })
 
   const { data: todos, isLoading } = useQuery({
     queryKey: ['todos', selectedClaim, showGuestContent],
@@ -48,7 +63,8 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         .select(`
           *,
           profiles(email),
-          claims(title, status)
+          claims(title, status),
+          responsible_user:responsible_user_id(id, email, full_name)
         `)
       
       if (selectedClaim) {
@@ -57,11 +73,11 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       
       // Filter based on view type
       if (showGuestContent) {
-        // Show only todos created by guests (not the claim owner)
-        query = query.neq('user_id', user.id)
+        // Show all todos for shared claim (regardless of who created or is assigned)
+        // This is handled by the RLS policy for shared claims
       } else {
-        // Show only todos created by the current user (claim owner's private view)
-        query = query.eq('user_id', user.id)
+        // Show only todos created by the current user OR assigned to the current user
+        query = query.or(`user_id.eq.${user.id},responsible_user_id.eq.${user.id}`)
       }
       
       const { data, error } = await query
@@ -88,6 +104,26 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
     }
   })
 
+  // Get shared users for responsible user dropdown (only in shared view)
+  const { data: sharedUsers } = useQuery({
+    queryKey: ['shared-users', selectedClaim],
+    queryFn: async () => {
+      if (!selectedClaim) return []
+      
+      const { data, error } = await supabase
+        .from('claim_shares')
+        .select(`
+          shared_with_id,
+          profiles!shared_with_id(id, email, full_name)
+        `)
+        .eq('claim_id', selectedClaim)
+      
+      if (error) throw error
+      return data?.map(share => share.profiles).filter(Boolean) || []
+    },
+    enabled: !!selectedClaim && showGuestContent
+  })
+
   const { data: todayTodos } = useQuery({
     queryKey: ['today-todos', selectedClaim, showGuestContent],
     queryFn: async () => {
@@ -102,7 +138,8 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         .from('todos')
         .select(`
           *,
-          profiles(email)
+          profiles(email),
+          responsible_user:responsible_user_id(id, email, full_name)
         `)
         .gte('due_date', todayString)
         .eq('completed', false)
@@ -113,11 +150,11 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       
       // Filter based on view type
       if (showGuestContent) {
-        // Show only todos created by guests
-        query = query.neq('user_id', user.id)
+        // Show all todos for shared claim (regardless of who created or is assigned)
+        // This is handled by the RLS policy for shared claims
       } else {
-        // Show only todos created by the current user
-        query = query.eq('user_id', user.id)
+        // Show only todos created by the current user OR assigned to the current user
+        query = query.or(`user_id.eq.${user.id},responsible_user_id.eq.${user.id}`)
       }
       
       const { data, error } = await query
@@ -159,7 +196,8 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         priority: 'medium',
         alarm_enabled: false,
         alarm_time: '',
-        case_number: selectedClaim || ''
+        case_number: selectedClaim || '',
+        responsible_user_id: ''
       })
     }
   })
@@ -304,14 +342,18 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
           {showGuestContent ? 'Guest To-Do Lists' : 'To-Do Lists'}
         </h2>
         <div className="flex items-center space-x-3">
-          {!isGuest || !isGuestFrozen && (
+          {/* Debug info */}
+          <div className="text-xs text-gray-500">
+            Debug: isGuest={isGuest.toString()}, isGuestFrozen={isGuestFrozen.toString()}, showGuestContent={showGuestContent.toString()}
+          </div>
+          {!isGuest && (
             <button
               onClick={() => setShowAddForm(true)}
               className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
               style={{ backgroundColor: claimColor }}
             >
               <Plus className="w-4 h-4" />
-              <span>Add Todo</span>
+              <span>Add New Task</span>
             </button>
           )}
           {isGuest && isGuestFrozen && (
@@ -327,7 +369,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         </div>
       </div>
 
-      {showAddForm && (!isGuest || !isGuestFrozen) && (
+      {showAddForm && !isGuest && (
         <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4">Add New Todo</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -410,6 +452,26 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                 ))}
               </select>
             </div>
+            {showGuestContent && sharedUsers && sharedUsers.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium mb-1">Responsible User</label>
+                <select
+                  value={newTodo.responsible_user_id}
+                  onChange={(e) => setNewTodo({ ...newTodo, responsible_user_id: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2"
+                >
+                  <option value="">Assign to yourself</option>
+                  {sharedUsers.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.full_name || user.email} {user.id === newTodo.user_id ? '(You)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-sm text-gray-600 mt-1">
+                  If assigned to someone else, this task will appear in their private calendar and not in your private todo list.
+                </p>
+              </div>
+            )}
             <div className="flex space-x-3">
               <button
                 type="submit"
@@ -512,6 +574,12 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                             <User className="w-4 h-4 text-gray-400" />
                             <span className="text-gray-700">By: {todo.profiles?.email || 'Unknown user'}</span>
                           </div>
+                          {todo.responsible_user && (
+                            <div className="flex items-center space-x-1">
+                              <User className="w-4 h-4 text-blue-400" />
+                              <span className="text-blue-700">Assigned to: {todo.responsible_user.full_name || todo.responsible_user.email}</span>
+                            </div>
+                          )}
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(todo.priority)}`}>
                             {todo.priority}
                           </span>
@@ -535,12 +603,6 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                             ? 'You can only delete your own todos'
                             : 'Delete todo'
                       }
-                      disabled={isGuest && isGuestFrozen}
-                      title={isGuest && isGuestFrozen ? 'Access frozen by claim owner' : 'Delete todo'}
-                      disabled={isGuest}
-                      title={isGuest ? 'Guests cannot delete todos' : 'Delete todo'}
-                      disabled={isGuest}
-                      title={isGuest ? 'Guests cannot delete todos' : 'Delete todo'}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
