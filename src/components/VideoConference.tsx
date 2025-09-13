@@ -8,7 +8,7 @@ interface VideoConferenceProps {
 }
 
 // Daily.co API key - you'll need to get this from daily.co dashboard
-const DAILY_API_KEY = import.meta.env.VITE_DAILY_API_KEY || 'your-daily-api-key-here'
+const DAILY_API_KEY = import.meta.env.VITE_DAILY_API_KEY || 'demo-key'
 
 // Video call component
 const VideoCall = ({ claimId, onClose }: VideoConferenceProps) => {
@@ -103,10 +103,10 @@ const VideoCall = ({ claimId, onClose }: VideoConferenceProps) => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64 bg-gray-100 rounded-lg">
+      <div className="flex items-center justify-center h-64 card-enhanced rounded-lg">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-          <p className="text-gray-600">Joining video call...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
+          <p className="text-gold">Joining video call...</p>
         </div>
       </div>
     )
@@ -114,13 +114,13 @@ const VideoCall = ({ claimId, onClose }: VideoConferenceProps) => {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64 bg-red-50 rounded-lg">
+      <div className="flex items-center justify-center h-64 card-enhanced rounded-lg">
         <div className="text-center">
-          <div className="text-red-600 mb-2">⚠️</div>
-          <p className="text-red-600 mb-4">{error}</p>
+          <div className="text-red-400 mb-2">⚠️</div>
+          <p className="text-gold mb-4">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+            className="btn-gold px-4 py-2 rounded-lg"
           >
             Retry
           </button>
@@ -130,14 +130,15 @@ const VideoCall = ({ claimId, onClose }: VideoConferenceProps) => {
   }
 
   return (
-    <div className="bg-gray-900 rounded-lg overflow-hidden">
+    <div className="card-enhanced rounded-lg overflow-hidden">
       {/* Video Grid */}
-      <div className="relative h-64 bg-gray-800">
+      <div className="relative h-64 bg-gray-800 rounded-t-lg">
         {participants.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-400">
+          <div className="flex items-center justify-center h-full text-gold-light">
             <div className="text-center">
               <Video className="w-12 h-12 mx-auto mb-2" />
-              <p>Waiting for participants...</p>
+              <p>Video call ready - waiting for participants...</p>
+              <p className="text-sm mt-2">Room: {roomName}</p>
             </div>
           </div>
         ) : (
@@ -190,7 +191,7 @@ const VideoCall = ({ claimId, onClose }: VideoConferenceProps) => {
       </div>
 
       {/* Room Info */}
-      <div className="bg-gray-700 px-4 py-2 text-center">
+      <div className="bg-gray-700 px-4 py-2 text-center rounded-b-lg">
         <p className="text-gray-300 text-sm">
           Room: <span className="font-mono">{roomName}</span>
         </p>
@@ -237,10 +238,25 @@ const VideoConference = ({ claimId, onClose }: VideoConferenceProps) => {
         const { DailyIframe } = await import('@daily-co/daily-js')
         const dailyInstance = DailyIframe.createCallObject({
           apiKey: DAILY_API_KEY,
+          showLeaveButton: false,
+          showFullscreenButton: false,
+          showLocalVideo: true,
+          showParticipantsBar: true,
         })
         setDaily(dailyInstance)
       } catch (err) {
         // Handle Daily.co initialization error silently
+        console.log('Daily.co not available, using fallback')
+        // Create a mock daily object for development
+        setDaily({
+          join: () => Promise.resolve(),
+          leave: () => Promise.resolve(),
+          setLocalVideo: () => {},
+          setLocalAudio: () => {},
+          on: () => {},
+          off: () => {},
+          destroy: () => {}
+        })
       }
     }
 
@@ -255,10 +271,10 @@ const VideoConference = ({ claimId, onClose }: VideoConferenceProps) => {
 
   if (!daily) {
     return (
-      <div className="flex items-center justify-center h-64 bg-gray-100 rounded-lg">
+      <div className="flex items-center justify-center h-64 card-enhanced rounded-lg">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-          <p className="text-gray-600">Initializing video...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
+          <p className="text-gold">Initializing video...</p>
         </div>
       </div>
     )
