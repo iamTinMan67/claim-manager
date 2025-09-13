@@ -469,7 +469,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
       )}
 
       {/* Collaboration Section */}
-      {showCollaboration && selectedClaim && (
+      {showCollaboration && (
         <div className="bg-white rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <div className="p-4 border-b">
             <h3 className="text-lg font-semibold" style={{ color: claimColor }}>
@@ -538,21 +538,6 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         <div className="flex items-center space-x-2 mb-4">
           <DollarSign className="w-5 h-5 text-blue-600" />
           <h3 className="text-lg font-semibold text-blue-900">Guest Access Pricing & Account Requirements</h3>
-        </div>
-        <div className="bg-white p-4 rounded border border-blue-300 mb-4">
-          <div className="flex items-center space-x-2 mb-2">
-            <Users className="w-4 h-4 text-blue-600" />
-            <span className="font-medium text-blue-900">Account Requirement</span>
-          </div>
-          <p className="text-blue-800 text-sm">
-            <strong>All guests must have their own registered account</strong> on this app before they can be invited. 
-            This allows them to:
-          </p>
-          <ul className="text-blue-700 text-sm mt-2 ml-4 list-disc">
-            <li>Create and manage their own claims</li>
-            <li>Invite their own guests</li>
-            <li>Have full account functionality beyond just guest access</li>
-          </ul>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           <div className="bg-white p-3 rounded border">
