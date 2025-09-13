@@ -1,0 +1,35 @@
+-- Create exhibits for all the exhibit_id values referenced in evidence
+-- First, create exhibits for EX001-EX031
+INSERT INTO public.exhibits (user_id, exhibit_number, name, description) 
+VALUES 
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 2, 'Exhibit 2', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 3, 'Exhibit 3', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 4, 'Exhibit 4', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 5, 'Exhibit 5', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 6, 'Exhibit 6', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 7, 'Exhibit 7', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 8, 'Exhibit 8', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 9, 'Exhibit 9', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 10, 'Exhibit 10', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 11, 'Exhibit 11', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 12, 'Exhibit 12', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 13, 'Exhibit 13', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 14, 'Exhibit 14', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 15, 'Exhibit 15', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 16, 'Exhibit 16', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 17, 'Exhibit 17', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 18, 'Exhibit 18', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 19, 'Exhibit 19', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 20, 'Exhibit 20', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 21, 'Exhibit 21', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 22, 'Exhibit 22', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 23, 'Exhibit 23', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 24, 'Exhibit 24', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 25, 'Exhibit 25', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 26, 'Exhibit 26', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 27, 'Exhibit 27', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 28, 'Exhibit 28', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 29, 'Exhibit 29', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 30, 'Exhibit 30', 'Auto-generated exhibit'),
+  ('6a16eec7-22d6-4fea-8cb9-8d6327c87985', 31, 'Exhibit 31', 'Auto-generated exhibit')
+ON CONFLICT (user_id, exhibit_number) DO NOTHING;

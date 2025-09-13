@@ -67,6 +67,10 @@ ALTER TABLE collaboration_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE whiteboard_data ENABLE ROW LEVEL SECURITY;
 
 -- Chat messages policies
+DROP POLICY IF EXISTS "Users can view messages for accessible claims" ON chat_messages;
+DROP POLICY IF EXISTS "Users can create messages for accessible claims" ON chat_messages;
+DROP POLICY IF EXISTS "Users can delete their own messages" ON chat_messages;
+
 CREATE POLICY "Users can view messages for accessible claims"
   ON chat_messages FOR SELECT
   TO authenticated
@@ -83,6 +87,10 @@ CREATE POLICY "Users can delete their own messages"
   USING (auth.uid() = sender_id);
 
 -- Collaboration sessions policies
+DROP POLICY IF EXISTS "Users can view sessions for accessible claims" ON collaboration_sessions;
+DROP POLICY IF EXISTS "Users can create sessions for accessible claims" ON collaboration_sessions;
+DROP POLICY IF EXISTS "Session hosts can update their sessions" ON collaboration_sessions;
+
 CREATE POLICY "Users can view sessions for accessible claims"
   ON collaboration_sessions FOR SELECT
   TO authenticated
@@ -99,6 +107,11 @@ CREATE POLICY "Session hosts can update their sessions"
   USING (auth.uid() = host_id);
 
 -- Whiteboard data policies
+DROP POLICY IF EXISTS "Users can view whiteboard data for accessible claims" ON whiteboard_data;
+DROP POLICY IF EXISTS "Users can create whiteboard data for accessible claims" ON whiteboard_data;
+DROP POLICY IF EXISTS "Users can update their own whiteboard data" ON whiteboard_data;
+DROP POLICY IF EXISTS "Users can delete their own whiteboard data" ON whiteboard_data;
+
 CREATE POLICY "Users can view whiteboard data for accessible claims"
   ON whiteboard_data FOR SELECT
   TO authenticated
