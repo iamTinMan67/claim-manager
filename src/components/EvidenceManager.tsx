@@ -703,7 +703,7 @@ const EvidenceManager = ({
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="card-enhanced divide-y divide-gray-200">
               {evidenceData && evidenceData.length > 0 ? (
                 evidenceData.map((item) => (
                   <React.Fragment key={item.id}>

@@ -396,7 +396,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         </p>
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow border">
+      <div className="card-enhanced p-6 rounded-lg shadow border">
         <h3 className="text-lg font-semibold mb-4">Export Options</h3>
         
         <div className="space-y-4">

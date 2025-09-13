@@ -37,6 +37,18 @@ function AppContent() {
   const [showGuestContent, setShowGuestContent] = useState(false)
   const [isInSharedContext, setIsInSharedContext] = useState(false) // Track if we're in shared claims context
 
+  // Scroll to top when claims tab is active and no claim is selected
+  React.useEffect(() => {
+    if (activeTab === 'claims' && !selectedClaim) {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [activeTab, selectedClaim])
+
+  // Scroll to top when component mounts to ensure navbar is visible
+  React.useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [])
+
   if (!user) {
     return <AuthComponent onAuthChange={setUser} />
   }

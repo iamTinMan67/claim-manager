@@ -335,7 +335,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       </div>
 
       {showAddForm && !isGuest && (
-        <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
+        <div className="card-enhanced p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold">Add New Event</h3>
             <button
@@ -445,7 +445,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* To-Do List Section */}
         <div className="lg:col-span-1">
-          <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
+          <div className="card-enhanced p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
             <h3 className="text-lg font-semibold mb-4" style={{ color: claimColor }}>
               Today's Tasks & Upcoming
             </h3>
@@ -539,7 +539,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
 
         {/* Calendar Section */}
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg shadow">
+          <div className="card-enhanced rounded-lg shadow">
             <div className="grid grid-cols-7 gap-px bg-gray-200">
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                 <div key={day} className="bg-gray-50 p-2 text-center text-sm font-medium text-gray-700">
@@ -554,8 +554,8 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                   <div
                     key={date.toISOString()}
                     onClick={() => handleDateClick(date)}
-                    className={`bg-white p-2 min-h-[100px] cursor-pointer hover:bg-gray-50 ${
-                      isToday(date) ? 'bg-blue-50' : ''
+                    className={`card-enhanced p-2 min-h-[100px] cursor-pointer hover:bg-yellow-400/10 ${
+                      isToday(date) ? 'bg-yellow-400/20' : ''
                     }`}
                   >
                     <div className={`text-sm font-medium mb-1 ${

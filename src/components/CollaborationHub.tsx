@@ -255,7 +255,7 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
       </div>
 
       {/* Tab Navigation */}
-      <div className="bg-white rounded-lg shadow border">
+      <div className="card-enhanced rounded-lg shadow border">
         <div className="flex border-b">
           <button
             onClick={() => setActiveTab('chat')}
@@ -310,7 +310,7 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
         {/* Chat Tab */}
         {activeTab === 'chat' && (
           <div className="p-6">
-            <div className="h-96 overflow-y-auto border rounded-lg p-4 mb-4 bg-gray-50">
+            <div className="h-96 overflow-y-auto border rounded-lg p-4 mb-4 card-enhanced">
               {messagesLoading ? (
                 <div className="text-center text-gray-500">Loading messages...</div>
               ) : messages && messages.length > 0 ? (

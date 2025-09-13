@@ -7,6 +7,13 @@
   box-sizing: border-box;
 }
 
+/* Ensure navbar is always visible at top */
+.card-smudge {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1000 !important;
+}
+
 html {
   background: linear-gradient(135deg, #10b981 0%, #059669 25%, #047857 50%, #065f46 75%, #064e3b 100%) !important;
   background-attachment: fixed !important;

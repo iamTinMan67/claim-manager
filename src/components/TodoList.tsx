@@ -270,7 +270,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       
       {/* Daily Summary */}
       {todayTodos && todayTodos.length > 0 && (
-        <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
+        <div className="card-enhanced p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <div className="flex items-center space-x-2 mb-4">
             <CalendarIcon className="w-5 h-5" style={{ color: claimColor }} />
             <h3 className="text-lg font-semibold">Today's Tasks & Upcoming</h3>
@@ -366,7 +366,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       </div>
 
       {showAddForm && !isGuest && (
-        <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
+        <div className="card-enhanced p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4">Add New Todo</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -526,7 +526,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
               {claimTodos.map((todo) => (
                 <div
                   key={todo.id}
-                  className={`bg-white p-4 rounded-lg shadow border-l-4 ${
+                  className={`card-enhanced p-4 rounded-lg shadow border-l-4 ${
                     todo.completed ? 'opacity-75' : ''
                   }`}
                   style={{ borderLeftColor: claimColor }}

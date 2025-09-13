@@ -389,7 +389,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
 
       {/* Collaboration Section */}
       {showCollaboration && selectedClaim && (
-        <div className="bg-white rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
+        <div className="card-enhanced rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <div className="p-4 border-b">
             <h3 className="text-lg font-semibold" style={{ color: claimColor }}>
               Collaboration Hub
@@ -418,7 +418,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
           <DollarSign className="w-5 h-5 text-blue-600" />
           <h3 className="text-lg font-semibold text-blue-900">Guest Access Pricing & Account Requirements</h3>
         </div>
-        <div className="bg-white p-4 rounded border border-blue-300 mb-4">
+        <div className="card-enhanced p-4 rounded border border-blue-300 mb-4">
           <div className="flex items-center space-x-2 mb-2">
             <Users className="w-4 h-4 text-blue-600" />
             <span className="font-medium text-blue-900">Account Requirement</span>
@@ -434,21 +434,21 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
           </ul>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div className="bg-white p-3 rounded border">
-            <div className="font-medium text-gray-900">First Guest</div>
-            <div className="text-green-600 font-bold">FREE</div>
+          <div className="card-enhanced p-3 rounded border">
+            <div className="font-medium text-gold">First Guest</div>
+            <div className="text-green-400 font-bold">FREE</div>
           </div>
-          <div className="bg-white p-3 rounded border">
-            <div className="font-medium text-gray-900">2nd Guest</div>
-            <div className="text-blue-600 font-bold">£7</div>
+          <div className="card-enhanced p-3 rounded border">
+            <div className="font-medium text-gold">2nd Guest</div>
+            <div className="text-gold font-bold">£5</div>
           </div>
-          <div className="bg-white p-3 rounded border">
-            <div className="font-medium text-gray-900">3-5 Guests</div>
-            <div className="text-blue-600 font-bold">£10</div>
+          <div className="card-enhanced p-3 rounded border">
+            <div className="font-medium text-gold">3-5 Guests</div>
+            <div className="text-gold font-bold">£7</div>
           </div>
-          <div className="bg-white p-3 rounded border">
-            <div className="font-medium text-gray-900">6+ Guests</div>
-            <div className="text-blue-600 font-bold">£20-£50</div>
+          <div className="card-enhanced p-3 rounded border">
+            <div className="font-medium text-gold">6+ Guests</div>
+            <div className="text-gold font-bold">£10</div>
           </div>
         </div>
         <p className="text-blue-800 text-sm mt-3">
@@ -492,7 +492,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
       </div>
 
       {showJoinClaimForm && (
-        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
+        <div className="card-enhanced p-6 rounded-lg shadow border-l-4 border-green-500">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold">Join a Claim</h3>
             <button
@@ -551,7 +551,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
       )}
 
       {showShareForm && (
-        <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
+        <div className="card-enhanced p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4">Share a Claim</h3>
           {(selectedClaim || claimToShare) && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
@@ -699,7 +699,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
           ).map((share) => (
           <div
             key={share.id}
-            className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border-l-4 cursor-pointer hover:shadow-lg transition-shadow"
+            className="card-enhanced p-6 rounded-lg shadow border-l-4 cursor-pointer hover:shadow-lg transition-shadow"
             style={{ borderLeftColor: share.claims.color || '#3B82F6' }}
             onClick={() => {
               if (typeof window !== 'undefined') {
@@ -771,7 +771,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         {guestClaims?.map((guestClaim) => (
           <div
             key={guestClaim.id}
-            className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border-l-4 cursor-pointer hover:shadow-lg transition-shadow"
+            className="card-enhanced p-6 rounded-lg shadow border-l-4 cursor-pointer hover:shadow-lg transition-shadow"
             style={{ borderLeftColor: guestClaim.claims.color || '#3B82F6' }}
             onClick={() => {
               if (typeof window !== 'undefined') {
@@ -868,7 +868,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
           />
 
           {/* Action Buttons */}
-          <div className="mt-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
+          <div className="mt-8 p-6 card-enhanced rounded-lg shadow">
             <h3 className="text-lg font-semibold mb-4 dark:text-white">Claim Actions</h3>
             <div className="flex flex-wrap gap-3">
               <button

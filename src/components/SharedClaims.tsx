@@ -442,7 +442,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
 
       {/* Collaboration Section */}
       {showCollaboration && selectedClaim && (
-        <div className="bg-white rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
+        <div className="card-enhanced rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <div className="p-4 border-b">
             <h3 className="text-lg font-semibold" style={{ color: claimColor }}>
               Collaboration Hub
@@ -640,7 +640,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
 
       {/* Add Claim Form */}
       {showAddForm && !isGuest && (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
+        <div className="card-enhanced p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4 dark:text-white">Add New Claim</h3>
           <form onSubmit={(e) => {
             e.preventDefault()
