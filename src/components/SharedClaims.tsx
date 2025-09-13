@@ -772,10 +772,12 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         />
       )}
 
-      {/* Claims Grid - Show both owned and guest claims */}
+      {/* Claims Grid - Show both owned and guest claims, filtering duplicates */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* Claims I Own (Host) */}
-        {sharedClaims?.map((share) => (
+        {/* Claims I Own (Host) - Filter out any that also appear as guest claims */}
+        {sharedClaims?.filter(share => 
+          !guestClaims?.some(guest => guest.claims.case_number === share.claims.case_number)
+        ).map((share) => (
           <div
             key={share.id}
             className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border-l-4 cursor-pointer hover:shadow-lg transition-shadow"
