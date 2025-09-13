@@ -566,37 +566,6 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         </div>
       )}
       
-      {/* Pricing Information - Hidden when collaboration is shown */}
-      {!showCollaboration && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <div className="flex items-center space-x-2 mb-4">
-          <DollarSign className="w-5 h-5 text-blue-600" />
-          <h3 className="text-lg font-semibold text-blue-900">Guest Access Pricing & Account Requirements</h3>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div className="bg-white p-3 rounded border">
-            <div className="font-medium text-gray-900">First Guest</div>
-            <div className="text-green-600 font-bold">FREE</div>
-          </div>
-          <div className="bg-white p-3 rounded border">
-            <div className="font-medium text-gray-900">2nd Guest</div>
-            <div className="text-blue-600 font-bold">£7</div>
-          </div>
-          <div className="bg-white p-3 rounded border">
-            <div className="font-medium text-gray-900">3-5 Guests</div>
-            <div className="text-blue-600 font-bold">£10</div>
-          </div>
-          <div className="bg-white p-3 rounded border">
-            <div className="font-medium text-gray-900">6+ Guests</div>
-            <div className="text-blue-600 font-bold">£20-£50</div>
-          </div>
-        </div>
-        <p className="text-blue-800 text-sm mt-3">
-          <strong>Note:</strong> First guest is FREE! Payment required for additional guests. All payments support app development. 
-          Each user can be both a claim owner (hosting their own claims) and a guest (invited to others' claims).
-        </p>
-        </div>
-      )}
 
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Shared Claims Collaboration</h2>
