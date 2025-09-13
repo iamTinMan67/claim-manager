@@ -2,6 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Immediate background fix */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: linear-gradient(135deg, #10b981 0%, #059669 25%, #047857 50%, #065f46 75%, #064e3b 100%) !important;
+  background-attachment: fixed !important;
+}
+
+body {
+  background: linear-gradient(135deg, #10b981 0%, #059669 25%, #047857 50%, #065f46 75%, #064e3b 100%) !important;
+  background-attachment: fixed !important;
+  color: #fbbf24 !important;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh !important;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -63,11 +82,18 @@
   * {
     @apply border-border;
   }
-  body {
-    background: linear-gradient(135deg, #10b981 0%, #059669 25%, #047857 50%, #065f46 75%, #064e3b 100%);
-    background-attachment: fixed;
-    color: #fbbf24;
-    min-height: 100vh;
+  
+  html, body {
+    background: linear-gradient(135deg, #10b981 0%, #059669 25%, #047857 50%, #065f46 75%, #064e3b 100%) !important;
+    background-attachment: fixed !important;
+    color: #fbbf24 !important;
+    min-height: 100vh !important;
+  }
+  
+  #root {
+    background: linear-gradient(135deg, #10b981 0%, #059669 25%, #047857 50%, #065f46 75%, #064e3b 100%) !important;
+    background-attachment: fixed !important;
+    min-height: 100vh !important;
   }
   
   /* Smudge effect for cards */
@@ -141,4 +167,30 @@
     transform: translateY(-1px);
     box-shadow: 0 6px 20px rgba(251, 191, 36, 0.4);
   }
+}
+
+/* Force background override */
+html, body, #root, .min-h-screen, div[class*="min-h-screen"] {
+  background: linear-gradient(135deg, #10b981 0%, #059669 25%, #047857 50%, #065f46 75%, #064e3b 100%) !important;
+  background-attachment: fixed !important;
+}
+
+/* Additional override for any container */
+.container, .mx-auto {
+  background: transparent !important;
+}
+
+/* Override any white backgrounds */
+.bg-white, .bg-gray-50, .bg-gray-100 {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(10px);
+}
+
+/* Ensure text is visible */
+.text-gray-900, .text-gray-800, .text-gray-700, .text-gray-600, .text-gray-500 {
+  color: #fbbf24 !important;
+}
+
+.text-gray-400, .text-gray-300, .text-gray-200 {
+  color: #fcd34d !important;
 }
