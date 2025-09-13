@@ -480,7 +480,6 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
       
 
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gold">Shared Claims</h2>
         <div className="flex items-center space-x-3">
         {!isGuest && !selectedClaim && (
           <button

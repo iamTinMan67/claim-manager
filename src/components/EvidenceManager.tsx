@@ -374,7 +374,6 @@ const EvidenceManager = ({
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gold">Evidence Management</h2>
         <div className="flex items-center space-x-3">
           {onSetAmendMode && (
             <button
