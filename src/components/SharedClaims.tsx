@@ -73,6 +73,25 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
   const queryClient = useQueryClient()
   const { theme, setTheme } = useTheme()
 
+  // Check if current user is a guest and if they're frozen
+  const { data: guestStatus } = useQuery({
+    queryKey: ['guest-status', selectedClaim, currentUserId],
+    queryFn: async () => {
+      if (!selectedClaim || !currentUserId || !isGuest) return null
+      
+      const { data, error } = await supabase
+        .from('claim_shares')
+        .select('is_frozen, is_muted')
+        .eq('claim_id', selectedClaim)
+        .eq('shared_with_id', currentUserId)
+        .maybeSingle()
+      
+      if (error) return null
+      return data
+    },
+    enabled: !!selectedClaim && !!currentUserId && isGuest
+  })
+
   // Calculate pricing based on guest count
   const calculateDonationAmount = (guestCount: number): number => {
     if (guestCount === 1) return 0 // First guest is FREE
@@ -941,7 +960,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
             amendMode={false}
             isGuest={isGuest}
             currentUserId={currentUserId}
-            isGuestFrozen={false}
+            isGuestFrozen={guestStatus?.is_frozen || false}
             onEditClaim={() => {}}
             onDeleteClaim={() => {}}
             onSetAmendMode={() => {}}
