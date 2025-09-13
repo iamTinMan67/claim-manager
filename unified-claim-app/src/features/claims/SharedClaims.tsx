@@ -40,6 +40,7 @@ interface SharedClaimsProps {
 
 const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, isGuest = false }: SharedClaimsProps) => {
   const [showShareForm, setShowShareForm] = useState(false)
+  const [amendMode, setAmendMode] = useState(false)
   const [selectedSharedClaim, setSelectedSharedClaim] = useState<string | null>(null)
   const [claimToShare, setClaimToShare] = useState('')
   const [showPaymentModal, setShowPaymentModal] = useState(false)
@@ -857,13 +858,13 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
           <EvidenceManager 
             selectedClaim={selectedClaim} 
             claimColor={claimColor} 
-            amendMode={false}
+            amendMode={amendMode}
             isGuest={isGuest}
             currentUserId={currentUserId}
             isGuestFrozen={false}
             onEditClaim={() => {}}
             onDeleteClaim={() => {}}
-            onSetAmendMode={() => {}}
+            onSetAmendMode={setAmendMode}
           />
 
           {/* Action Buttons */}
