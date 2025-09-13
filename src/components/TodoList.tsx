@@ -342,10 +342,6 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
           {showGuestContent ? 'Guest To-Do Lists' : 'To-Do Lists'}
         </h2>
         <div className="flex items-center space-x-3">
-          {/* Debug info */}
-          <div className="text-xs text-gray-500">
-            Debug: isGuest={isGuest.toString()}, isGuestFrozen={isGuestFrozen.toString()}, showGuestContent={showGuestContent.toString()}
-          </div>
           {!isGuest && (
             <button
               onClick={() => setShowAddForm(true)}

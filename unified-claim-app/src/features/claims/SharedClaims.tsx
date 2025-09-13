@@ -240,7 +240,6 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
           .single()
 
         if (error) {
-          console.error('Claim share insert error:', error)
           throw error
         }
         return data
@@ -362,7 +361,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
   }
 
   const handlePaymentError = (error: string) => {
-    console.error('Payment error:', error)
+    // Handle payment error silently
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -855,12 +854,6 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
             </div>
           </div>
           
-          {/* Debug Info */}
-          <div className="bg-yellow-50 dark:bg-yellow-900 p-4 rounded-lg">
-            <p className="text-sm text-yellow-800 dark:text-yellow-200">
-              Debug: selectedClaim = {selectedClaim}, claimColor = {claimColor}, isGuest = {isGuest ? 'true' : 'false'}
-            </p>
-          </div>
           
           {/* Evidence Management */}
           <EvidenceManager 

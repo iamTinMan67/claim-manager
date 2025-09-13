@@ -296,10 +296,6 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
           {showGuestContent ? 'Guest Calendar' : 'Calendar'}
         </h2>
         <div className="flex items-center space-x-4">
-          {/* Debug info */}
-          <div className="text-xs text-gray-500">
-            Debug: isGuest={isGuest.toString()}, isGuestFrozen={isGuestFrozen.toString()}, showGuestContent={showGuestContent.toString()}
-          </div>
           <button
             onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
             className="px-3 py-1 border rounded hover:bg-gray-50"

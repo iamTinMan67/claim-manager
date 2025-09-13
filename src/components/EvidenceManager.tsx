@@ -250,7 +250,6 @@ const EvidenceManager = ({
       if (uploadError) {
         // If bucket doesn't exist, create it and try again
         if (uploadError.message.includes('Bucket not found')) {
-          console.log('Creating evidence-files bucket...')
           // For now, just use a URL.createObjectURL as fallback
           const fileUrl = URL.createObjectURL(file)
           setNewEvidence(prev => ({
@@ -276,7 +275,6 @@ const EvidenceManager = ({
         }))
       }
     } catch (error) {
-      console.error('Error uploading file:', error)
       alert('Error uploading file. Please try again.')
     } finally {
       setUploadingFile(false)

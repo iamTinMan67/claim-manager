@@ -257,7 +257,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
       const pdfUrl = URL.createObjectURL(pdfBlob)
       window.open(pdfUrl, '_blank')
     } catch (error) {
-      console.error('Error generating PDF:', error)
+      // Handle PDF generation error silently
     } finally {
       setIsExporting(false)
     }
@@ -318,7 +318,6 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         try {
           const response = await fetch(item.file_url!)
           if (!response.ok) {
-            console.warn(`Failed to download ${item.file_name}: ${response.statusText}`)
             return null
           }
           
@@ -333,7 +332,6 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
           documentsFolder?.file(prefixedFileName, blob)
           return prefixedFileName
         } catch (error) {
-          console.warn(`Error downloading ${item.file_name}:`, error)
           return null
         }
       })
@@ -363,7 +361,6 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
       alert(`Successfully downloaded ${successfulDownloads.length} documents out of ${evidenceWithFiles.length} available.`)
       
     } catch (error) {
-      console.error('Error creating ZIP file:', error)
       alert('Error creating ZIP file. Please try again.')
     } finally {
       setIsDownloadingZip(false)

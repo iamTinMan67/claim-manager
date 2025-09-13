@@ -183,7 +183,7 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
         videoRef.current.srcObject = stream
       }
     } catch (error) {
-      console.error('Error accessing media devices:', error)
+      // Handle media device access error silently
     }
   }
 

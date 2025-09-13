@@ -44,7 +44,6 @@ const SubscriptionManager = () => {
   const { data: tiers, isLoading: tiersLoading, error: tiersError } = useQuery({
     queryKey: ['subscription-tiers'],
     queryFn: async () => {
-      console.log('Fetching subscription tiers...')
       const { data, error } = await supabase
         .from('subscription_tiers')
         .select('*')
@@ -52,16 +51,13 @@ const SubscriptionManager = () => {
         .order('price_monthly', { ascending: true })
       
       if (error) {
-        console.error('Error fetching subscription tiers:', error)
         // Return empty array if table doesn't exist
         if (error.code === '42P01') {
-          console.log('Subscription tiers table does not exist, returning empty array')
           return []
         }
         throw error
       }
       
-      console.log('Subscription tiers fetched:', data)
       return data as SubscriptionTier[]
     }
   })
@@ -122,7 +118,7 @@ const SubscriptionManager = () => {
   }
 
   const handlePaymentError = (error: string) => {
-    console.error('Payment error:', error)
+    // Handle payment error silently
   }
 
   const formatPrice = (price: number) => {

@@ -68,7 +68,6 @@ const PaymentForm = ({
 
       setClientSecret(data.client_secret)
     } catch (error) {
-      console.error('Error creating payment intent:', error)
       onError(error.message)
     }
   }

@@ -42,7 +42,6 @@ const VideoCall = ({ claimId, onClose }: VideoConferenceProps) => {
         setIsJoined(true)
         setError(null)
       } catch (err) {
-        console.error('Failed to join call:', err)
         setError('Failed to join video call. Please try again.')
       } finally {
         setIsLoading(false)
@@ -53,12 +52,10 @@ const VideoCall = ({ claimId, onClose }: VideoConferenceProps) => {
 
     // Set up event listeners
     const handleParticipantJoined = (event: any) => {
-      console.log('Participant joined:', event.participant)
       setParticipants(prev => [...prev, event.participant])
     }
 
     const handleParticipantLeft = (event: any) => {
-      console.log('Participant left:', event.participant)
       setParticipants(prev => prev.filter(p => p.session_id !== event.participant.session_id))
     }
 
@@ -243,7 +240,7 @@ const VideoConference = ({ claimId, onClose }: VideoConferenceProps) => {
         })
         setDaily(dailyInstance)
       } catch (err) {
-        console.error('Failed to initialize Daily.co:', err)
+        // Handle Daily.co initialization error silently
       }
     }
 

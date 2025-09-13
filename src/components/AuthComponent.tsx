@@ -22,9 +22,6 @@ export default function AuthComponent({ children, onAuthChange }: AuthComponentP
 
   useEffect(() => {
     // Check if this is a password reset flow - do this FIRST before any auth calls
-    console.log('Full URL:', window.location.href)
-    console.log('Search params:', window.location.search)
-    console.log('Hash:', window.location.hash)
     
     // Parse hash parameters (Supabase often uses hash for auth tokens)
     const hashParams = new URLSearchParams(window.location.hash.substring(1))
@@ -35,22 +32,12 @@ export default function AuthComponent({ children, onAuthChange }: AuthComponentP
     const refreshToken = searchParams.get('refresh_token') || hashParams.get('refresh_token')
     const type = searchParams.get('type') || hashParams.get('type')
     
-    console.log('Parsed params:', { 
-      type, 
-      hasAccessToken: !!accessToken, 
-      hasRefreshToken: !!refreshToken,
-      accessTokenLength: accessToken?.length || 0,
-      refreshTokenLength: refreshToken?.length || 0
-    })
     
     // Check for password reset tokens
     if (accessToken && refreshToken) {
-      console.log('Auth tokens detected - checking if password reset')
-      
       // If we have tokens but no explicit type, check if this looks like a password reset
       // Password reset tokens are typically longer and have a specific format
       if (type === 'recovery' || (accessToken.length > 100 && refreshToken.length > 100)) {
-        console.log('Password reset flow detected - preventing auto-login')
         setIsPasswordReset(true)
         setResetTokens({ accessToken, refreshToken })
         setLoading(false)
@@ -62,7 +49,6 @@ export default function AuthComponent({ children, onAuthChange }: AuthComponentP
 
     // Only get session if it's not a password reset flow
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session:', session?.user?.email || 'No user')
       setUser(session?.user ?? null)
       onAuthChange(session?.user ?? null)
       setLoading(false)

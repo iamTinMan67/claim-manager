@@ -203,7 +203,6 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         .maybeSingle()
 
       if (userLookupError) {
-        console.error('Error looking up user:', userLookupError)
         throw new Error(`Error looking up user: ${userLookupError.message}`)
       }
 
@@ -254,7 +253,6 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
           .single()
 
         if (error) {
-          console.error('Claim share insert error:', error)
           throw error
         }
         
@@ -412,7 +410,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
   }
 
   const handlePaymentError = (error: string) => {
-    console.error('Payment error:', error)
+    // Handle payment error silently
   }
 
   const handleSubmit = (e: React.FormEvent) => {
