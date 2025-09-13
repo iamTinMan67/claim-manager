@@ -378,7 +378,7 @@ export default function AuthComponent({
           </div>
         </div>
       </div>
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-2">
         {children}
       </div>
     </div>
