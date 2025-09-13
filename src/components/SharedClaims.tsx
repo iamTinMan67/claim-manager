@@ -3,9 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import PaymentModal from './PaymentModal'
 import CollaborationHub from './CollaborationHub'
-import { Users, Mail, Eye, Edit, Trash2, Plus, DollarSign, CreditCard, CheckCircle, Clock, AlertCircle, X, UserPlus, UserMinus, Crown, FileText, Moon, Sun, Home } from 'lucide-react'
+import { Users, Mail, Eye, Edit, Trash2, Plus, DollarSign, CreditCard, CheckCircle, Clock, AlertCircle, X, UserPlus, UserMinus, Crown, FileText, Home } from 'lucide-react'
 import EvidenceManager from './EvidenceManager'
-import { useTheme } from 'next-themes'
 
 interface ClaimShare {
   id: string
@@ -71,7 +70,6 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
   })
 
   const queryClient = useQueryClient()
-  const { theme, setTheme } = useTheme()
 
   // Check if current user is a guest and if they're frozen
   const { data: guestStatus } = useQuery({
@@ -490,17 +488,6 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
             <span>Add Claim</span>
           </button>
         )}
-          <button
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="p-2 rounded-lg hover:bg-yellow-400/20 transition-colors text-gold"
-            title="Toggle dark mode"
-          >
-            {theme === 'dark' ? (
-              <Sun className="w-5 h-5" />
-            ) : (
-              <Moon className="w-5 h-5" />
-            )}
-          </button>
         </div>
       </div>
 
