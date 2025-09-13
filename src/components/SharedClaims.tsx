@@ -596,7 +596,6 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
           Each user can be both a claim owner (hosting their own claims) and a guest (invited to others' claims).
         </p>
         </div>
-        </div>
       )}
 
       <div className="flex justify-between items-center">
