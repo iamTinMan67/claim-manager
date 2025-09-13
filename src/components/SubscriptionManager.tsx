@@ -64,9 +64,9 @@ const SubscriptionManager = () => {
             </p>
           </div>
           <div>
-            <h4 className="font-medium text-gray-900">Do guest payments count towards my subscription?</h4>
+            <h4 className="font-medium text-gray-900">What features are included for free?</h4>
             <p className="text-sm text-gray-600 mt-1">
-              No, guest access payments are separate from your subscription and go directly to supporting the app.
+              Text, chat and even a drawing board completely FREE! Upload, share and store information in the cloud.
             </p>
           </div>
           <div>
