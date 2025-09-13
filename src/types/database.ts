@@ -32,19 +32,19 @@ export interface Todo {
 export interface Evidence {
   id: string
   user_id: string
+  case_number?: string
+  exhibit_id?: string
   title: string
   file_name?: string
   file_url?: string
   file_size?: number
   file_type?: string
-  exhibit_id?: string
-  number_of_pages?: number
-  date_submitted?: string
   method?: string
   url_link?: string
   book_of_deeds_ref?: string
+  number_of_pages?: number
+  date_submitted?: string
   display_order?: number
-  case_number?: string
   created_at: string
   updated_at: string
 }
