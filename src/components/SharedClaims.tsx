@@ -87,21 +87,19 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
   }
 
   const { data: sharedClaims, isLoading } = useQuery({
-    queryKey: ['shared-claims', selectedClaim],
+    queryKey: ['shared-claims'],
     queryFn: async () => {
-      let query = supabase
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return []
+
+      const { data, error } = await supabase
         .from('claim_shares')
         .select(`
           *,
-          claims!inner(title, case_number),
+          claims!inner(title, case_number, color, user_id),
           profiles!claim_shares_shared_with_id_fkey(email, full_name)
         `)
-      
-      if (selectedClaim) {
-        query = query.eq('claim_id', selectedClaim)
-      }
-      
-      const { data, error } = await query
+        .eq('owner_id', user.id) // Only show claims I own
         .order('created_at', { ascending: false })
       
       if (error) throw error
@@ -916,7 +914,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
       {selectedClaim && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold dark:text-white">Claim Details</h2>
+            <h2 className="text-2xl font-bold dark:text-white">Claim Details - {selectedClaim}</h2>
             <div className="flex items-center space-x-3">
               <button
                 onClick={() => {
@@ -935,13 +933,20 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
             </div>
           </div>
           
+          {/* Debug Info */}
+          <div className="bg-yellow-50 dark:bg-yellow-900 p-4 rounded-lg">
+            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+              Debug: selectedClaim = {selectedClaim}, claimColor = {claimColor}, isGuest = {isGuest ? 'true' : 'false'}
+            </p>
+          </div>
+          
           {/* Evidence Management */}
           <EvidenceManager 
             selectedClaim={selectedClaim} 
             claimColor={claimColor} 
             amendMode={false}
             isGuest={isGuest}
-            currentUserId={user?.id}
+            currentUserId={currentUserId}
             isGuestFrozen={false}
             onEditClaim={() => {}}
             onDeleteClaim={() => {}}
