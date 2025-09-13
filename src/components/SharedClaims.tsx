@@ -821,12 +821,30 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         {sharedClaims?.map((share) => (
           <div key={share.id} className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
             <div className="flex justify-between items-start">
-              <div className="flex-1">
+              <div 
+                className="flex-1 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    const url = new URL(window.location.href)
+                    url.searchParams.set('claim', share.claims.case_number)
+                    window.history.pushState({}, '', url.toString())
+                  }
+                  window.dispatchEvent(new CustomEvent('claimSelected', {
+                    detail: {
+                      claimId: share.claims.case_number,
+                      claimColor: share.claims.color || '#3B82F6'
+                    }
+                  }))
+                }}
+              >
                 <div className="flex items-center space-x-2 mb-2">
                   <Users className="w-5 h-5" style={{ color: claimColor }} />
                   <h3 className="text-lg font-semibold">
                     {share.claims.case_number} - {share.claims.title}
                   </h3>
+                  {selectedClaim === share.claims.case_number && (
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Selected</span>
+                  )}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
                   <div className="flex items-center space-x-1">
