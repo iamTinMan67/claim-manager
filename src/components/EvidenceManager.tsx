@@ -391,7 +391,7 @@ const EvidenceManager = ({
               <span>{amendMode ? 'Exit Amend Mode' : 'Amend Mode'}</span>
             </button>
           )}
-          {!isGuest && (
+          {(!isGuest || (isGuest && !isGuestFrozen)) && (
             <button
               onClick={() => setShowAddForm(true)}
               className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
@@ -414,7 +414,7 @@ const EvidenceManager = ({
         </div>
       </div>
 
-      {showAddForm && !isGuest && (
+      {showAddForm && (!isGuest || (isGuest && !isGuestFrozen)) && (
         <div className="bg-white p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4">Add New Evidence</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -696,7 +696,7 @@ const EvidenceManager = ({
                 evidenceData.map((item) => (
                   <React.Fragment key={item.id}>
                     <tr 
-                      draggable={amendMode && (!isGuest || !isGuestFrozen)}
+                      draggable={amendMode && !isGuest}
                       onDragStart={(e) => handleDragStart(e, item.id)}
                       onDragOver={(e) => handleDragOver(e, item.id)}
                       onDragLeave={handleDragLeave}
@@ -707,10 +707,10 @@ const EvidenceManager = ({
                       } ${dragOverItem === item.id ? 'border-t-2 border-blue-500' : ''} ${
                         draggedItem === item.id ? 'opacity-50' : ''
                       }`}
-                      onClick={() => handleRowClick(item)}
+                      onClick={() => !isGuest ? handleRowClick(item) : undefined}
                     >
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {amendMode && (!isGuest || !isGuestFrozen) ? (
+                      {amendMode && !isGuest ? (
                         <div className="flex items-center space-x-2">
                           <GripVertical className="w-4 h-4 text-gray-400 cursor-move" />
                           <span>{item.display_order || '-'}</span>
@@ -745,7 +745,7 @@ const EvidenceManager = ({
                             <Eye className="w-4 h-4" />
                           </button>
                         )}
-                        {amendMode && (!isGuest || !isGuestFrozen) && (
+                        {amendMode && !isGuest && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation()

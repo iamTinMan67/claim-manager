@@ -92,10 +92,12 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
   const queryClient = useQueryClient()
 
   // Chat messages query
-  const { data: messages, isLoading: messagesLoading } = useQuery({
+  const { data: messages, isLoading: messagesLoading, error: messagesError } = useQuery({
     queryKey: ['chat-messages', selectedClaim],
     queryFn: async () => {
       if (!selectedClaim) return []
+      
+      console.log('Fetching chat messages for claim:', selectedClaim)
       
       const { data: messages, error } = await supabase
         .from('chat_messages')
@@ -103,7 +105,12 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
         .eq('claim_id', selectedClaim)
         .order('created_at', { ascending: true })
       
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching chat messages:', error)
+        throw error
+      }
+      
+      console.log('Raw chat messages:', messages)
       
       // Fetch sender details separately
       const messagesWithSenders = await Promise.all(
@@ -118,6 +125,7 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
         })
       )
       
+      console.log('Messages with senders:', messagesWithSenders)
       return messagesWithSenders as ChatMessage[]
     },
     enabled: !!selectedClaim
@@ -172,6 +180,8 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
     }) => {
       if (!selectedClaim || !currentUserId) throw new Error('Missing required data')
       
+      console.log('Sending message:', { selectedClaim, currentUserId, messageData })
+      
       const { data, error } = await supabase
         .from('chat_messages')
         .insert([{
@@ -182,12 +192,21 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
         .select()
         .single()
       
-      if (error) throw error
+      if (error) {
+        console.error('Error sending message:', error)
+        throw error
+      }
+      
+      console.log('Message sent successfully:', data)
       return data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['chat-messages'] })
+      console.log('Invalidating chat messages query')
+      queryClient.invalidateQueries({ queryKey: ['chat-messages', selectedClaim] })
       setNewMessage('')
+    },
+    onError: (error) => {
+      console.error('Send message error:', error)
     }
   })
 
@@ -447,6 +466,10 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
             <div className="h-96 overflow-y-auto border rounded-lg p-4 mb-4 bg-gray-50">
               {messagesLoading ? (
                 <div className="text-center text-gray-500">Loading messages...</div>
+              ) : messagesError ? (
+                <div className="text-center text-red-500">
+                  Error loading messages: {messagesError.message}
+                </div>
               ) : messages && messages.length > 0 ? (
                 <div className="space-y-3">
                   {messages.map((message) => (
