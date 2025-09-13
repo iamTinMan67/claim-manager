@@ -5,7 +5,6 @@ import { ThemeProvider } from 'next-themes'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import AuthComponent from './components/AuthComponent'
-import Navigation from './components/Navigation'
 import ClaimsTable from './components/ClaimsTable'
 import EvidenceManager from './components/EvidenceManager'
 import TodoList from './components/TodoList'
@@ -43,7 +42,15 @@ function AppContent() {
   }
 
   return (
-    <AuthComponent onAuthChange={setUser}>
+    <AuthComponent 
+      onAuthChange={setUser}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      selectedClaim={selectedClaim}
+      isGuest={isGuest}
+      showGuestContent={showGuestContent}
+      onToggleGuestContent={setShowGuestContent}
+    >
       <LoggedInContent 
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -197,14 +204,6 @@ function LoggedInContent({
 
   return (
     <div className="min-h-screen">
-        <Navigation 
-          activeTab={activeTab} 
-          onTabChange={setActiveTab} 
-          selectedClaim={selectedClaim}
-          isGuest={currentlyGuest}
-          showGuestContent={showGuestContent}
-          onToggleGuestContent={setShowGuestContent}
-        />
         <main className="container mx-auto px-4 py-8">
           {renderContent()}
         </main>

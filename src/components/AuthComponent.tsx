@@ -3,13 +3,30 @@ import { supabase } from '@/lib/supabase'
 import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
 import type { User } from '@supabase/supabase-js'
+import { Calendar, FileText, Users, CheckSquare, Download, Moon, Sun } from 'lucide-react'
+import { useTheme } from 'next-themes'
 
 interface AuthComponentProps {
   children?: React.ReactNode
   onAuthChange: (user: User | null) => void
+  activeTab?: string
+  onTabChange?: (tab: string) => void
+  selectedClaim?: string | null
+  isGuest?: boolean
+  showGuestContent?: boolean
+  onToggleGuestContent?: (show: boolean) => void
 }
 
-export default function AuthComponent({ children, onAuthChange }: AuthComponentProps) {
+export default function AuthComponent({ 
+  children, 
+  onAuthChange, 
+  activeTab = 'claims',
+  onTabChange,
+  selectedClaim,
+  isGuest = false,
+  showGuestContent = false,
+  onToggleGuestContent
+}: AuthComponentProps) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [authError, setAuthError] = useState<string | null>(null)
@@ -19,6 +36,16 @@ export default function AuthComponent({ children, onAuthChange }: AuthComponentP
   const [resetLoading, setResetLoading] = useState(false)
   const [resetSuccess, setResetSuccess] = useState(false)
   const [resetTokens, setResetTokens] = useState<{accessToken: string, refreshToken: string} | null>(null)
+  const { theme, setTheme } = useTheme()
+
+  // Navigation items
+  const navItems = [
+    { id: 'claims', label: 'Claims', icon: FileText },
+    { id: 'todos', label: activeTab === 'shared' ? 'Shared To-Do Lists' : 'To-Do Lists', icon: CheckSquare, requiresClaim: true },
+    { id: 'calendar', label: activeTab === 'shared' ? 'Shared Calendar' : 'Calendar', icon: Calendar, requiresClaim: true },
+    { id: 'export', label: activeTab === 'shared' ? 'Shared Export' : 'Export', icon: Download, requiresClaim: true },
+    { id: 'shared', label: 'Shared Claims', icon: Users },
+  ]
 
   useEffect(() => {
     // Check if this is a password reset flow - do this FIRST before any auth calls
@@ -271,15 +298,83 @@ export default function AuthComponent({ children, onAuthChange }: AuthComponentP
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-      <div className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
-        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={handleSignOut}
-              className="text-sm bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
-            >
-              Sign Out
-            </button>
+      <div className="card-smudge shadow-lg border-b border-yellow-400/20">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-between items-center">
+            <div className="flex space-x-8">
+              {navItems.map((item) => {
+                // Hide nav items that require a claim when on claims page and no claim selected
+                if (activeTab === 'claims' && item.requiresClaim && !selectedClaim) {
+                  return null
+                }
+                
+                // When on shared claims page, allow navigation to todos, calendar, and export
+                // but only if a claim is selected
+                if (activeTab === 'shared' && item.requiresClaim && !selectedClaim) {
+                  return null
+                }
+                
+                const Icon = item.icon
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => onTabChange?.(item.id)}
+                    className={`flex items-center space-x-2 py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                      activeTab === item.id
+                          ? 'border-yellow-400 text-gold'
+                          : 'border-transparent text-gold-light hover:text-gold hover:border-yellow-400/50'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span>{item.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+            <div className="flex items-center space-x-3">
+              {/* Guest Content Toggle - only show for claim owners when viewing todos/calendar */}
+              {!isGuest && (activeTab === 'todos' || activeTab === 'calendar') && onToggleGuestContent && (
+                <button
+                  onClick={() => onToggleGuestContent(!showGuestContent)}
+                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                    showGuestContent
+                      ? 'bg-orange-100 text-orange-800 hover:bg-orange-200'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                  title={showGuestContent ? 'Switch to your private view' : 'View guest contributions'}
+                >
+                  <Users className="w-4 h-4 inline mr-1" />
+                  {showGuestContent ? 'Guest View' : 'My View'}
+                </button>
+              )}
+              
+              {/* Guest Indicator */}
+              {isGuest && (
+                <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-lg text-sm font-medium">
+                  <Users className="w-4 h-4 inline mr-1" />
+                  Guest Access
+                </div>
+              )}
+              
+              <button
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="p-2 rounded-lg hover:bg-yellow-400/20 transition-colors text-gold"
+                title="Toggle dark mode"
+              >
+                {theme === 'dark' ? (
+                  <Sun className="w-5 h-5" />
+                ) : (
+                  <Moon className="w-5 h-5" />
+                )}
+              </button>
+              
+              <button
+                onClick={handleSignOut}
+                className="text-sm bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
+              >
+                Sign Out
+              </button>
+            </div>
           </div>
         </div>
       </div>
