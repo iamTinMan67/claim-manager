@@ -31,6 +31,8 @@ const EvidenceManager = ({
   const [editingEvidence, setEditingEvidence] = useState<Evidence | null>(null)
   const [expandedEvidence, setExpandedEvidence] = useState<string | null>(null)
   const [newEvidence, setNewEvidence] = useState({
+    title: '',
+    description: '',
     file_name: '',
     file_url: '',
     exhibit_id: '',
@@ -91,37 +93,26 @@ const EvidenceManager = ({
     if (showAddForm && evidenceData) {
       const getNextExhibitId = () => {
         if (!evidenceData || evidenceData.length === 0) {
-          return 'Exhibit 1'
+          return '1'
         }
         
-        // First, try to extract numbers from exhibit IDs that start with "Exhibit"
-        let exhibitNumbers = evidenceData
+        // Extract numbers from exhibit IDs and find the highest number
+        const exhibitNumbers = evidenceData
           .map(item => item.exhibit_id)
-          .filter(id => id && id.toLowerCase().startsWith('exhibit'))
+          .filter(id => id && id.trim())
           .map(id => {
-            const match = id.match(/exhibit\s*(\d+)/i)
+            // Try to extract just the number from the exhibit ID
+            const match = id.match(/(\d+)/)
             return match ? parseInt(match[1], 10) : 0
           })
-          .filter(num => !isNaN(num))
-        
-        // If no "Exhibit N" pattern found, try to extract any numbers from exhibit IDs
-        if (exhibitNumbers.length === 0) {
-          exhibitNumbers = evidenceData
-            .map(item => item.exhibit_id)
-            .filter(id => id && id.trim())
-            .map(id => {
-              const match = id.match(/(\d+)/)
-              return match ? parseInt(match[1], 10) : 0
-            })
-            .filter(num => !isNaN(num) && num > 0)
-        }
+          .filter(num => !isNaN(num) && num > 0)
         
         if (exhibitNumbers.length === 0) {
-          return 'Exhibit 1'
+          return '1'
         }
         
         const maxNumber = Math.max(...exhibitNumbers)
-        return `Exhibit ${maxNumber + 1}`
+        return (maxNumber + 1).toString()
       }
 
       setNewEvidence(prev => ({
@@ -155,9 +146,13 @@ const EvidenceManager = ({
       const maxDisplayOrder = maxOrderData?.[0]?.display_order || 0
       const newDisplayOrder = maxDisplayOrder + 1
 
+      // Auto-generate title from file name
+      const autoTitle = evidenceData.title.trim() || evidenceData.file_name.trim() || 'Evidence Item'
+
       // Clean the data before submission
       const cleanData = {
         ...evidenceData,
+        title: autoTitle,
         user_id: user.id,
         case_number: evidenceData.case_number || null,
         number_of_pages: evidenceData.number_of_pages ? parseInt(evidenceData.number_of_pages) : null,
@@ -178,6 +173,8 @@ const EvidenceManager = ({
       queryClient.invalidateQueries({ queryKey: ['evidence'] })
       setShowAddForm(false)
       setNewEvidence({
+        title: '',
+        description: '',
         file_name: '',
         file_url: '',
         exhibit_id: '',
@@ -188,6 +185,10 @@ const EvidenceManager = ({
         book_of_deeds_ref: '',
         case_number: selectedClaim || ''
       })
+    },
+    onError: (error: any) => {
+      console.error('Evidence creation error:', error)
+      alert(`Failed to add evidence: ${error.message || 'Unknown error'}`)
     }
   })
 
@@ -330,8 +331,18 @@ const EvidenceManager = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newEvidence.file_name.trim() && !newEvidence.url_link.trim()) return
-    addEvidenceMutation.mutate(newEvidence)
+    if (!newEvidence.file_name.trim() && !newEvidence.url_link.trim()) {
+      alert('Please provide either a file name or URL link')
+      return
+    }
+    
+    // Auto-generate title from file name if not provided
+    const evidenceData = {
+      ...newEvidence,
+      title: newEvidence.title.trim() || newEvidence.file_name.trim() || 'Evidence Item'
+    }
+    
+    addEvidenceMutation.mutate(evidenceData)
   }
 
   const handleUpdate = (e: React.FormEvent) => {
@@ -444,9 +455,24 @@ const EvidenceManager = ({
                 Supported: PDF, DOC, DOCX, TXT, JPG, PNG, GIF, MP4, MP3, WAV
               </p>
             </div>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-yellow-800">
+                <strong>Note:</strong> The file name will be used as the title. Make sure your file name is descriptive as it will appear in the evidence list.
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gold">Description</label>
+              <textarea
+                value={newEvidence.description}
+                onChange={(e) => setNewEvidence({ ...newEvidence, description: e.target.value })}
+                className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                placeholder="Enter evidence description (optional)"
+                rows={3}
+              />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">File Name</label>
+                <label className="block text-sm font-medium mb-1 text-gold">File Name</label>
                 <input
                   type="text"
                   value={newEvidence.file_name}
@@ -455,7 +481,7 @@ const EvidenceManager = ({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">File URL</label>
+                <label className="block text-sm font-medium mb-1 text-gold">File URL</label>
                 <input
                   type="url"
                   value={newEvidence.file_url}
@@ -466,14 +492,15 @@ const EvidenceManager = ({
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Exhibit ID</label>
+                <label className="block text-sm font-medium mb-1 text-gold">Exhibit ID</label>
                 <input
                   type="text"
                   value={newEvidence.exhibit_id}
-                  onChange={(e) => setNewEvidence({ ...newEvidence, exhibit_id: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 bg-blue-50"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-gray-100 text-gray-600 cursor-not-allowed"
                   placeholder="Auto-generated"
+                  readOnly
                 />
+                <p className="text-xs text-gray-500 mt-1">Automatically assigned</p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Number of Pages</label>
