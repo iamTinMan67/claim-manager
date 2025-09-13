@@ -838,37 +838,73 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         ))}
       </div>
 
-      {/* Action Buttons - Show when claim is selected */}
+      {/* Claim Details View - Show when claim is selected */}
       {selectedClaim && (
-        <div className="mt-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-4 dark:text-white">Claim Actions</h3>
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={() => setShowCollaboration(!showCollaboration)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-            >
-              <Users className="w-4 h-4" />
-              <span>{showCollaboration ? 'Hide' : 'Show'} Collaboration</span>
-            </button>
-            <button
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent('tabChange', { detail: 'subscription' }))
-              }}
-              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center space-x-2"
-            >
-              <Crown className="w-4 h-4" />
-              <span>Subscription</span>
-            </button>
-            {!isGuest && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold dark:text-white">Claim Details</h2>
+            <div className="flex items-center space-x-3">
               <button
-                onClick={() => setShowShareForm(true)}
-                className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
-                style={{ backgroundColor: claimColor }}
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    const url = new URL(window.location.href)
+                    url.searchParams.delete('claim')
+                    window.history.pushState({}, '', url.toString())
+                  }
+                  window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null, claimColor: '#3B82F6' } }))
+                }}
+                className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center space-x-2"
               >
-                <Plus className="w-4 h-4" />
-                <span>Share Claim</span>
+                <X className="w-4 h-4" />
+                <span>Back to All Claims</span>
               </button>
-            )}
+            </div>
+          </div>
+          
+          {/* Evidence Management */}
+          <EvidenceManager 
+            selectedClaim={selectedClaim} 
+            claimColor={claimColor} 
+            amendMode={false}
+            isGuest={isGuest}
+            currentUserId={user?.id}
+            isGuestFrozen={false}
+            onEditClaim={() => {}}
+            onDeleteClaim={() => {}}
+            onSetAmendMode={() => {}}
+          />
+
+          {/* Action Buttons */}
+          <div className="mt-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
+            <h3 className="text-lg font-semibold mb-4 dark:text-white">Claim Actions</h3>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => setShowCollaboration(!showCollaboration)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+              >
+                <Users className="w-4 h-4" />
+                <span>{showCollaboration ? 'Hide' : 'Show'} Collaboration</span>
+              </button>
+              <button
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('tabChange', { detail: 'subscription' }))
+                }}
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center space-x-2"
+              >
+                <Crown className="w-4 h-4" />
+                <span>Subscription</span>
+              </button>
+              {!isGuest && (
+                <button
+                  onClick={() => setShowShareForm(true)}
+                  className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
+                  style={{ backgroundColor: claimColor }}
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Share Claim</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
