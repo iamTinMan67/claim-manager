@@ -469,7 +469,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
       )}
 
       {/* Collaboration Section */}
-      {showCollaboration && (
+      {showCollaboration && selectedClaim && (
         <div className="bg-white rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
           <div className="p-4 border-b">
             <h3 className="text-lg font-semibold" style={{ color: claimColor }}>
@@ -487,6 +487,19 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
               currentUserId={currentUserId}
             />
           </div>
+        </div>
+      )}
+
+      {/* Show message when collaboration is enabled but no claim is selected */}
+      {showCollaboration && !selectedClaim && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+          <div className="flex items-center space-x-2 mb-2">
+            <Users className="w-5 h-5 text-yellow-600" />
+            <h3 className="text-lg font-semibold text-yellow-900">Collaboration Hub</h3>
+          </div>
+          <p className="text-yellow-800">
+            Please select a claim from the list below to start collaborating with chat, video calls, and whiteboard features.
+          </p>
         </div>
       )}
       
@@ -561,7 +574,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
           <strong>Note:</strong> First guest is FREE! Payment required for additional guests. All payments support app development. 
           Each user can be both a claim owner (hosting their own claims) and a guest (invited to others' claims).
         </p>
-      </div>
+        </div>
       )}
 
       <div className="flex justify-between items-center">
