@@ -146,7 +146,7 @@ const EvidenceManager = ({
       const newDisplayOrder = maxDisplayOrder + 1
 
       // Auto-generate title from file name
-      const autoTitle = evidenceData.title.trim() || evidenceData.file_name.trim() || 'Evidence Item'
+      const autoTitle = evidenceData.name?.trim() || evidenceData.title?.trim() || evidenceData.file_name?.trim() || 'Evidence Item'
 
       // Clean the data before submission
       const cleanData = {
@@ -337,7 +337,8 @@ const EvidenceManager = ({
     // Auto-generate title from file name if not provided
     const evidenceData = {
       ...newEvidence,
-      title: newEvidence.title.trim() || newEvidence.file_name.trim() || 'Evidence Item'
+      name: newEvidence.name?.trim() || newEvidence.title?.trim() || newEvidence.file_name?.trim() || 'Evidence Item',
+      title: newEvidence.name?.trim() || newEvidence.title?.trim() || newEvidence.file_name?.trim() || 'Evidence Item'
     }
     
     addEvidenceMutation.mutate(evidenceData)
@@ -382,6 +383,7 @@ const EvidenceManager = ({
 
   return (
     <div className="space-y-6">
+      
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-3">
           {onSetAmendMode && (
@@ -455,17 +457,18 @@ const EvidenceManager = ({
             </div>
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
               <p className="text-sm text-yellow-800">
-                <strong>Note:</strong> The file name will be used as the title. Make sure your file name is descriptive as it will appear in the evidence list.
+                <strong>Note:</strong> The evidence name will be used as the display title. Make sure your evidence name is descriptive as it will appear in the evidence list.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1 text-gold">File Name</label>
+                <label className="block text-sm font-medium mb-1 text-gold">Evidence Name</label>
                 <input
                   type="text"
-                  value={newEvidence.file_name}
-                  onChange={(e) => setNewEvidence({ ...newEvidence, file_name: e.target.value })}
+                  value={newEvidence.name || newEvidence.file_name || ''}
+                  onChange={(e) => setNewEvidence({ ...newEvidence, name: e.target.value, file_name: e.target.value })}
                   className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  placeholder="Enter evidence name"
                 />
               </div>
               <div>
@@ -732,7 +735,7 @@ const EvidenceManager = ({
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {item.file_name || '-'}
+                      {item.name || item.file_name || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {item.method || '-'}

@@ -234,15 +234,15 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
       if (donationAmount === 0) {
         // Free guest - create share directly
         const insertData = {
-          claim_id: shareInfo.claim_id,
-          owner_id: user.id,
-          shared_with_id: existingUser.id,
-          permission: shareInfo.permission,
-          can_view_evidence: shareInfo.can_view_evidence,
+            claim_id: shareInfo.claim_id,
+            owner_id: user.id,
+            shared_with_id: existingUser.id,
+            permission: shareInfo.permission,
+            can_view_evidence: shareInfo.can_view_evidence,
           is_frozen: shareInfo.is_frozen,
           is_muted: shareInfo.is_muted,
-          donation_paid: true,
-          donation_amount: 0
+            donation_paid: true,
+            donation_amount: 0
         }
         
         const { data, error } = await supabase
@@ -462,7 +462,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
           </div>
         </div>
       )}
-
+      
       {/* Show message when collaboration is enabled but no claim is selected */}
       {showCollaboration && !selectedClaim && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
@@ -489,8 +489,8 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
             <span>Add Claim</span>
           </button>
         )}
-        </div>
-      </div>
+              </div>
+          </div>
 
 
       {showShareForm && (
@@ -776,7 +776,14 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
 
       {/* Claims Grid - Only show when no claim is selected */}
       {!selectedClaim && (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-gold mb-2">Shared Claims</h1>
+            <p className="text-gray-300">Manage your shared claims and guest access</p>
+                </div>
+          
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {/* Claims I Own (Host) - Filter out any that also appear as guest claims */}
           {sharedClaims?.filter(share => 
             !guestClaims?.some(guest => guest.claims.case_number === share.claims.case_number)
@@ -816,29 +823,29 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
               
               <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                 <div className="flex items-center space-x-2">
-                  <Mail className="w-4 h-4" />
+                    <Mail className="w-4 h-4" />
                   <span>Shared with: {share.profiles.email}</span>
-                </div>
+                  </div>
                 <div className="flex items-center space-x-2">
-                  {share.permission === 'edit' ? (
-                    <Edit className="w-4 h-4 text-green-600" />
-                  ) : (
-                    <Eye className="w-4 h-4 text-blue-600" />
-                  )}
-                  <span className="capitalize">{share.permission} Access</span>
-                </div>
+                    {share.permission === 'edit' ? (
+                      <Edit className="w-4 h-4 text-green-600" />
+                    ) : (
+                      <Eye className="w-4 h-4 text-blue-600" />
+                    )}
+                    <span className="capitalize">{share.permission} Access</span>
+                  </div>
                 <div className="flex items-center space-x-2">
-                  <span className={`px-2 py-1 rounded text-xs ${
-                    share.can_view_evidence 
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      share.can_view_evidence 
                       ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
                       : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                  }`}>
-                    {share.can_view_evidence ? 'Can View Evidence' : 'No Evidence Access'}
-                  </span>
-                </div>
-              </div>
+                    }`}>
+                      {share.can_view_evidence ? 'Can View Evidence' : 'No Evidence Access'}
+                    </span>
+                  </div>
+                  </div>
               
-              {share.donation_required && (
+                {share.donation_required && (
                 <div className="mt-4 p-2 bg-yellow-50 dark:bg-yellow-900 rounded text-sm">
                   <div className="flex items-center space-x-2">
                     <DollarSign className="w-4 h-4 text-green-600" />
@@ -847,8 +854,8 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                     </span>
                   </div>
                 </div>
-              )}
-            </div>
+                          )}
+                        </div>
           ))}
 
           {/* Claims I'm a Guest On */}
@@ -878,7 +885,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                 />
                 <div className="flex items-center space-x-2">
                   <UserPlus className="w-4 h-4 text-green-600" title="You're a guest on this claim" />
-                </div>
+                        </div>
               </div>
               
               <h3 className="text-lg font-semibold mb-2 dark:text-white">
@@ -900,19 +907,40 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                   <span className="capitalize">{guestClaim.permission} Access</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <span className={`px-2 py-1 rounded text-xs ${
+                    <span className={`px-2 py-1 rounded text-xs ${
                     guestClaim.can_view_evidence 
                       ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
                       : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
                   }`}>
                     {guestClaim.can_view_evidence ? 'Can View Evidence' : 'No Evidence Access'}
-                  </span>
-                </div>
+                            </span>
+                        </div>
               </div>
             </div>
           ))}
-        </div>
-      )}
+          </div>
+                        </div>
+                      )}
+
+      {/* Show All Claims Button - Always visible */}
+      {selectedClaim && (
+        <div className="mb-6">
+          <button
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                const url = new URL(window.location.href)
+                url.searchParams.delete('claim')
+                window.history.pushState({}, '', url.toString())
+              }
+              window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null, claimColor: '#3B82F6' } }))
+            }}
+            className="btn-gold px-6 py-3 rounded-lg flex items-center space-x-2 text-lg"
+          >
+            <Home className="w-5 h-5" />
+            <span>Show All Shared Claims</span>
+          </button>
+                  </div>
+                )}
 
       {/* Claim Details View - Show when claim is selected */}
       {selectedClaim && (
@@ -941,8 +969,8 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                 <Home className="w-4 h-4" />
                 <span>Home</span>
               </button>
-            </div>
-          </div>
+                </div>
+              </div>
           
           
           {/* Evidence Management */}
@@ -962,14 +990,14 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
           <div className="mt-8 p-6 card-enhanced">
             <h3 className="text-lg font-semibold mb-4 text-gold">Claim Actions</h3>
             <div className="flex flex-wrap gap-3">
-              <button
+                <button
                 onClick={() => setShowCollaboration(!showCollaboration)}
                 className="btn-gold px-4 py-2 rounded-lg flex items-center space-x-2"
               >
                 <Users className="w-4 h-4" />
                 <span>{showCollaboration ? 'Hide' : 'Show'} Collaboration</span>
-              </button>
-              <button
+                </button>
+                <button
                 onClick={() => {
                   window.dispatchEvent(new CustomEvent('tabChange', { detail: 'subscription' }))
                 }}
@@ -977,7 +1005,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
               >
                 <Crown className="w-4 h-4" />
                 <span>Subscription</span>
-              </button>
+                </button>
               {!isGuest && (
                 <button
                   onClick={() => setShowShareForm(true)}
@@ -988,16 +1016,16 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                   <span>Share Claim</span>
                 </button>
               )}
+              </div>
             </div>
           </div>
-        </div>
       )}
 
       {!selectedClaim && (!sharedClaims || sharedClaims.length === 0) && (!guestClaims || guestClaims.length === 0) && (
         <div className="text-center py-8 text-gold-light">
           No shared claims yet. Add a claim and share it, or wait for someone to share with you!
-        </div>
-      )}
+          </div>
+        )}
 
       {/* Evidence Manager for selected shared claim */}
       {selectedSharedClaim && (
@@ -1011,7 +1039,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
               <X className="w-4 h-4" />
               <span>Close Evidence</span>
             </button>
-          </div>
+      </div>
           <EvidenceManager 
             selectedClaim={selectedSharedClaim} 
             claimColor={claimColor} 

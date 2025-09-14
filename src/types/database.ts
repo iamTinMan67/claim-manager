@@ -33,8 +33,8 @@ export interface Evidence {
   id: string
   user_id: string
   case_number?: string
-  exhibit_id?: string
-  title: string
+  name: string // This is the exhibit name
+  title?: string // For backward compatibility
   file_name?: string
   file_url?: string
   file_size?: number
@@ -45,6 +45,8 @@ export interface Evidence {
   number_of_pages?: number
   date_submitted?: string
   display_order?: number
+  exhibit_number?: number // Original exhibit number
+  description?: string
   created_at: string
   updated_at: string
 }
