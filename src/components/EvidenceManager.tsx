@@ -383,15 +383,6 @@ const EvidenceManager = ({
 
   return (
     <div className="space-y-6">
-      {/* Debug Information - Remove this after fixing */}
-      {evidenceData && evidenceData.length > 0 && (
-        <div className="bg-blue-100 border border-blue-300 rounded-lg p-4 text-sm">
-          <h4 className="font-semibold text-blue-800 mb-2">Debug: Evidence Data Sample</h4>
-          <pre className="text-xs text-blue-700 overflow-auto">
-            {JSON.stringify(evidenceData[0], null, 2)}
-          </pre>
-        </div>
-      )}
       
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-3">
