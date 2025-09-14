@@ -573,11 +573,11 @@ const EvidenceManager = ({
           <form onSubmit={handleUpdate} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">File Name</label>
+                <label className="block text-sm font-medium mb-1">Evidence Name</label>
                 <input
                   type="text"
-                  value={editingEvidence.file_name || ''}
-                  onChange={(e) => setEditingEvidence({ ...editingEvidence, file_name: e.target.value })}
+                  value={editingEvidence.name || editingEvidence.file_name || ''}
+                  onChange={(e) => setEditingEvidence({ ...editingEvidence, name: e.target.value, file_name: e.target.value })}
                   className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
@@ -593,11 +593,11 @@ const EvidenceManager = ({
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Exhibit ID</label>
+                <label className="block text-sm font-medium mb-1">Exhibit Number</label>
                 <input
-                  type="text"
-                  value={editingEvidence.exhibit_id || ''}
-                  onChange={(e) => setEditingEvidence({ ...editingEvidence, exhibit_id: e.target.value })}
+                  type="number"
+                  value={editingEvidence.exhibit_number || ''}
+                  onChange={(e) => setEditingEvidence({ ...editingEvidence, exhibit_number: parseInt(e.target.value) || null })}
                   className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
@@ -644,6 +644,15 @@ const EvidenceManager = ({
                   className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Description</label>
+              <textarea
+                value={editingEvidence.description || ''}
+                onChange={(e) => setEditingEvidence({ ...editingEvidence, description: e.target.value })}
+                className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                rows={3}
+              />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">CLC Ref#</label>
@@ -794,11 +803,11 @@ const EvidenceManager = ({
                             <form onSubmit={handleUpdate} className="space-y-4">
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                  <label className="block text-sm font-medium mb-1">File Name</label>
+                                  <label className="block text-sm font-medium mb-1">Evidence Name</label>
                                   <input
                                     type="text"
-                                    value={editingEvidence.file_name || ''}
-                                    onChange={(e) => setEditingEvidence({ ...editingEvidence, file_name: e.target.value })}
+                                    value={editingEvidence.name || editingEvidence.file_name || ''}
+                                    onChange={(e) => setEditingEvidence({ ...editingEvidence, name: e.target.value, file_name: e.target.value })}
                                     className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                                   />
                                 </div>
@@ -814,11 +823,11 @@ const EvidenceManager = ({
                               </div>
                               <div className="grid grid-cols-3 gap-4">
                                 <div>
-                                  <label className="block text-sm font-medium mb-1">Exhibit ID</label>
+                                  <label className="block text-sm font-medium mb-1">Exhibit Number</label>
                                   <input
-                                    type="text"
-                                    value={editingEvidence.exhibit_id || ''}
-                                    onChange={(e) => setEditingEvidence({ ...editingEvidence, exhibit_id: e.target.value })}
+                                    type="number"
+                                    value={editingEvidence.exhibit_number || ''}
+                                    onChange={(e) => setEditingEvidence({ ...editingEvidence, exhibit_number: parseInt(e.target.value) || null })}
                                     className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                                   />
                                 </div>
