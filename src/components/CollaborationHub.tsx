@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import VideoConference from './VideoConference'
+import EnhancedWhiteboard from './EnhancedWhiteboard'
 import { 
   MessageCircle, 
   Video, 
@@ -333,6 +334,29 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
                           </span>
                         </div>
                         <p className="text-gray-800 mt-1">{message.message}</p>
+                        {message.message_type === 'whiteboard_share' && message.file_url && (
+                          <div className="mt-2">
+                            <img 
+                              src={message.file_url} 
+                              alt="Whiteboard content" 
+                              className="max-w-xs rounded border"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Whiteboard shared by {message.sender.full_name}</p>
+                          </div>
+                        )}
+                        {message.file_url && message.message_type !== 'whiteboard_share' && (
+                          <div className="mt-2">
+                            <a 
+                              href={message.file_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 underline"
+                            >
+                              <FileText className="w-4 h-4 inline mr-1" />
+                              {message.file_name || 'Download file'}
+                            </a>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -396,87 +420,33 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
         {/* Whiteboard Tab */}
         {activeTab === 'whiteboard' && (
           <div className="p-6">
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold mb-2">Collaborative Whiteboard</h3>
-              <p className="text-gray-600">Draw, write, and collaborate in real-time</p>
-            </div>
-            
-            <div className="border rounded-lg p-4">
-              <div className="flex space-x-2 mb-4">
-                <button
-                  onClick={() => setWhiteboardTool('pen')}
-                  className={`px-3 py-2 rounded ${
-                    whiteboardTool === 'pen' ? 'bg-blue-600 text-white' : 'bg-yellow-400/20 text-gold'
-                  }`}
-                >
-                  <Type className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setWhiteboardTool('text')}
-                  className={`px-3 py-2 rounded ${
-                    whiteboardTool === 'text' ? 'bg-blue-600 text-white' : 'bg-yellow-400/20 text-gold'
-                  }`}
-                >
-                  <Type className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setWhiteboardTool('rectangle')}
-                  className={`px-3 py-2 rounded ${
-                    whiteboardTool === 'rectangle' ? 'bg-blue-600 text-white' : 'bg-yellow-400/20 text-gold'
-                  }`}
-                >
-                  <Square className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setWhiteboardTool('circle')}
-                  className={`px-3 py-2 rounded ${
-                    whiteboardTool === 'circle' ? 'bg-blue-600 text-white' : 'bg-yellow-400/20 text-gold'
-                  }`}
-                >
-                  <Circle className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setWhiteboardTool('line')}
-                  className={`px-3 py-2 rounded ${
-                    whiteboardTool === 'line' ? 'bg-blue-600 text-white' : 'bg-yellow-400/20 text-gold'
-                  }`}
-                >
-                  <Minus className="w-4 h-4" />
-                </button>
-              </div>
-              
-              <canvas
-                ref={canvasRef}
-                width={800}
-                height={400}
-                className="border border-gray-300 rounded cursor-crosshair"
-                style={{ backgroundColor: 'white' }}
-              />
-              
-              <div className="mt-4 flex justify-between items-center">
-                <div className="text-sm text-gray-600">
-                  Tool: <span className="font-medium">{whiteboardTool}</span>
-                </div>
-                <div className="space-x-2">
-                  <button className="px-3 py-1 bg-yellow-400/20 text-gold rounded hover:bg-yellow-400/30">
-                    <Save className="w-4 h-4 inline mr-1" />
-                    Save
-                  </button>
-                  <button className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200">
-                    <Trash2 className="w-4 h-4 inline mr-1" />
-                    Clear
-                  </button>
-                </div>
-              </div>
-            </div>
+            <EnhancedWhiteboard
+              selectedClaim={selectedClaim}
+              claimColor={claimColor}
+              isGuest={isGuest}
+              onShare={(imageData) => {
+                // Share whiteboard content as chat message
+                sendMessageMutation.mutate({
+                  message: 'Shared whiteboard content',
+                  message_type: 'whiteboard_share',
+                  file_url: imageData,
+                  file_name: `whiteboard-${Date.now()}.png`
+                })
+              }}
+              onSave={(imageData) => {
+                // Save whiteboard content as evidence
+                // This could be implemented to save to evidence table
+                console.log('Saving whiteboard content:', imageData)
+              }}
+            />
 
             {/* Collaboration Notice */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="card-enhanced rounded-lg p-4 mt-4">
               <div className="flex items-center space-x-2">
-                <Users className="w-5 h-5 text-blue-600" />
-                <span className="font-medium text-blue-900">Live Collaboration</span>
+                <Users className="w-5 h-5 text-yellow-400" />
+                <span className="font-medium text-white">Live Collaboration</span>
               </div>
-              <p className="text-blue-800 text-sm mt-1">
+              <p className="text-gray-300 text-sm mt-1">
                 All participants can draw, type, and upload files to this whiteboard. 
                 {isGuest ? ' Your contributions will be submitted for host approval before being added to evidence.' : ' You can save content directly to evidence.'}
               </p>

@@ -225,6 +225,114 @@ html, body, #root, .min-h-screen, div[class*="min-h-screen"] {
   color: #fbbf24 !important;
 }
 
+/* Light mode (day mode) specific overrides - REVERT TO GREEN */
+.light {
+  background: linear-gradient(135deg, #10b981 0%, #059669 25%, #047857 50%, #065f46 75%, #064e3b 100%) !important;
+  background-attachment: fixed !important;
+}
+
+.light body {
+  background: linear-gradient(135deg, #10b981 0%, #059669 25%, #047857 50%, #065f46 75%, #064e3b 100%) !important;
+  background-attachment: fixed !important;
+  color: #ffffff !important;
+}
+
+/* Light mode card styling - GREEN THEME */
+.light .card-enhanced {
+  background: rgba(16, 185, 129, 0.3) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 2px solid #fbbf24 !important;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(251, 191, 36, 0.3);
+}
+
+/* Light mode white background overrides - GREEN THEME */
+.light .bg-white, .light .bg-gray-50, .light .bg-gray-100 {
+  background: rgba(16, 185, 129, 0.3) !important;
+  backdrop-filter: blur(10px);
+  border: 2px solid #fbbf24;
+}
+
+/* Light mode text color overrides */
+.light .text-gray-900, .light .text-gray-800, .light .text-gray-700, 
+.light .text-gray-600, .light .text-gray-500 {
+  color: #ffffff !important;
+}
+
+.light .text-gray-400, .light .text-gray-300, .light .text-gray-200 {
+  color: #f3f4f6 !important;
+}
+
+/* Light mode button styling - GREEN THEME */
+.light .btn-gold {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #fbbf24 !important;
+  font-weight: 600;
+  text-shadow: none;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+  border: 2px solid #fbbf24;
+  transition: all 0.3s ease;
+}
+
+.light .btn-gold:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: #fbbf24 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+  border-color: #f59e0b;
+}
+
+/* Light mode smudge effect - GREEN THEME */
+.light .card-smudge {
+  background: rgba(16, 185, 129, 0.3);
+  backdrop-filter: blur(10px);
+  border: 2px solid #fbbf24;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(251, 191, 36, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.light .card-smudge::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.2) 0%, transparent 70%);
+  animation: smudge 8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Light mode card enhanced hover */
+.light .card-enhanced:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(251, 191, 36, 0.5);
+}
+
+/* Light mode navbar styling */
+.light .card-smudge {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1000 !important;
+}
+
+/* Light mode force background overrides - GREEN THEME */
+.light html, .light body, .light #root, .light .min-h-screen, .light div[class*="min-h-screen"] {
+  background: linear-gradient(135deg, #10b981 0%, #059669 25%, #047857 50%, #065f46 75%, #064e3b 100%) !important;
+  background-attachment: fixed !important;
+}
+
+/* Light mode container overrides */
+.light .container, .light .mx-auto {
+  background: transparent !important;
+}
+
 .text-gray-400, .text-gray-300, .text-gray-200 {
   color: #f3f4f6 !important;
 }

@@ -1,9 +1,9 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { Todo } from '@/types/database'
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday } from 'date-fns'
-import { Plus, Clock, X, Check, User, AlertCircle, Trash2 } from 'lucide-react'
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, startOfWeek, endOfWeek, addDays } from 'date-fns'
+import { Plus, Clock, X, Check, User, AlertCircle, Trash2, ChevronLeft, ChevronRight, Filter, Bell } from 'lucide-react'
 
 interface CalendarEvent {
   id: string
@@ -47,6 +47,8 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
+  const [filterByActiveClaim, setFilterByActiveClaim] = useState(false)
+  const [activeAlarm, setActiveAlarm] = useState<TodoWithUser | null>(null)
   const [newEvent, setNewEvent] = useState({
     title: '',
     description: '',
@@ -67,6 +69,47 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       return user
     }
   })
+
+  // Check for due alarms
+  useEffect(() => {
+    const checkAlarms = () => {
+      if (!currentUser) return;
+      
+      const now = new Date();
+      const todosToCheck = todayTodos || [];
+      const dueAlarms = todosToCheck.filter(todo => 
+        !todo.completed && 
+        todo.alarm_enabled && 
+        todo.alarm_time && 
+        new Date(todo.alarm_time) <= now &&
+        !activeAlarm // Don't show multiple alarms at once
+      );
+
+      if (dueAlarms.length > 0 && !activeAlarm) {
+        setActiveAlarm(dueAlarms[0]);
+        
+        // Browser notification
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification(`Task Alarm: ${dueAlarms[0].title}`, {
+            body: dueAlarms[0].description || 'You have a task alarm.',
+            icon: '/favicon.ico'
+          });
+        }
+      }
+    };
+
+    const interval = setInterval(checkAlarms, 30000); // Check every 30 seconds
+    checkAlarms(); // Check immediately
+    
+    return () => clearInterval(interval);
+  }, [todayTodos, currentUser, activeAlarm]);
+
+  // Request notification permission on component mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
 
   const { data: claims } = useQuery({
     queryKey: ['claims-for-calendar'],

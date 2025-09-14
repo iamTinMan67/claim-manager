@@ -154,16 +154,20 @@ export const InHouseCalendar = ({ selectedClaimId, claims = [], evidence = [] }:
 
   if (!user) {
     return (
-      <div className="text-center py-8">
-        <p className="text-gray-500">Please log in to view your calendar.</p>
+      <div className="card-enhanced rounded-lg shadow text-center py-8">
+        <div className="card-smudge p-6">
+          <p className="text-white">Please log in to view your calendar.</p>
+        </div>
       </div>
     );
   }
 
   if (loading || eventsLoading) {
     return (
-      <div className="text-center py-8">
-        <p className="text-gray-500">Loading your tasks and events...</p>
+      <div className="card-enhanced rounded-lg shadow text-center py-8">
+        <div className="card-smudge p-6">
+          <p className="text-white">Loading your tasks and events...</p>
+        </div>
       </div>
     );
   }
@@ -173,57 +177,56 @@ export const InHouseCalendar = ({ selectedClaimId, claims = [], evidence = [] }:
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendar View */}
         <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
+          <div className="card-enhanced rounded-lg shadow">
+            <div className="card-smudge p-6">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xl">
+                <h2 className="text-xl font-bold text-white">
                   {format(currentDate, 'MMMM yyyy')}
-                </CardTitle>
+                </h2>
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
+                  <button
                     onClick={() => navigateMonth('prev')}
+                    className="btn-gold px-3 py-1 rounded"
                   >
                     <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
+                  </button>
+                  <button
                     onClick={() => navigateMonth('next')}
+                    className="btn-gold px-3 py-1 rounded"
                   >
                     <ChevronRight className="h-4 w-4" />
-                  </Button>
+                  </button>
                   {selectedClaimId && (
-                    <Button
-                      variant={filterByActiveClaim ? "default" : "outline"}
-                      size="sm"
+                    <button
                       onClick={() => setFilterByActiveClaim(!filterByActiveClaim)}
-                      className="ml-2"
+                      className={`px-3 py-1 rounded text-sm ${
+                        filterByActiveClaim 
+                          ? 'bg-yellow-400/20 text-gold border border-yellow-400' 
+                          : 'btn-gold'
+                      }`}
                     >
-                      <Filter className="h-4 w-4 mr-2" />
+                      <Filter className="h-4 w-4 mr-2 inline" />
                       {filterByActiveClaim ? 'Show All' : 'Filter Active'}
-                    </Button>
+                    </button>
                   )}
-                  <Button
+                  <button
                     onClick={() => setShowAddTodo(true)}
-                    className="ml-2"
+                    className="btn-gold px-3 py-1 rounded ml-2"
                   >
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="h-4 w-4 mr-2 inline" />
                     Add Task
-                  </Button>
-                  <Button
+                  </button>
+                  <button
                     onClick={() => setShowAddEvent(true)}
-                    variant="outline"
-                    className="ml-2"
+                    className="bg-yellow-400/20 text-gold border border-yellow-400 px-3 py-1 rounded ml-2"
                   >
-                    <Clock className="h-4 w-4 mr-2" />
+                    <Clock className="h-4 w-4 mr-2 inline" />
                     Add Event
-                  </Button>
+                  </button>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div className="p-6">
               <Calendar
                 mode="single"
                 selected={selectedDate}
@@ -246,29 +249,31 @@ export const InHouseCalendar = ({ selectedClaimId, claims = [], evidence = [] }:
                     return (
                       <div
                         className={`relative p-2 text-center cursor-pointer rounded-md ${
-                          isSelected ? 'bg-blue-500 text-white' : ''
-                        } ${isCurrentMonth ? '' : 'text-gray-400'}`}
+                          isSelected ? 'bg-yellow-400/30 text-white' : ''
+                        } ${isCurrentMonth ? 'text-white' : 'text-gray-400'}`}
                         onClick={() => setSelectedDate(date)}
                       >
                         <span className="text-sm">{format(date, 'd')}</span>
                         <div className="flex justify-center mt-1 gap-1">
                           {dayTodos.length > 0 && (
-                            <Badge 
-                              variant={dayTodos.some(t => !t.completed) ? "destructive" : "secondary"}
-                              className={`text-xs px-1 py-0 ${
+                            <span 
+                              className={`text-xs px-1 py-0 rounded ${
+                                dayTodos.some(t => !t.completed) 
+                                  ? 'bg-red-500 text-white' 
+                                  : 'bg-green-500 text-white'
+                              } ${
                                 hasActiveClaimTodos && selectedClaimId ? getTodoBadgeColor(dayTodos.find(t => 'claimIds' in t && t.claimIds.includes(selectedClaimId))!) : ''
                               }`}
                             >
                               {dayTodos.length}
-                            </Badge>
+                            </span>
                           )}
                           {dayEvents.length > 0 && (
-                            <Badge 
-                              variant="secondary"
-                              className="text-xs px-1 py-0 bg-blue-500 text-white"
+                            <span 
+                              className="text-xs px-1 py-0 rounded bg-yellow-400 text-white"
                             >
                               {dayEvents.length}
-                            </Badge>
+                            </span>
                           )}
                         </div>
                       </div>
@@ -276,39 +281,50 @@ export const InHouseCalendar = ({ selectedClaimId, claims = [], evidence = [] }:
                   }
                 }}
               />
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
         {/* Enhanced Tasks Panel */}
         <div className="lg:col-span-1">
-          <EnhancedTodoList 
-            selectedClaimId={selectedClaimId}
-            claims={claims || []}
-            evidence={evidence || []}
-            title={`Tasks for ${selectedDate ? format(selectedDate, 'PPP') : 'Today'}`}
-            maxHeight="300px"
-          />
+          <div className="card-enhanced rounded-lg shadow">
+            <div className="card-smudge p-4">
+              <h3 className="text-lg font-bold text-white">
+                Tasks for {selectedDate ? format(selectedDate, 'PPP') : 'Today'}
+              </h3>
+            </div>
+            <div className="p-4">
+              <EnhancedTodoList 
+                selectedClaimId={selectedClaimId}
+                claims={claims || []}
+                evidence={evidence || []}
+                title=""
+                maxHeight="300px"
+              />
+            </div>
+          </div>
           
           {/* Calendar Events for Selected Date */}
-          <Card className="mt-4">
-            <CardHeader>
-              <CardTitle className="text-lg">Events for {selectedDate ? format(selectedDate, 'PPP') : 'Today'}</CardTitle>
-            </CardHeader>
-            <CardContent style={{ maxHeight: "200px", overflowY: "auto" }}>
+          <div className="card-enhanced rounded-lg shadow mt-4">
+            <div className="card-smudge p-4">
+              <h3 className="text-lg font-bold text-white">
+                Events for {selectedDate ? format(selectedDate, 'PPP') : 'Today'}
+              </h3>
+            </div>
+            <div className="p-4" style={{ maxHeight: "200px", overflowY: "auto" }}>
               <div className="space-y-2">
                 {getEventsForDate(selectedDate || new Date()).map((event) => (
                   <div 
                     key={event.id} 
                     className={`p-2 rounded border-l-4 ${
-                      event.color ? `border-${event.color}-500` : 'border-blue-500'
-                    } bg-gray-50`}
+                      event.color ? `border-${event.color}-500` : 'border-yellow-400'
+                    } bg-yellow-400/10`}
                   >
-                    <div className="font-medium">{event.title}</div>
+                    <div className="font-medium text-white">{event.title}</div>
                     {event.description && (
-                      <div className="text-sm text-gray-600">{event.description}</div>
+                      <div className="text-sm text-gray-300">{event.description}</div>
                     )}
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-400">
                       {event.allDay 
                         ? 'All day' 
                         : `${format(event.startTime, 'HH:mm')} - ${format(event.endTime, 'HH:mm')}`
@@ -317,11 +333,11 @@ export const InHouseCalendar = ({ selectedClaimId, claims = [], evidence = [] }:
                   </div>
                 ))}
                 {getEventsForDate(selectedDate || new Date()).length === 0 && (
-                  <div className="text-gray-500 text-sm text-center py-4">No events for this date</div>
+                  <div className="text-gray-400 text-sm text-center py-4">No events for this date</div>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
 
