@@ -375,7 +375,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                 type="text"
                 value={newTodo.title}
                 onChange={(e) => setNewTodo({ ...newTodo, title: e.target.value })}
-                className="w-full border rounded-lg px-3 py-2"
+                className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 required
               />
             </div>
@@ -384,7 +384,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
               <textarea
                 value={newTodo.description}
                 onChange={(e) => setNewTodo({ ...newTodo, description: e.target.value })}
-                className="w-full border rounded-lg px-3 py-2"
+                className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 rows={3}
               />
             </div>
@@ -395,7 +395,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                   type="datetime-local"
                   value={newTodo.due_date}
                   onChange={(e) => setNewTodo({ ...newTodo, due_date: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                   required
                 />
               </div>
@@ -404,7 +404,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                 <select
                   value={newTodo.priority}
                   onChange={(e) => setNewTodo({ ...newTodo, priority: e.target.value as 'low' | 'medium' | 'high' })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 >
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
@@ -429,7 +429,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                   type="datetime-local"
                   value={newTodo.alarm_time}
                   onChange={(e) => setNewTodo({ ...newTodo, alarm_time: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
             )}
@@ -438,7 +438,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
               <select
                 value={newTodo.case_number}
                 onChange={(e) => setNewTodo({ ...newTodo, case_number: e.target.value })}
-                className="w-full border rounded-lg px-3 py-2"
+                className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
               >
                 <option value="">No specific claim</option>
                 {claims?.map((claim) => (
@@ -454,7 +454,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                 <select
                   value={newTodo.responsible_user_id}
                   onChange={(e) => setNewTodo({ ...newTodo, responsible_user_id: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 >
                   <option value="">Assign to yourself</option>
                   {sharedUsers.map((user) => (

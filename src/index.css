@@ -15,12 +15,12 @@
 }
 
 html {
-  background: linear-gradient(135deg, #10b981 0%, #059669 25%, #047857 50%, #065f46 75%, #064e3b 100%) !important;
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 25%, #1d4ed8 50%, #2563eb 75%, #3b82f6 100%) !important;
   background-attachment: fixed !important;
 }
 
 body {
-  background: linear-gradient(135deg, #10b981 0%, #059669 25%, #047857 50%, #065f46 75%, #064e3b 100%) !important;
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 25%, #1d4ed8 50%, #2563eb 75%, #3b82f6 100%) !important;
   background-attachment: fixed !important;
   color: #ffffff !important;
   margin: 0;
@@ -105,12 +105,12 @@ body {
   
   /* Smudge effect for cards */
   .card-smudge {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(30, 58, 138, 0.3);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 2px solid #fbbf24;
     box-shadow: 
-      0 8px 32px rgba(0, 0, 0, 0.1),
-      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      0 8px 32px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(251, 191, 36, 0.3);
     position: relative;
     overflow: hidden;
   }
@@ -122,7 +122,7 @@ body {
     left: -50%;
     width: 200%;
     height: 200%;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(251, 191, 36, 0.2) 0%, transparent 70%);
     animation: smudge 8s ease-in-out infinite;
     pointer-events: none;
   }
@@ -144,8 +144,8 @@ body {
   .card-enhanced:hover {
     transform: translateY(-2px);
     box-shadow: 
-      0 12px 40px rgba(0, 0, 0, 0.15),
-      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+      0 12px 40px rgba(0, 0, 0, 0.25),
+      inset 0 1px 0 rgba(251, 191, 36, 0.5);
   }
   
   /* Text styling */
@@ -161,25 +161,27 @@ body {
   
   /* Button enhancements */
   .btn-gold {
-    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-    color: white !important;
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+    color: #fbbf24 !important;
     font-weight: 600;
     text-shadow: none;
-    box-shadow: 0 4px 15px rgba(251, 191, 36, 0.3);
+    box-shadow: 0 4px 15px rgba(30, 58, 138, 0.3);
+    border: 2px solid #fbbf24;
     transition: all 0.3s ease;
   }
   
   .btn-gold:hover {
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-    color: white !important;
+    background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%);
+    color: #fbbf24 !important;
     transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(251, 191, 36, 0.4);
+    box-shadow: 0 6px 20px rgba(30, 58, 138, 0.4);
+    border-color: #f59e0b;
   }
 }
 
 /* Force background override */
 html, body, #root, .min-h-screen, div[class*="min-h-screen"] {
-  background: linear-gradient(135deg, #10b981 0%, #059669 25%, #047857 50%, #065f46 75%, #064e3b 100%) !important;
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 25%, #1d4ed8 50%, #2563eb 75%, #3b82f6 100%) !important;
   background-attachment: fixed !important;
 }
 
@@ -190,13 +192,37 @@ html, body, #root, .min-h-screen, div[class*="min-h-screen"] {
 
 /* Override any white backgrounds */
 .bg-white, .bg-gray-50, .bg-gray-100 {
-  background: rgba(255, 255, 255, 0.1) !important;
+  background: rgba(30, 58, 138, 0.3) !important;
   backdrop-filter: blur(10px);
+  border: 2px solid #fbbf24;
 }
 
 /* Ensure text is visible */
 .text-gray-900, .text-gray-800, .text-gray-700, .text-gray-600, .text-gray-500 {
   color: #ffffff !important;
+}
+
+/* Change blue text to yellow for both light and dark mode styling */
+.text-blue-600, .text-blue-700, .text-blue-800, .text-blue-900,
+.text-blue-500, .text-blue-400, .text-blue-300, .text-blue-200, .text-blue-100 {
+  color: #fbbf24 !important;
+}
+
+/* Additional blue text overrides for light mode */
+.light .text-blue-600, .light .text-blue-700, .light .text-blue-800, .light .text-blue-900,
+.light .text-blue-500, .light .text-blue-400, .light .text-blue-300, .light .text-blue-200, .light .text-blue-100 {
+  color: #fbbf24 !important;
+}
+
+/* Additional blue text overrides for dark mode */
+.dark .text-blue-600, .dark .text-blue-700, .dark .text-blue-800, .dark .text-blue-900,
+.dark .text-blue-500, .dark .text-blue-400, .dark .text-blue-300, .dark .text-blue-200, .dark .text-blue-100 {
+  color: #fbbf24 !important;
+}
+
+/* Override any other blue text variations */
+[class*="text-blue"], [class*="text-indigo"], [class*="text-sky"] {
+  color: #fbbf24 !important;
 }
 
 .text-gray-400, .text-gray-300, .text-gray-200 {
