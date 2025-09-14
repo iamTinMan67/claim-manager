@@ -371,6 +371,7 @@ export default function AuthComponent({
               <button
                 onClick={handleSignOut}
                 className="text-sm bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
+                title={user?.email ? `Signed in as: ${user.email}` : 'Sign Out'}
               >
                 Sign Out
               </button>

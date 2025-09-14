@@ -383,6 +383,15 @@ const EvidenceManager = ({
 
   return (
     <div className="space-y-6">
+      {/* Debug Information - Remove this after fixing */}
+      {evidenceData && evidenceData.length > 0 && (
+        <div className="bg-blue-100 border border-blue-300 rounded-lg p-4 text-sm">
+          <h4 className="font-semibold text-blue-800 mb-2">Debug: Evidence Data Sample</h4>
+          <pre className="text-xs text-blue-700 overflow-auto">
+            {JSON.stringify(evidenceData[0], null, 2)}
+          </pre>
+        </div>
+      )}
       
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-3">
@@ -708,7 +717,10 @@ const EvidenceManager = ({
                   Date Submitted
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider">
-                  Exhibit ID
+                  Exhibit #
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider">
+                  Description
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider">
                   Actions
@@ -756,7 +768,10 @@ const EvidenceManager = ({
                       {item.date_submitted ? new Date(item.date_submitted).toLocaleDateString() : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {item.exhibit_id || '-'}
+                      {item.exhibit_number || '-'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                      {item.description || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
