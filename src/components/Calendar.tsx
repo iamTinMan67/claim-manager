@@ -298,7 +298,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         <div className="flex items-center space-x-4">
           <button
             onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
-            className="px-3 py-1 border rounded hover:bg-gray-50"
+            className="px-3 py-1 border rounded hover:bg-yellow-400/20 text-gold"
           >
             Previous
           </button>
@@ -307,7 +307,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
           </h3>
           <button
             onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}
-            className="px-3 py-1 border rounded hover:bg-gray-50"
+            className="px-3 py-1 border rounded hover:bg-yellow-400/20 text-gold"
           >
             Next
           </button>
@@ -432,7 +432,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
               <button
                 type="button"
                 onClick={() => setShowAddForm(false)}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400"
+                className="bg-yellow-400/20 text-gold px-4 py-2 rounded-lg hover:bg-yellow-400/30"
               >
                 Cancel
               </button>
@@ -540,14 +540,14 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         {/* Calendar Section */}
         <div className="lg:col-span-2">
           <div className="card-enhanced rounded-lg shadow">
-            <div className="grid grid-cols-7 gap-px bg-gray-200">
+            <div className="grid grid-cols-7 gap-px bg-yellow-400/20">
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                <div key={day} className="bg-gray-50 p-2 text-center text-sm font-medium text-gray-700">
+                <div key={day} className="bg-yellow-400/30 p-2 text-center text-sm font-medium text-gold">
                   {day}
                 </div>
               ))}
             </div>
-            <div className="grid grid-cols-7 gap-px bg-gray-200">
+            <div className="grid grid-cols-7 gap-px bg-yellow-400/20">
               {monthDays.map(date => {
                 const dayEvents = getEventsForDay(date)
                 return (

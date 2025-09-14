@@ -361,7 +361,7 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"
+                className="px-3 py-2 bg-yellow-400/20 text-gold rounded-lg hover:bg-yellow-400/30"
                 title="Upload file"
               >
                 <Paperclip className="w-4 h-4" />
@@ -406,7 +406,7 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
                 <button
                   onClick={() => setWhiteboardTool('pen')}
                   className={`px-3 py-2 rounded ${
-                    whiteboardTool === 'pen' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+                    whiteboardTool === 'pen' ? 'bg-blue-600 text-white' : 'bg-yellow-400/20 text-gold'
                   }`}
                 >
                   <Type className="w-4 h-4" />
@@ -414,7 +414,7 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
                 <button
                   onClick={() => setWhiteboardTool('text')}
                   className={`px-3 py-2 rounded ${
-                    whiteboardTool === 'text' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+                    whiteboardTool === 'text' ? 'bg-blue-600 text-white' : 'bg-yellow-400/20 text-gold'
                   }`}
                 >
                   <Type className="w-4 h-4" />
@@ -422,7 +422,7 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
                 <button
                   onClick={() => setWhiteboardTool('rectangle')}
                   className={`px-3 py-2 rounded ${
-                    whiteboardTool === 'rectangle' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+                    whiteboardTool === 'rectangle' ? 'bg-blue-600 text-white' : 'bg-yellow-400/20 text-gold'
                   }`}
                 >
                   <Square className="w-4 h-4" />
@@ -430,7 +430,7 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
                 <button
                   onClick={() => setWhiteboardTool('circle')}
                   className={`px-3 py-2 rounded ${
-                    whiteboardTool === 'circle' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+                    whiteboardTool === 'circle' ? 'bg-blue-600 text-white' : 'bg-yellow-400/20 text-gold'
                   }`}
                 >
                   <Circle className="w-4 h-4" />
@@ -438,7 +438,7 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
                 <button
                   onClick={() => setWhiteboardTool('line')}
                   className={`px-3 py-2 rounded ${
-                    whiteboardTool === 'line' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+                    whiteboardTool === 'line' ? 'bg-blue-600 text-white' : 'bg-yellow-400/20 text-gold'
                   }`}
                 >
                   <Minus className="w-4 h-4" />
@@ -458,7 +458,7 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
                   Tool: <span className="font-medium">{whiteboardTool}</span>
                 </div>
                 <div className="space-x-2">
-                  <button className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
+                  <button className="px-3 py-1 bg-yellow-400/20 text-gold rounded hover:bg-yellow-400/30">
                     <Save className="w-4 h-4 inline mr-1" />
                     Save
                   </button>

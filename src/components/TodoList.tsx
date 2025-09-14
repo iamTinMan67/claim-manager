@@ -480,7 +480,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
               <button
                 type="button"
                 onClick={() => setShowAddForm(false)}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400"
+                className="bg-yellow-400/20 text-gold px-4 py-2 rounded-lg hover:bg-yellow-400/30"
               >
                 Cancel
               </button>
