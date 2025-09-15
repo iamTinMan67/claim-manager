@@ -442,7 +442,7 @@ const EvidenceManager = ({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-16">
       {/* Pending Evidence Review - Only show for claim owners */}
       {!isGuest && selectedClaim && (
         <PendingEvidenceReview 
@@ -490,7 +490,7 @@ const EvidenceManager = ({
       </div>
 
       {showAddForm && (!isGuest || (isGuest && !isGuestFrozen)) && (
-        <div className="card-enhanced p-6 border-l-4" style={{ borderLeftColor: claimColor }}>
+        <div className="card-enhanced p-6 pb-8 border-l-4 mb-8" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4 text-gold">
             {isGuest ? 'Submit Evidence for Review' : 'Add New Evidence'}
           </h3>
@@ -619,7 +619,7 @@ const EvidenceManager = ({
                 className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
               />
             </div>
-            <div className="flex space-x-3">
+            <div className="flex space-x-3 mb-4">
               <button
                 type="submit"
                 disabled={addEvidenceMutation.isPending || addPendingEvidenceMutation.isPending}
@@ -738,7 +738,7 @@ const EvidenceManager = ({
                 className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
               />
             </div>
-            <div className="flex space-x-3">
+            <div className="flex space-x-3 mb-4">
               <button
                 type="submit"
                 disabled={updateEvidenceMutation.isPending}
@@ -760,7 +760,7 @@ const EvidenceManager = ({
       )}
 
       {/* Evidence Table */}
-      <div className="card-enhanced overflow-hidden mt-6">
+      <div className="card-enhanced overflow-hidden mt-12">
         <div className="px-6 py-4 border-b border-yellow-400/20">
           <h3 className="text-lg font-semibold text-gold">Evidence List</h3>
         </div>
