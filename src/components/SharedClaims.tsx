@@ -480,15 +480,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
 
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-3">
-        {!isGuest && !selectedClaim && (
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="btn-gold px-4 py-2 rounded-lg flex items-center space-x-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Claim</span>
-          </button>
-        )}
+        {/* Removed Add Claim button on shared page */}
               </div>
           </div>
 
@@ -638,126 +630,8 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         </div>
       )}
 
-      {/* Add Claim Form */}
-      {showAddForm && !isGuest && (
-        <div className="card-enhanced p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
-          <h3 className="text-lg font-semibold mb-4 dark:text-white">Add New Claim</h3>
-          <form onSubmit={(e) => {
-            e.preventDefault()
-            addClaimMutation.mutate(newClaim)
-          }} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1 dark:text-gray-300">Case Number *</label>
-                <input
-                  type="text"
-                  value={newClaim.case_number}
-                  onChange={(e) => setNewClaim({ ...newClaim, case_number: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  placeholder="e.g., KB2025LIV000075"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1 dark:text-gray-300">Title *</label>
-                <input
-                  type="text"
-                  value={newClaim.title}
-                  onChange={(e) => setNewClaim({ ...newClaim, title: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  placeholder="e.g., Personal Injury Claim"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1 dark:text-gray-300">Court</label>
-                <input
-                  type="text"
-                  value={newClaim.court}
-                  onChange={(e) => setNewClaim({ ...newClaim, court: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  placeholder="e.g., Liverpool County Court"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1 dark:text-gray-300">Status</label>
-                <select
-                  value={newClaim.status}
-                  onChange={(e) => setNewClaim({ ...newClaim, status: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                >
-                  <option value="Active">Active</option>
-                  <option value="Settled">Settled</option>
-                  <option value="Dismissed">Dismissed</option>
-                  <option value="On Hold">On Hold</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1 dark:text-gray-300">Plaintiff Name</label>
-                <input
-                  type="text"
-                  value={newClaim.plaintiff_name}
-                  onChange={(e) => setNewClaim({ ...newClaim, plaintiff_name: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  placeholder="e.g., John Smith"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1 dark:text-gray-300">Defendant Name</label>
-                <input
-                  type="text"
-                  value={newClaim.defendant_name}
-                  onChange={(e) => setNewClaim({ ...newClaim, defendant_name: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  placeholder="e.g., ABC Insurance Ltd"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1 dark:text-gray-300">Description</label>
-              <textarea
-                value={newClaim.description}
-                onChange={(e) => setNewClaim({ ...newClaim, description: e.target.value })}
-                className="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                rows={3}
-                placeholder="Brief description of the claim..."
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1 dark:text-gray-300">Color</label>
-              <div className="flex space-x-2">
-                {['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'].map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    onClick={() => setNewClaim({ ...newClaim, color })}
-                    className={`w-8 h-8 rounded-full border-2 ${
-                      newClaim.color === color ? 'border-gray-800 dark:border-white' : 'border-gray-300 dark:border-gray-600'
-                    }`}
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="flex space-x-3">
-              <button
-                type="submit"
-                disabled={addClaimMutation.isPending}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-              >
-                {addClaimMutation.isPending ? 'Adding...' : 'Add Claim'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowAddForm(false)}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 dark:bg-gray-600 dark:text-gray-300 dark:hover:bg-gray-500"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      {/* Add Claim Form - removed from shared claims page */}
+      {/* (Form deleted intentionally) */}
 
       {/* Payment Modal */}
       {showPaymentModal && paymentData && (
@@ -1023,7 +897,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
 
       {!selectedClaim && (!sharedClaims || sharedClaims.length === 0) && (!guestClaims || guestClaims.length === 0) && (
         <div className="text-center py-8 text-gold-light">
-          No shared claims yet. Add a claim and share it, or wait for someone to share with you!
+          No shared claims yet. Share a claim from your private claims screen, or wait for a host to share one with you.
           </div>
         )}
 
