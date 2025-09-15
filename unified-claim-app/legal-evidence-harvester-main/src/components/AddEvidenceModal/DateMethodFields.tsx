@@ -52,6 +52,7 @@ export const DateMethodFields = ({
             <SelectItem value="Email">Email</SelectItem>
             <SelectItem value="Hand">Hand</SelectItem>
             <SelectItem value="Call">Call</SelectItem>
+            <SelectItem value="Online">Online</SelectItem>
             <SelectItem value="To-Do">To-Do</SelectItem>
           </SelectContent>
         </Select>

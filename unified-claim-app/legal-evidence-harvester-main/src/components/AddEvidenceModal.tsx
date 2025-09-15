@@ -41,6 +41,24 @@ export const AddEvidenceModal = ({ onClose, onAdd }: Props) => {
     }
   }, [exhibits, getNextExhibitNumber]);
 
+  // Debug: Log when method changes
+  useEffect(() => {
+    console.log('Method changed to:', method);
+  }, [method]);
+
+  // Debug: Log when file is selected
+  useEffect(() => {
+    console.log('File selected:', selectedFile?.name);
+  }, [selectedFile]);
+
+  // Auto-set method to "Online" when a file is selected
+  useEffect(() => {
+    if (selectedFile && method !== 'Online') {
+      console.log('File selected, changing method to Online');
+      setMethod('Online');
+    }
+  }, [selectedFile, method]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
