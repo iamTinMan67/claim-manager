@@ -31,15 +31,15 @@ export const FileUploadSection = ({ selectedFile, uploading, uploadProgress, onF
   };
 
   return (
-    <div className="space-y-1">
-      <Label htmlFor="file" className="text-sm">File Upload</Label>
+    <div className="space-y-0.5">
+      <Label htmlFor="file" className="text-xs">File Upload</Label>
       <Input
         id="file"
         type="file"
         accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.mp4,.mov,.avi,.mkv,.mp3,.wav,.flac,.aac,.ogg"
         onChange={handleFileChange}
         disabled={uploading}
-        className="h-8 text-sm"
+        className="h-6 text-xs"
       />
       <p className="text-xs text-gray-500">
         Allowed: PDF, Word docs, Excel files, text files, images, videos (MP4, MOV, AVI, MKV), and audio files (MP3, WAV, FLAC, AAC, OGG) - max 50MB
@@ -48,9 +48,9 @@ export const FileUploadSection = ({ selectedFile, uploading, uploadProgress, onF
         <p className="text-xs text-green-600">Selected: {selectedFile.name}</p>
       )}
       {uploading && (
-        <div className="space-y-1">
-          <Label className="text-sm">Upload Progress</Label>
-          <Progress value={uploadProgress} className="w-full h-2" />
+        <div className="space-y-0.5">
+          <Label className="text-xs">Upload Progress</Label>
+          <Progress value={uploadProgress} className="w-full h-1" />
         </div>
       )}
     </div>

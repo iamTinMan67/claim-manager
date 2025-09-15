@@ -32,8 +32,8 @@ export const EvidenceFormFields = ({
 }: Props) => {
   return (
     <>
-      <div className="space-y-1">
-        <Label htmlFor="description" className="text-sm">Description *</Label>
+      <div className="space-y-0.5">
+        <Label htmlFor="description" className="text-xs">Description *</Label>
         <Input
           id="description"
           value={description}
@@ -41,12 +41,12 @@ export const EvidenceFormFields = ({
           placeholder="Enter evidence description"
           disabled={uploading}
           required
-          className="h-8 text-sm"
+          className="h-6 text-xs"
         />
       </div>
 
-      <div className="space-y-1">
-        <Label htmlFor="exhibit-ref" className="text-sm">Exhibit Reference</Label>
+      <div className="space-y-0.5">
+        <Label htmlFor="exhibit-ref" className="text-xs">Exhibit Reference</Label>
         <EditableExhibitSelector
           value={exhibitRef}
           onChange={setExhibitRef}
@@ -54,10 +54,10 @@ export const EvidenceFormFields = ({
         />
       </div>
 
-      <div className="grid grid-cols-12 gap-2">
+      <div className="grid grid-cols-12 gap-1">
         {/* Pages takes 25% width */}
-        <div className="col-span-3 space-y-1">
-          <Label htmlFor="number-of-pages" className="text-sm">Pages</Label>
+        <div className="col-span-3 space-y-0.5">
+          <Label htmlFor="number-of-pages" className="text-xs">Pages</Label>
           <Input
             id="number-of-pages"
             type="number"
@@ -65,26 +65,26 @@ export const EvidenceFormFields = ({
             onChange={(e) => setNumberOfPages(e.target.value)}
             disabled={uploading}
             min="1"
-            className="h-8 text-sm"
+            className="h-6 text-xs"
           />
         </div>
         
         {/* Book-Of-Deeds Ref # takes remaining 75% width */}
-        <div className="col-span-9 space-y-1">
-          <Label htmlFor="book-of-deeds-ref" className="text-sm">Book-Of-Deeds Ref #</Label>
+        <div className="col-span-9 space-y-0.5">
+          <Label htmlFor="book-of-deeds-ref" className="text-xs">Book-Of-Deeds Ref #</Label>
           <Input
             id="book-of-deeds-ref"
             value={bookOfDeedsRef}
             onChange={(e) => setBookOfDeedsRef(e.target.value)}
             disabled={uploading}
             placeholder="Enter reference number"
-            className="h-8 text-sm"
+            className="h-6 text-xs"
           />
         </div>
       </div>
 
-      <div className="space-y-1">
-        <Label htmlFor="url-link" className="text-sm">URL Link (Optional)</Label>
+      <div className="space-y-0.5">
+        <Label htmlFor="url-link" className="text-xs">URL Link (Optional)</Label>
         <Input
           id="url-link"
           type="url"
@@ -92,7 +92,7 @@ export const EvidenceFormFields = ({
           onChange={(e) => setUrlLink(e.target.value)}
           placeholder="https://example.com"
           disabled={uploading}
-          className="h-8 text-sm"
+          className="h-6 text-xs"
         />
       </div>
     </>

@@ -91,7 +91,7 @@ export const EditableExhibitSelector = ({ value, onChange, disabled }: Props) =>
   if (loading) {
     return (
       <Select disabled>
-        <SelectTrigger className="w-24 h-8 text-sm">
+        <SelectTrigger className="w-20 h-6 text-xs">
           <SelectValue placeholder="Loading..." />
         </SelectTrigger>
       </Select>
@@ -101,7 +101,7 @@ export const EditableExhibitSelector = ({ value, onChange, disabled }: Props) =>
   return (
     <div className="flex items-center space-x-1">
       <Select value={value} onValueChange={onChange} disabled={disabled}>
-        <SelectTrigger className="w-24 h-8 text-sm">
+        <SelectTrigger className="w-20 h-6 text-xs">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

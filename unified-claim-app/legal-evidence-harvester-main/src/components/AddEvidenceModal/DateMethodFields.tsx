@@ -21,31 +21,31 @@ export const DateMethodFields = ({
   uploading
 }: Props) => {
   return (
-    <div className="space-y-2">
+    <div className="space-y-1">
       {method === 'To-Do' && dateSubmitted && (
-        <Alert className="py-2">
-          <Calendar className="h-3 w-3" />
+        <Alert className="py-1">
+          <Calendar className="h-2 w-2" />
           <AlertDescription className="text-xs">
             A calendar reminder will be automatically created for {new Date(dateSubmitted).toLocaleDateString()} at 9:00 AM with an alarm.
           </AlertDescription>
         </Alert>
       )}
-      <div className="grid grid-cols-2 gap-2">
-      <div className="space-y-1">
-        <Label htmlFor="date-submitted" className="text-sm">Date Submitted</Label>
+      <div className="grid grid-cols-2 gap-1">
+      <div className="space-y-0.5">
+        <Label htmlFor="date-submitted" className="text-xs">Date Submitted</Label>
         <Input
           id="date-submitted"
           type="date"
           value={dateSubmitted}
           onChange={(e) => setDateSubmitted(e.target.value)}
           disabled={uploading}
-          className="h-8 text-sm"
+          className="h-6 text-xs"
         />
       </div>
-      <div className="space-y-1">
-        <Label htmlFor="method" className="text-sm">Method</Label>
+      <div className="space-y-0.5">
+        <Label htmlFor="method" className="text-xs">Method</Label>
         <Select value={method} onValueChange={setMethod} disabled={uploading}>
-          <SelectTrigger className="h-8 text-sm">
+          <SelectTrigger className="h-6 text-xs">
             <SelectValue placeholder="Select method" />
           </SelectTrigger>
           <SelectContent>

@@ -83,7 +83,7 @@ export const AddEvidenceModal = ({ onClose, onAdd }: Props) => {
         <DialogHeader>
           <DialogTitle>Add New Evidence</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-2">
+        <form onSubmit={handleSubmit} className="space-y-1">
           <EvidenceFormFields
             exhibitRef={exhibitRef}
             setExhibitRef={setExhibitRef}
