@@ -49,45 +49,24 @@ const EvidenceManager = ({
 
   const queryClient = useQueryClient()
 
-  // Get evidence data from exhibits table (original data structure)
+  // Get evidence data from evidence table (use original richer records)
   const { data: evidenceData, isLoading, error } = useQuery({
-    queryKey: ['exhibits', selectedClaim],
+    queryKey: ['evidence', selectedClaim],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
-
-      // Get exhibits for the current user
-      const { data, error } = await supabase
-        .from('exhibits')
+      let query = supabase
+        .from('evidence')
         .select('*')
-        .eq('user_id', user.id)
-        .order('exhibit_number', { ascending: true })
-      
+
+      if (selectedClaim) {
+        query = query.eq('case_number', selectedClaim)
+      }
+
+      const { data, error } = await query
+        .order('display_order', { ascending: false, nullsFirst: true })
+        .order('created_at', { ascending: true })
+
       if (error) throw error
-      
-      // Convert exhibits to evidence format for compatibility
-      return data?.map(exhibit => ({
-        id: exhibit.id,
-        user_id: exhibit.user_id,
-        case_number: selectedClaim, // Link to selected claim
-        name: exhibit.name,
-        title: exhibit.name,
-        file_name: exhibit.name,
-        exhibit_number: exhibit.exhibit_number,
-        description: exhibit.description,
-        method: 'Exhibit',
-        display_order: exhibit.exhibit_number,
-        created_at: exhibit.created_at,
-        updated_at: exhibit.updated_at,
-        // Set other fields to null for exhibits
-        file_url: null,
-        file_size: null,
-        file_type: null,
-        url_link: null,
-        book_of_deeds_ref: null,
-        number_of_pages: null,
-        date_submitted: null
-      })) as Evidence[] || []
+      return data as Evidence[]
     }
   })
 
@@ -99,12 +78,11 @@ const EvidenceManager = ({
           .from('evidence')
           .update({ display_order: update.display_order })
           .eq('id', update.id)
-        
         if (error) throw error
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evidence'] })
+      queryClient.invalidateQueries({ queryKey: ['evidence', selectedClaim] })
     }
   })
 
@@ -768,7 +746,7 @@ const EvidenceManager = ({
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {item.name || item.file_name || '-'}
+                      {item.file_name || item.title || item.name || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {item.method || '-'}
