@@ -500,8 +500,8 @@ const EvidenceManager = ({
             </div>
           )}
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="font-medium text-blue-900 mb-2">Upload File</h4>
+            <div className="card-smudge p-4">
+              <h4 className="font-medium text-gold mb-2">Upload File</h4>
               <div className="flex items-center space-x-3">
                 <input
                   type="file"
@@ -525,12 +525,12 @@ const EvidenceManager = ({
                   </span>
                 )}
               </div>
-              <p className="text-xs text-blue-700 mt-2">
+              <p className="text-xs text-gold mt-2">
                 Supported: PDF, DOC, DOCX, TXT, JPG, PNG, GIF, MP4, MP3, WAV
               </p>
             </div>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-              <p className="text-sm text-yellow-800">
+            <div className="card-smudge p-4 mb-4">
+              <p className="text-sm text-gold">
                 <strong>Note:</strong> The evidence name will be used as the display title. Make sure your evidence name is descriptive as it will appear in the evidence list.
               </p>
             </div>
@@ -568,7 +568,7 @@ const EvidenceManager = ({
                 <p className="text-xs text-gray-500 mt-1">Automatically assigned</p>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Number of Pages</label>
+                <label className="block text-sm font-medium mb-1 text-gold">Number of Pages</label>
                 <input
                   type="number"
                   value={newEvidence.number_of_pages}
@@ -577,7 +577,7 @@ const EvidenceManager = ({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Date Submitted</label>
+                <label className="block text-sm font-medium mb-1 text-gold">Date Submitted</label>
                 <input
                   type="date"
                   value={newEvidence.date_submitted}
@@ -588,7 +588,7 @@ const EvidenceManager = ({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Method</label>
+                <label className="block text-sm font-medium mb-1 text-gold">Method</label>
                 <select
                   value={newEvidence.method}
                   onChange={(e) => setNewEvidence({ ...newEvidence, method: e.target.value })}
@@ -602,7 +602,7 @@ const EvidenceManager = ({
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">URL Link</label>
+                <label className="block text-sm font-medium mb-1 text-gold">URL Link</label>
                 <input
                   type="url"
                   value={newEvidence.url_link}
@@ -612,7 +612,7 @@ const EvidenceManager = ({
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">CLC Ref#</label>
+              <label className="block text-sm font-medium mb-1 text-gold">CLC Ref#</label>
               <input
                 type="text"
                 value={newEvidence.book_of_deeds_ref}

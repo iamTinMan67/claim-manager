@@ -139,6 +139,13 @@ function LoggedInContent({
       setIsInSharedContext(false)
     }
   }, [activeTab])
+
+  // Reset shared context when explicitly navigating to claims tab
+  React.useEffect(() => {
+    if (activeTab === 'claims' && !selectedClaim) {
+      setIsInSharedContext(false)
+    }
+  }, [activeTab, selectedClaim])
   // Check if current user is viewing a shared claim (guest mode)
   const { data: isGuestForClaim } = useQuery({
     queryKey: ['is-guest-for-claim', selectedClaim, user?.id],

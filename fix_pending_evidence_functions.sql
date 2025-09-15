@@ -1,7 +1,14 @@
--- Setup functions for pending evidence approval workflow
+-- Fix pending evidence functions by dropping all existing versions first
 -- Run this in your Supabase SQL editor
 
--- 1) Create evidence_claims junction table if it doesn't exist
+-- 1) Drop all existing versions of the functions
+DROP FUNCTION IF EXISTS public.promote_pending_evidence(uuid, text[]);
+DROP FUNCTION IF EXISTS public.reject_pending_evidence(uuid, text);
+DROP FUNCTION IF EXISTS public.reject_pending_evidence(text, text);
+DROP FUNCTION IF EXISTS public.reject_pending_evidence(uuid, varchar);
+DROP FUNCTION IF EXISTS public.reject_pending_evidence(text, varchar);
+
+-- 2) Create evidence_claims junction table if it doesn't exist
 CREATE TABLE IF NOT EXISTS public.evidence_claims (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   evidence_id uuid NOT NULL REFERENCES public.evidence(id) ON DELETE CASCADE,
@@ -9,7 +16,7 @@ CREATE TABLE IF NOT EXISTS public.evidence_claims (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
--- 2) Add unique constraint to prevent duplicate links
+-- 3) Add unique constraint to prevent duplicate links
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -21,7 +28,7 @@ BEGIN
   END IF;
 END $$;
 
--- 3) Backfill existing evidence links
+-- 4) Backfill existing evidence links
 INSERT INTO public.evidence_claims (evidence_id, claim_id)
 SELECT e.id, e.case_number
 FROM public.evidence e
@@ -31,7 +38,7 @@ WHERE e.case_number IS NOT NULL
     WHERE ec.evidence_id = e.id AND ec.claim_id = e.case_number
   );
 
--- 4) Create promote function
+-- 5) Create promote function
 CREATE OR REPLACE FUNCTION public.promote_pending_evidence(p_pending_id uuid, p_claim_ids text[])
 RETURNS uuid
 LANGUAGE plpgsql
@@ -95,9 +102,6 @@ BEGIN
 
   RETURN v_evidence_id;
 END $$;
-
--- 5) Drop existing reject function if it exists
-DROP FUNCTION IF EXISTS public.reject_pending_evidence(uuid, text);
 
 -- 6) Create reject function
 CREATE OR REPLACE FUNCTION public.reject_pending_evidence(p_pending_id uuid, p_reason text)

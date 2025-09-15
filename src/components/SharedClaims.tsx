@@ -690,7 +690,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                 </div>
               </div>
               
-              {/* Active icon + Case number inline */}
+              {/* Active icon + Case number + Title inline */}
               <div className="flex items-center space-x-2 mb-2">
                 {share.permission === 'edit' ? (
                   <Edit className="w-4 h-4" style={{ color: '#fbbf24' }} />
@@ -698,11 +698,8 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                   <Eye className="w-4 h-4" style={{ color: '#fbbf24' }} />
                 )}
                 <span className="text-sm font-medium dark:text-white">{share.claims.case_number}</span>
+                <span className="text-lg font-semibold dark:text-white">- {share.claims.title}</span>
               </div>
-              
-              <h3 className="text-lg font-semibold mb-2 dark:text-white">
-                {share.claims.title}
-              </h3>
               <p className="text-gray-600 dark:text-gray-300 mb-4">Host: {share.profiles.email}</p>
               
               <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
@@ -772,7 +769,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                         </div>
               </div>
 
-              {/* Active icon + Case number inline */}
+              {/* Active icon + Case number + Title inline */}
               <div className="flex items-center space-x-2 mb-2">
                 {guestClaim.permission === 'edit' ? (
                   <Edit className="w-4 h-4" style={{ color: '#fbbf24' }} />
@@ -780,11 +777,8 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                   <Eye className="w-4 h-4" style={{ color: '#fbbf24' }} />
                 )}
                 <span className="text-sm font-medium dark:text-white">{guestClaim.claims.case_number}</span>
+                <span className="text-lg font-semibold dark:text-white">- {guestClaim.claims.title}</span>
               </div>
-
-              <h3 className="text-lg font-semibold mb-2 dark:text-white">
-                {guestClaim.claims.title}
-              </h3>
               <p className="text-gray-600 dark:text-gray-300 mb-4">Hosted by: {guestClaim.owner_profile.email}</p>
               
               <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
@@ -826,7 +820,9 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                 url.searchParams.delete('claim')
                 window.history.pushState({}, '', url.toString())
               }
+              // Ensure we're in shared context
               window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null, claimColor: '#3B82F6' } }))
+              window.dispatchEvent(new CustomEvent('tabChange', { detail: 'shared' }))
             }}
             className="btn-gold px-6 py-3 rounded-lg flex items-center space-x-2 text-lg"
           >
@@ -856,7 +852,9 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                     url.searchParams.delete('claim')
                     window.history.pushState({}, '', url.toString())
                   }
+                  // Reset shared context and go to private claims
                   window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null, claimColor: '#3B82F6' } }))
+                  window.dispatchEvent(new CustomEvent('tabChange', { detail: 'claims' }))
                 }}
                 className="btn-gold px-4 py-2 rounded-lg flex items-center space-x-2"
               >
