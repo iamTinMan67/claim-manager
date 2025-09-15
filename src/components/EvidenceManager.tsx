@@ -41,7 +41,8 @@ const EvidenceManager = ({
     method: 'Email',
     url_link: '',
     book_of_deeds_ref: '',
-    case_number: selectedClaim || ''
+    case_number: selectedClaim || '',
+    description: ''
   })
   const [uploadingFile, setUploadingFile] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -156,7 +157,8 @@ const EvidenceManager = ({
         case_number: evidenceData.case_number || null,
         number_of_pages: evidenceData.number_of_pages ? parseInt(evidenceData.number_of_pages) : null,
         date_submitted: evidenceData.date_submitted || null,
-        display_order: newDisplayOrder
+        display_order: newDisplayOrder,
+        description: evidenceData.description || null
       }
 
       const { data, error } = await supabase
@@ -170,7 +172,7 @@ const EvidenceManager = ({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evidence'] })
-      setShowAddForm(false)
+      // Keep form open and reset for new entry
       setNewEvidence({
         title: '',
         file_name: '',
@@ -181,8 +183,15 @@ const EvidenceManager = ({
         method: 'Email',
         url_link: '',
         book_of_deeds_ref: '',
-        case_number: selectedClaim || ''
+        case_number: selectedClaim || '',
+        description: ''
       })
+      // Focus the file input after a short delay
+      setTimeout(() => {
+        if (fileInputRef.current) {
+          fileInputRef.current.focus()
+        }
+      }, 100)
     },
     onError: (error: any) => {
       console.error('Evidence creation error:', error)
@@ -202,7 +211,7 @@ const EvidenceManager = ({
       const cleanData = {
         claim_id: selectedClaim,
         submitter_id: user.id,
-        description: evidenceData.name?.trim() || evidenceData.title?.trim() || evidenceData.file_name?.trim() || 'Evidence Item',
+        description: evidenceData.description?.trim() || evidenceData.name?.trim() || evidenceData.title?.trim() || evidenceData.file_name?.trim() || 'Evidence Item',
         file_name: evidenceData.file_name || null,
         file_url: evidenceData.file_url || null,
         exhibit_id: evidenceData.exhibit_id || null,
@@ -224,7 +233,7 @@ const EvidenceManager = ({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-evidence'] })
-      setShowAddForm(false)
+      // Keep form open and reset for new entry
       setNewEvidence({
         title: '',
         file_name: '',
@@ -235,8 +244,15 @@ const EvidenceManager = ({
         method: 'Email',
         url_link: '',
         book_of_deeds_ref: '',
-        case_number: selectedClaim || ''
+        case_number: selectedClaim || '',
+        description: ''
       })
+      // Focus the file input after a short delay
+      setTimeout(() => {
+        if (fileInputRef.current) {
+          fileInputRef.current.focus()
+        }
+      }, 100)
       alert('Evidence submitted for review. The claim owner will be notified.')
     },
     onError: (error: any) => {
@@ -311,12 +327,12 @@ const EvidenceManager = ({
         if (uploadError.message.includes('Bucket not found')) {
           // For now, just use a URL.createObjectURL as fallback
           const fileUrl = URL.createObjectURL(file)
-          setNewEvidence(prev => ({
-            ...prev,
-            file_name: file.name,
-            file_url: fileUrl,
-            method: 'Upload'
-          }))
+        setNewEvidence(prev => ({
+          ...prev,
+          file_name: file.name,
+          file_url: fileUrl,
+          method: prev.method === 'Email' ? 'Online' : prev.method
+        }))
         } else {
           throw uploadError
         }
@@ -330,7 +346,7 @@ const EvidenceManager = ({
           ...prev,
           file_name: file.name,
           file_url: publicUrl,
-          method: 'Upload'
+          method: prev.method === 'Email' ? 'Online' : prev.method
         }))
       }
     } catch (error) {
@@ -448,8 +464,8 @@ const EvidenceManager = ({
 
   return (
     <div className="space-y-6 pb-16">
-      {/* Pending Evidence Review - Only show for claim owners */}
-      {!isGuest && selectedClaim && (
+      {/* Pending Evidence Review - Only show for hosts/claim owners */}
+      {!isGuest && selectedClaim && currentUserId && (
         <PendingEvidenceReview 
           selectedClaim={selectedClaim} 
           isOwner={true} 
@@ -495,8 +511,8 @@ const EvidenceManager = ({
       </div>
 
       {showAddForm && (!isGuest || (isGuest && !isGuestFrozen)) && (
-        <div className="card-enhanced p-6 pb-8 border-l-4 mb-8" style={{ borderLeftColor: claimColor }}>
-          <h3 className="text-lg font-semibold mb-4 text-gold">
+        <div className="card-enhanced p-3 pb-4 border-l-4 mb-4 max-w-md mx-auto" style={{ borderLeftColor: claimColor }}>
+          <h3 className="text-sm font-semibold mb-2 text-gold">
             {isGuest ? 'Submit Evidence for Review' : 'Add New Evidence'}
           </h3>
           {isGuest && (
@@ -504,9 +520,9 @@ const EvidenceManager = ({
               Your evidence will be submitted for review by the claim owner before being added to the case.
             </div>
           )}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="card-smudge p-4">
-              <h4 className="font-medium text-gold mb-2">Upload File</h4>
+          <form onSubmit={handleSubmit} className="space-y-2">
+            <div className="card-smudge p-2">
+              <h4 className="font-medium text-gold mb-1 text-xs">Upload File</h4>
               <div className="flex items-center space-x-3">
                 <input
                   type="file"
@@ -519,128 +535,135 @@ const EvidenceManager = ({
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingFile}
-                  className="btn-gold px-4 py-2 rounded-lg disabled:opacity-50 flex items-center space-x-2"
+                  className="btn-gold px-2 py-1 rounded text-xs disabled:opacity-50 flex items-center space-x-1"
                 >
-                  <Upload className="w-4 h-4" />
+                  <Upload className="w-3 h-3" />
                   <span>{uploadingFile ? 'Uploading...' : 'Choose File'}</span>
                 </button>
                 {newEvidence.file_name && (
-                  <span className="text-sm text-green-600">
-                    ✓ {newEvidence.file_name}
+                  <span className="text-xs text-green-600">
+                    ✓ {newEvidence.file_name.replace(/\.[^/.]+$/, "")}
                   </span>
                 )}
               </div>
-              <p className="text-xs text-gold mt-2">
-                Supported: PDF, DOC, DOCX, TXT, JPG, PNG, GIF, MP4, MP3, WAV
+              <p className="text-xs text-gold mt-1">
+                PDF, DOC, DOCX, TXT, JPG, PNG, GIF, MP4, MP3, WAV
               </p>
             </div>
-            <div className="card-smudge p-4 mb-4">
-              <p className="text-sm text-gold">
-                <strong>Note:</strong> The evidence name will be used as the display title. Make sure your evidence name is descriptive as it will appear in the evidence list.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-2">
               <div>
-                <label className="block text-sm font-medium mb-1 text-gold">Evidence Name</label>
+                <label className="block text-xs font-medium mb-1 text-gold">CLC Ref#</label>
+                <input
+                  type="text"
+                  value={newEvidence.book_of_deeds_ref}
+                  onChange={(e) => setNewEvidence({ ...newEvidence, book_of_deeds_ref: e.target.value })}
+                  className="w-full border border-yellow-400/30 rounded px-2 py-1 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/20 text-xs"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1 text-gold">Evidence Name</label>
                 <input
                   type="text"
                   value={newEvidence.name || newEvidence.file_name || ''}
                   onChange={(e) => setNewEvidence({ ...newEvidence, name: e.target.value, file_name: e.target.value })}
-                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  className="w-full border border-yellow-400/30 rounded px-2 py-1 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/20 text-xs"
                   placeholder="Enter evidence name"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1 text-gold">File URL</label>
+                <label className="block text-xs font-medium mb-1 text-gold">File URL</label>
                 <input
                   type="url"
                   value={newEvidence.file_url}
                   onChange={(e) => setNewEvidence({ ...newEvidence, file_url: e.target.value })}
-                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  className="w-full border border-yellow-400/30 rounded px-2 py-1 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/20 text-xs"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1 text-gold">Description</label>
+                <input
+                  type="text"
+                  value={newEvidence.description || ''}
+                  onChange={(e) => setNewEvidence({ ...newEvidence, description: e.target.value })}
+                  className="w-full border border-yellow-400/30 rounded px-2 py-1 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/20 text-xs"
+                  placeholder="Enter evidence description"
                 />
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-2">
               <div>
-                <label className="block text-sm font-medium mb-1 text-gold">Exhibit ID</label>
+                <label className="block text-xs font-medium mb-1 text-gold">Exhibit ID</label>
                 <input
                   type="text"
                   value={newEvidence.exhibit_id}
-                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-gray-100 text-gray-600 cursor-not-allowed"
+                  className="w-full border border-yellow-400/30 rounded px-2 py-1 bg-gray-100 text-gray-600 cursor-not-allowed text-xs"
                   placeholder="Auto-generated"
                   readOnly
                 />
-                <p className="text-xs text-gray-500 mt-1">Automatically assigned</p>
+                <p className="text-xs text-gray-500 mt-1">Auto-assigned</p>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1 text-gold">Number of Pages</label>
+                <label className="block text-xs font-medium mb-1 text-gold">Pages</label>
                 <input
                   type="number"
                   value={newEvidence.number_of_pages}
                   onChange={(e) => setNewEvidence({ ...newEvidence, number_of_pages: e.target.value })}
-                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  className="w-full border border-yellow-400/30 rounded px-2 py-1 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/20 text-xs"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1 text-gold">Date Submitted</label>
+                <label className="block text-xs font-medium mb-1 text-gold">Date</label>
                 <input
                   type="date"
                   value={newEvidence.date_submitted}
                   onChange={(e) => setNewEvidence({ ...newEvidence, date_submitted: e.target.value })}
-                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  className="w-full border border-yellow-400/30 rounded px-2 py-1 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/20 text-xs"
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-sm font-medium mb-1 text-gold">Method</label>
+                <label className="block text-xs font-medium mb-1 text-gold">Method</label>
                 <select
                   value={newEvidence.method}
                   onChange={(e) => setNewEvidence({ ...newEvidence, method: e.target.value })}
-                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  className="w-full border border-yellow-400/30 rounded px-2 py-1 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/20 text-xs"
                 >
                   <option value="Post">Post</option>
                   <option value="Email">Email</option>
                   <option value="Hand">Hand</option>
-                  <option value="Upload">Upload</option>
+                  <option value="Call">Call</option>
+                  <option value="Online">Online</option>
+                  <option value="To-Do">To-Do</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1 text-gold">URL Link</label>
+                <label className="block text-xs font-medium mb-1 text-gold">URL Link</label>
                 <input
                   type="url"
                   value={newEvidence.url_link}
                   onChange={(e) => setNewEvidence({ ...newEvidence, url_link: e.target.value })}
-                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  className="w-full border border-yellow-400/30 rounded px-2 py-1 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/20 text-xs"
                 />
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gold">CLC Ref#</label>
-              <input
-                type="text"
-                value={newEvidence.book_of_deeds_ref}
-                onChange={(e) => setNewEvidence({ ...newEvidence, book_of_deeds_ref: e.target.value })}
-                className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
-              />
-            </div>
-            <div className="flex space-x-3 mb-4">
+            <div className="flex space-x-2 mt-3">
               <button
                 type="submit"
                 disabled={addEvidenceMutation.isPending || addPendingEvidenceMutation.isPending}
-                className="btn-gold px-4 py-2 rounded-lg disabled:opacity-50"
+                className="btn-gold px-3 py-1 rounded text-xs disabled:opacity-50"
                 style={{ backgroundColor: claimColor }}
               >
                 {(addEvidenceMutation.isPending || addPendingEvidenceMutation.isPending) 
-                  ? (isGuest ? 'Submitting for Review...' : 'Adding...') 
-                  : (isGuest ? 'Submit for Review' : 'Add Evidence')}
+                  ? (isGuest ? 'Submitting...' : 'Adding...') 
+                  : (isGuest ? 'Submit for Review' : 'Save & Add Another')}
               </button>
               <button
                 type="button"
                 onClick={() => setShowAddForm(false)}
-                className="bg-yellow-400/20 text-gold px-4 py-2 rounded-lg hover:bg-yellow-400/30"
+                className="bg-yellow-400/20 text-gold px-3 py-1 rounded text-xs hover:bg-yellow-400/30"
               >
-                Cancel
+                Close
               </button>
             </div>
           </form>
