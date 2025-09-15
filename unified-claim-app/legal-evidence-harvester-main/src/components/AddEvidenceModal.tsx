@@ -102,7 +102,7 @@ export const AddEvidenceModal = ({ onClose, onAdd }: Props) => {
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-[300px] w-full">
+      <DialogContent className="max-w-[200px] w-full">
         <DialogHeader>
           <DialogTitle>Add New Evidence</DialogTitle>
         </DialogHeader>

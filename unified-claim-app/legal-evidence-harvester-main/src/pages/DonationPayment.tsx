@@ -130,7 +130,6 @@ export const DonationPayment = () => {
         <CardContent className="space-y-6">
           {claimDetails && (
             <div className="bg-muted p-4 rounded-lg">
-              <h3 className="font-semibold text-sm">Claim Details:</h3>
               <p className="text-sm text-muted-foreground">{claimDetails.title}</p>
               <p className="text-sm text-muted-foreground">Case: {claimDetails.case_number}</p>
             </div>
