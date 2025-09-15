@@ -366,3 +366,15 @@ html, body, #root, .min-h-screen, div[class*="min-h-screen"] {
 .text-gray-400, .text-gray-300, .text-gray-200 {
   color: #f3f4f6 !important;
 }
+
+/* Style select dropdown options */
+select option {
+  background-color: #1f2937 !important; /* gray-800 */
+  color: #ffffff !important;
+}
+
+/* Dark mode select options */
+.dark select option {
+  background-color: #000000 !important; /* black */
+  color: #ffffff !important;
+}

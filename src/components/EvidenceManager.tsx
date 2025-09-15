@@ -759,7 +759,8 @@ const EvidenceManager = ({
         </div>
       )}
 
-      <div className="card-enhanced overflow-hidden">
+      {/* Evidence Table */}
+      <div className="card-enhanced overflow-hidden mt-6">
         <div className="px-6 py-4 border-b border-yellow-400/20">
           <h3 className="text-lg font-semibold text-gold">Evidence List</h3>
         </div>
