@@ -46,7 +46,6 @@ interface Props {
 interface SortableRowProps {
   evidence: Evidence;
   index: number;
-  bundlePageNumber: number;
   onRemove: (id: string) => void;
   showClaimInfo: boolean;
   onUnlinkFromClaim?: (evidenceId: string) => void;
@@ -109,7 +108,6 @@ const formatExhibitDisplay = (exhibitId: string | null, exhibits: any[]) => {
 const SortableRow = ({ 
   evidence, 
   index, 
-  bundlePageNumber,
   onRemove, 
   showClaimInfo, 
   onUnlinkFromClaim, 
@@ -157,6 +155,12 @@ const SortableRow = ({
       return File;
     }
     return FileText;
+  };
+
+  const removeFileExtension = (fileName: string | null) => {
+    if (!fileName) return 'No file';
+    const lastDotIndex = fileName.lastIndexOf('.');
+    return lastDotIndex > 0 ? fileName.substring(0, lastDotIndex) : fileName;
   };
 
   // Helper function to convert formatted exhibit display back to UUID
@@ -258,7 +262,7 @@ const SortableRow = ({
               <div className="flex items-center space-x-2 w-full">
                 <FileIcon className="w-4 h-4 text-red-500 flex-shrink-0" />
                 <span className="truncate flex-1 text-gray-900" title={evidence.file_name}>
-                  {evidence.file_name}
+                  {removeFileExtension(evidence.file_name)}
                 </span>
                 {evidence.file_url && (
                   <Button
@@ -339,9 +343,6 @@ const SortableRow = ({
         ) : (
           evidence.method || 'N/A'
         )}
-      </td>
-      <td className="px-2 py-4 whitespace-nowrap text-sm text-gray-900">
-        {bundlePageNumber}
       </td>
       {showClaimInfo && (
         <td className="px-2 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -620,9 +621,6 @@ export const EvidenceTable = ({
                 <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '10%' }}>
                   Method
                 </th>
-                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '8%' }}>
-                  Bundle #
-                </th>
                 {showClaimInfo && (
                   <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '8%' }}>
                     Claims
@@ -643,19 +641,11 @@ export const EvidenceTable = ({
                 {localEvidenceList.map((evidence, index) => {
                   console.log(`Rendering row ${index} for evidence:`, evidence.id, evidence.file_name);
                   
-                  // Calculate bundle page number - start from page 1 and add up preceding pages
-                  let bundlePageNumber = 1;
-                  for (let i = 0; i < index; i++) {
-                    const pages = localEvidenceList[i].number_of_pages || 1;
-                    bundlePageNumber += pages;
-                  }
-                  
                   return (
                     <SortableRow
                       key={evidence.id}
                       evidence={evidence}
                       index={index}
-                      bundlePageNumber={bundlePageNumber}
                       onRemove={onRemove}
                       showClaimInfo={showClaimInfo}
                       onUnlinkFromClaim={onUnlinkFromClaim}

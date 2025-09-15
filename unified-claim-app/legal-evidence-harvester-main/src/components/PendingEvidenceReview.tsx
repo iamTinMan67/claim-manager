@@ -27,6 +27,11 @@ export const PendingEvidenceReview: React.FC<Props> = ({
   onRefresh,
   isOwner,
 }) => {
+  const removeFileExtension = (fileName: string | null) => {
+    if (!fileName) return 'Evidence Item';
+    const lastDotIndex = fileName.lastIndexOf('.');
+    return lastDotIndex > 0 ? fileName.substring(0, lastDotIndex) : fileName;
+  };
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject'>('approve');
@@ -115,7 +120,7 @@ export const PendingEvidenceReview: React.FC<Props> = ({
           <CardHeader className="pb-3">
             <div className="flex justify-between items-start">
               <div className="space-y-1">
-                <CardTitle className="text-base">{evidence.file_name || 'Evidence Item'}</CardTitle>
+                <CardTitle className="text-base">{removeFileExtension(evidence.file_name)}</CardTitle>
                 {evidence.submitter && (
                   <p className="text-sm text-muted-foreground">
                     Submitted by {evidence.submitter.full_name || evidence.submitter.email}

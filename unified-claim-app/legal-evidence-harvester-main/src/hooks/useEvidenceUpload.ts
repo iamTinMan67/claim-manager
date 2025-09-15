@@ -8,7 +8,7 @@ import { useExhibits } from "./useExhibits";
 
 export const useEvidenceUpload = () => {
   const { user } = useAuth();
-  const { addExhibit, getNextExhibitNumber } = useExhibits();
+  const { exhibits, addExhibit, getNextExhibitNumber } = useExhibits();
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
@@ -62,6 +62,7 @@ export const useEvidenceUpload = () => {
       return;
     }
     
+    console.log('submitEvidence called with method:', formData.method);
     setUploading(true);
     
     try {
@@ -82,23 +83,32 @@ export const useEvidenceUpload = () => {
       // Create or find exhibit
       let exhibitId = formData.exhibitRef;
       
-      // If exhibitRef looks like "Exhibit-001", create a new exhibit
+      // Always create or find the exhibit record
       if (formData.exhibitRef.match(/^Exhibit-\d+$/)) {
         const exhibitNumber = parseInt(formData.exhibitRef.replace('Exhibit-', ''));
-        const newExhibit = await addExhibit({
-          name: formData.description || `Exhibit ${exhibitNumber}`,
-          exhibit_number: exhibitNumber,
-          description: formData.description || null
-        });
         
-        if (newExhibit) {
-          exhibitId = newExhibit.id;
+        // First check if exhibit already exists
+        const existingExhibit = exhibits.find(e => e.exhibit_number === exhibitNumber);
+        
+        if (existingExhibit) {
+          exhibitId = existingExhibit.id;
         } else {
-          throw new Error('Failed to create exhibit');
+          // Create new exhibit
+          const newExhibit = await addExhibit({
+            name: formData.description || `Exhibit ${exhibitNumber}`,
+            exhibit_number: exhibitNumber,
+            description: formData.description || null
+          });
+          
+          if (newExhibit) {
+            exhibitId = newExhibit.id;
+          } else {
+            throw new Error('Failed to create exhibit');
+          }
         }
       }
       
-      onAdd({
+      const evidenceData = {
         exhibit_id: exhibitId,
         file_name: fileName,
         file_url: fileUrl,
@@ -110,7 +120,10 @@ export const useEvidenceUpload = () => {
         description: formData.description || null,
         created_at: "",
         updated_at: "",
-      });
+      };
+      
+      console.log('Evidence data being passed to onAdd:', evidenceData);
+      onAdd(evidenceData);
     } catch (error) {
       console.error('Error in form submission:', error);
       toast({
