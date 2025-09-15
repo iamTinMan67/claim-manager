@@ -3,6 +3,7 @@ import { Label } from "../ui/label";
 import { Input } from "../ui/input";
 import { Progress } from "../ui/progress";
 import { toast } from "@/hooks/use-toast";
+import { forwardRef } from "react";
 
 interface Props {
   selectedFile: File | null;
@@ -11,7 +12,7 @@ interface Props {
   onFileChange: (file: File | null) => void;
 }
 
-export const FileUploadSection = ({ selectedFile, uploading, uploadProgress, onFileChange }: Props) => {
+export const FileUploadSection = forwardRef<HTMLInputElement, Props>(({ selectedFile, uploading, uploadProgress, onFileChange }, ref) => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -34,6 +35,7 @@ export const FileUploadSection = ({ selectedFile, uploading, uploadProgress, onF
     <div className="space-y-0.5">
       <Label htmlFor="file" className="text-xs">File Upload</Label>
       <Input
+        ref={ref}
         id="file"
         type="file"
         accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.mp4,.mov,.avi,.mkv,.mp3,.wav,.flac,.aac,.ogg"
@@ -55,4 +57,4 @@ export const FileUploadSection = ({ selectedFile, uploading, uploadProgress, onF
       )}
     </div>
   );
-};
+});

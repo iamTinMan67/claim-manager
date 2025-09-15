@@ -24,6 +24,7 @@ export const AddEvidenceModal = ({ onClose, onAdd }: Props) => {
   const [description, setDescription] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const hasSetInitialExhibit = useRef(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { uploading, uploadProgress, submitEvidence } = useEvidenceUpload();
   const { exhibits, getNextExhibitNumber, addExhibit } = useExhibits();
@@ -59,6 +60,25 @@ export const AddEvidenceModal = ({ onClose, onAdd }: Props) => {
     }
   }, [selectedFile, method]);
 
+  const resetForm = () => {
+    setExhibitRef("");
+    setNumberOfPages("");
+    setDateSubmitted("");
+    setMethod("Email");
+    setUrlLink("");
+    setBookOfDeedsRef("");
+    setDescription("");
+    setSelectedFile(null);
+    hasSetInitialExhibit.current = false;
+    
+    // Focus the file input after a short delay to ensure form is reset
+    setTimeout(() => {
+      if (fileInputRef.current) {
+        fileInputRef.current.focus();
+      }
+    }, 100);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -75,11 +95,14 @@ export const AddEvidenceModal = ({ onClose, onAdd }: Props) => {
       selectedFile,
       onAdd
     );
+    
+    // Reset form for new record instead of closing
+    resetForm();
   };
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[270px]">
+      <DialogContent className="max-w-[300px] w-full">
         <DialogHeader>
           <DialogTitle>Add New Evidence</DialogTitle>
         </DialogHeader>
@@ -99,6 +122,7 @@ export const AddEvidenceModal = ({ onClose, onAdd }: Props) => {
           />
 
           <FileUploadSection
+            ref={fileInputRef}
             selectedFile={selectedFile}
             uploading={uploading}
             uploadProgress={uploadProgress}
@@ -113,12 +137,12 @@ export const AddEvidenceModal = ({ onClose, onAdd }: Props) => {
             uploading={uploading}
           />
 
-          <div className="flex justify-end space-x-2">
+          <div className="flex justify-between space-x-2">
             <Button variant="outline" onClick={onClose} disabled={uploading}>
-              Cancel
+              Close
             </Button>
             <Button type="submit" disabled={uploading}>
-              {uploading ? "Uploading..." : "Save Evidence"}
+              {uploading ? "Uploading..." : "Save & Add Another"}
             </Button>
           </div>
         </form>
