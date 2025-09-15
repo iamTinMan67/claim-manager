@@ -105,23 +105,78 @@ export const EditableExhibitSelector = ({ value, onChange, disabled }: Props) =>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {exhibits
-            .sort((a, b) => b.exhibit_number - a.exhibit_number)
-            .map((exhibit) => (
-              <SelectItem 
-                key={exhibit.id} 
-                value={`Exhibit-${exhibit.exhibit_number.toString().padStart(3, '0')}`}
-              >
-                <div className="flex items-center justify-between w-full">
-                  <span>Exhibit-{exhibit.exhibit_number.toString().padStart(3, '0')}</span>
-                  <span className="text-xs text-muted-foreground ml-2 truncate max-w-24" title={exhibit.name}>
-                    {exhibit.name}
-                  </span>
-                </div>
-              </SelectItem>
-            ))}
+          {exhibits.length === 0 ? (
+            <SelectItem value="" disabled>
+              No exhibits available
+            </SelectItem>
+          ) : (
+            exhibits
+              .sort((a, b) => a.exhibit_number - b.exhibit_number) // Ascending order
+              .map((exhibit) => (
+                <SelectItem 
+                  key={exhibit.id} 
+                  value={`Exhibit-${exhibit.exhibit_number.toString().padStart(3, '0')}`}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <span>Exhibit-{exhibit.exhibit_number.toString().padStart(3, '0')}</span>
+                    <span className="text-xs text-muted-foreground ml-2 truncate max-w-24" title={exhibit.name}>
+                      {exhibit.name}
+                    </span>
+                  </div>
+                </SelectItem>
+              ))
+          )}
         </SelectContent>
       </Select>
+
+      {/* Create new exhibit button */}
+      <Dialog open={isCreating} onOpenChange={setIsCreating}>
+        <DialogTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="p-1 h-8 w-8"
+            title="Create new exhibit"
+            disabled={disabled}
+          >
+            <Plus className="w-3 h-3" />
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New Exhibit</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Exhibit Name *</label>
+              <Input
+                value={newExhibitName}
+                onChange={(e) => setNewExhibitName(e.target.value)}
+                placeholder="Enter exhibit name"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Description</label>
+              <Textarea
+                value={newExhibitDescription}
+                onChange={(e) => setNewExhibitDescription(e.target.value)}
+                placeholder="Enter exhibit description (optional)"
+                className="mt-1"
+                rows={3}
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsCreating(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateNew}>
+                Create Exhibit
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit current exhibit button */}
       {selectedExhibit && (
