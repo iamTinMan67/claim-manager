@@ -686,14 +686,24 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                   style={{ backgroundColor: share.claims.color || '#3B82F6' }}
                 />
                 <div className="flex items-center space-x-2">
-                  <Crown className="w-4 h-4 text-purple-600" title="You own this claim" />
+                  <Crown className="w-[18px] h-[18px] text-purple-600" title="You own this claim" />
                 </div>
               </div>
               
+              {/* Active icon + Case number inline */}
+              <div className="flex items-center space-x-2 mb-2">
+                {share.permission === 'edit' ? (
+                  <Edit className="w-4 h-4" style={{ color: '#fbbf24' }} />
+                ) : (
+                  <Eye className="w-4 h-4" style={{ color: '#fbbf24' }} />
+                )}
+                <span className="text-sm font-medium dark:text-white">{share.claims.case_number}</span>
+              </div>
+              
               <h3 className="text-lg font-semibold mb-2 dark:text-white">
-                {share.claims.case_number}
+                {share.claims.title}
               </h3>
-              <p className="text-gray-600 dark:text-gray-300 mb-4">{share.claims.title}</p>
+              <p className="text-gray-600 dark:text-gray-300 mb-4">Host: {share.profiles.email}</p>
               
               <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                 <div className="flex items-center space-x-2">
@@ -702,9 +712,9 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                   </div>
                 <div className="flex items-center space-x-2">
                     {share.permission === 'edit' ? (
-                      <Edit className="w-4 h-4 text-green-600" />
+                      <Edit className="w-4 h-4" style={{ color: '#fbbf24' }} />
                     ) : (
-                      <Eye className="w-4 h-4 text-blue-600" />
+                      <Eye className="w-4 h-4" style={{ color: '#fbbf24' }} />
                     )}
                     <span className="capitalize">{share.permission} Access</span>
                   </div>
@@ -758,14 +768,24 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                   style={{ backgroundColor: guestClaim.claims.color || '#3B82F6' }}
                 />
                 <div className="flex items-center space-x-2">
-                  <UserPlus className="w-4 h-4 text-green-600" title="You're a guest on this claim" />
+                  <UserPlus className="w-[18px] h-[18px] text-green-600" title="You're a guest on this claim" />
                         </div>
               </div>
-              
+
+              {/* Active icon + Case number inline */}
+              <div className="flex items-center space-x-2 mb-2">
+                {guestClaim.permission === 'edit' ? (
+                  <Edit className="w-4 h-4" style={{ color: '#fbbf24' }} />
+                ) : (
+                  <Eye className="w-4 h-4" style={{ color: '#fbbf24' }} />
+                )}
+                <span className="text-sm font-medium dark:text-white">{guestClaim.claims.case_number}</span>
+              </div>
+
               <h3 className="text-lg font-semibold mb-2 dark:text-white">
-                {guestClaim.claims.case_number}
+                {guestClaim.claims.title}
               </h3>
-              <p className="text-gray-600 dark:text-gray-300 mb-4">{guestClaim.claims.title}</p>
+              <p className="text-gray-600 dark:text-gray-300 mb-4">Hosted by: {guestClaim.owner_profile.email}</p>
               
               <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                 <div className="flex items-center space-x-2">
@@ -774,9 +794,9 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                 </div>
                 <div className="flex items-center space-x-2">
                   {guestClaim.permission === 'edit' ? (
-                    <Edit className="w-4 h-4 text-green-600" />
+                    <Edit className="w-4 h-4" style={{ color: '#fbbf24' }} />
                   ) : (
-                    <Eye className="w-4 h-4 text-blue-600" />
+                    <Eye className="w-4 h-4" style={{ color: '#fbbf24' }} />
                   )}
                   <span className="capitalize">{guestClaim.permission} Access</span>
                 </div>

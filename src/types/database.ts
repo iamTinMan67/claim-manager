@@ -50,3 +50,31 @@ export interface Evidence {
   created_at: string
   updated_at: string
 }
+
+export interface PendingEvidence {
+  id: string
+  claim_id: string
+  submitter_id: string
+  status: 'pending' | 'approved' | 'rejected'
+  submitted_at: string
+  reviewed_at?: string
+  reviewer_notes?: string
+  description: string
+  file_name?: string
+  file_url?: string
+  exhibit_id?: string
+  method?: string
+  url_link?: string
+  book_of_deeds_ref?: string
+  number_of_pages?: number
+  date_submitted?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface EvidenceClaim {
+  id: string
+  evidence_id: string
+  claim_id: string
+  created_at: string
+}

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { Evidence } from '@/types/database'
 import { Plus, Edit, Trash2, Upload, Download, Eye, X, Save, Settings, FileText, Calendar, Hash, GripVertical } from 'lucide-react'
+import PendingEvidenceReview from './PendingEvidenceReview'
 
 interface EvidenceManagerProps {
   selectedClaim: string | null
@@ -189,6 +190,61 @@ const EvidenceManager = ({
     }
   })
 
+  // Mutation for guest users to submit pending evidence
+  const addPendingEvidenceMutation = useMutation({
+    mutationFn: async (evidenceData: typeof newEvidence) => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
+      if (!selectedClaim) throw new Error('No claim selected')
+
+      // Clean the data before submission
+      const cleanData = {
+        claim_id: selectedClaim,
+        submitter_id: user.id,
+        description: evidenceData.name?.trim() || evidenceData.title?.trim() || evidenceData.file_name?.trim() || 'Evidence Item',
+        file_name: evidenceData.file_name || null,
+        file_url: evidenceData.file_url || null,
+        exhibit_id: evidenceData.exhibit_id || null,
+        method: evidenceData.method || 'upload',
+        url_link: evidenceData.url_link || null,
+        book_of_deeds_ref: evidenceData.book_of_deeds_ref || null,
+        number_of_pages: evidenceData.number_of_pages ? parseInt(evidenceData.number_of_pages) : null,
+        date_submitted: evidenceData.date_submitted || null
+      }
+
+      const { data, error } = await supabase
+        .from('pending_evidence')
+        .insert([cleanData])
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pending-evidence'] })
+      setShowAddForm(false)
+      setNewEvidence({
+        title: '',
+        file_name: '',
+        file_url: '',
+        exhibit_id: '',
+        number_of_pages: '',
+        date_submitted: '',
+        method: 'upload',
+        url_link: '',
+        book_of_deeds_ref: '',
+        case_number: selectedClaim || ''
+      })
+      alert('Evidence submitted for review. The claim owner will be notified.')
+    },
+    onError: (error: any) => {
+      console.error('Pending evidence submission error:', error)
+      alert(`Failed to submit evidence: ${error.message || 'Unknown error'}`)
+    }
+  })
+
   const updateEvidenceMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string, data: Partial<Evidence> }) => {
       // Clean the data before submission
@@ -340,7 +396,12 @@ const EvidenceManager = ({
       title: newEvidence.name?.trim() || newEvidence.title?.trim() || newEvidence.file_name?.trim() || 'Evidence Item'
     }
     
-    addEvidenceMutation.mutate(evidenceData)
+    // Use different mutations based on user type
+    if (isGuest) {
+      addPendingEvidenceMutation.mutate(evidenceData)
+    } else {
+      addEvidenceMutation.mutate(evidenceData)
+    }
   }
 
   const handleUpdate = (e: React.FormEvent) => {
@@ -382,6 +443,13 @@ const EvidenceManager = ({
 
   return (
     <div className="space-y-6">
+      {/* Pending Evidence Review - Only show for claim owners */}
+      {!isGuest && selectedClaim && (
+        <PendingEvidenceReview 
+          selectedClaim={selectedClaim} 
+          isOwner={true} 
+        />
+      )}
       
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-3">
@@ -423,7 +491,14 @@ const EvidenceManager = ({
 
       {showAddForm && (!isGuest || (isGuest && !isGuestFrozen)) && (
         <div className="card-enhanced p-6 border-l-4" style={{ borderLeftColor: claimColor }}>
-          <h3 className="text-lg font-semibold mb-4 text-gold">Add New Evidence</h3>
+          <h3 className="text-lg font-semibold mb-4 text-gold">
+            {isGuest ? 'Submit Evidence for Review' : 'Add New Evidence'}
+          </h3>
+          {isGuest && (
+            <div className="bg-yellow-100 text-yellow-800 px-3 py-2 rounded-lg text-sm mb-4">
+              Your evidence will be submitted for review by the claim owner before being added to the case.
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h4 className="font-medium text-blue-900 mb-2">Upload File</h4>
@@ -548,11 +623,13 @@ const EvidenceManager = ({
             <div className="flex space-x-3">
               <button
                 type="submit"
-                disabled={addEvidenceMutation.isPending}
+                disabled={addEvidenceMutation.isPending || addPendingEvidenceMutation.isPending}
                 className="btn-gold px-4 py-2 rounded-lg disabled:opacity-50"
                 style={{ backgroundColor: claimColor }}
               >
-                {addEvidenceMutation.isPending ? 'Adding...' : 'Add Evidence'}
+                {(addEvidenceMutation.isPending || addPendingEvidenceMutation.isPending) 
+                  ? (isGuest ? 'Submitting for Review...' : 'Adding...') 
+                  : (isGuest ? 'Submit for Review' : 'Add Evidence')}
               </button>
               <button
                 type="button"
