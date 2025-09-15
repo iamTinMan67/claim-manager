@@ -179,7 +179,7 @@ export default function AuthComponent({
       if (resetSuccess) {
         return (
           <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-            <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
+            <div className="max-w-md w-full card-enhanced rounded-lg shadow-md p-6">
               <div className="text-center">
                 <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
                   <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -204,7 +204,7 @@ export default function AuthComponent({
 
       return (
         <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-          <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
+          <div className="max-w-md w-full card-enhanced rounded-lg shadow-md p-6">
             <h2 className="text-2xl font-bold text-center mb-6">Reset Your Password</h2>
             
             {authError && (
@@ -269,7 +269,7 @@ export default function AuthComponent({
     // Regular login form
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
+        <div className="max-w-md w-full card-enhanced rounded-lg shadow-md p-6">
           <h1 className="text-2xl font-bold text-center mb-6">Sign In</h1>
           {authError && (
             <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">

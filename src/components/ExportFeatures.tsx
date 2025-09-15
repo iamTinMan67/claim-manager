@@ -513,7 +513,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
           </div>
 
           {getDataCount() === 0 && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="card-smudge p-4">
               <p className="text-yellow-800 text-sm">
                 No data available for the selected export type. Add some data first to enable exports.
               </p>
@@ -530,7 +530,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         </div>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="card-smudge p-4">
         <h4 className="font-medium text-blue-900 mb-2">Export Information</h4>
         <ul className="text-sm text-blue-800 space-y-1">
           <li>• CSV exports are ideal for importing into spreadsheet applications</li>

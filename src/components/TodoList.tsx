@@ -287,9 +287,9 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                 <div
                   key={todo.id}
                   className={`p-3 rounded border-l-2 ${
-                    isOverdue ? 'bg-red-50 border-red-400' : 
-                    isToday ? 'bg-yellow-50 border-yellow-400' : 
-                    'bg-blue-50 border-blue-400'
+                    isOverdue ? 'card-smudge border-red-400' : 
+                    isToday ? 'card-smudge border-yellow-400' : 
+                    'card-smudge border-blue-400'
                   }`}
                 >
                   <div className="flex justify-between items-start">

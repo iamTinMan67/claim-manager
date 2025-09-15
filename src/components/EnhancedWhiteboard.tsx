@@ -495,7 +495,7 @@ const EnhancedWhiteboard: React.FC<WhiteboardProps> = ({
         </div>
 
         {/* Canvas Container */}
-        <div className="border-2 border-yellow-400/30 rounded-lg overflow-hidden bg-white">
+        <div className="border-2 border-yellow-400/30 rounded-lg overflow-hidden card-enhanced">
           <div 
             style={{ transform: `scale(${zoom})`, transformOrigin: 'top left' }}
             className="inline-block"

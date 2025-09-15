@@ -122,7 +122,7 @@ export const ClaimEvidenceManager = ({
       {/* Delete Confirmation Dialog */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg max-w-lg w-full mx-4">
+          <div className="card-enhanced p-6 rounded-lg max-w-lg w-full mx-4">
             <h3 className="text-lg font-semibold mb-4">Delete Claim</h3>
             <p className="text-gray-600 mb-4">
               Are you sure you want to delete this claim? This action cannot be undone. 
@@ -144,7 +144,7 @@ export const ClaimEvidenceManager = ({
                   handleExportAndDelete();
                   setShowDeleteConfirm(false);
                 }}
-                className="border-blue-300 text-blue-600 hover:bg-blue-50"
+                className="border-blue-300 text-blue-600 hover:bg-blue-500/20"
               >
                 <Download className="w-4 h-4 mr-2" />
                 Export & Delete

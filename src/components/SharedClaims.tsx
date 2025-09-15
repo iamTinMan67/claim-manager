@@ -465,7 +465,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
       
       {/* Show message when collaboration is enabled but no claim is selected */}
       {showCollaboration && !selectedClaim && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+        <div className="card-smudge p-6">
           <div className="flex items-center space-x-2 mb-2">
             <Users className="w-5 h-5 text-yellow-600" />
             <h3 className="text-lg font-semibold text-yellow-900">Collaboration Hub</h3>
@@ -481,15 +481,15 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-3">
         {/* Removed Add Claim button on shared page */}
-              </div>
-          </div>
+        </div>
+      </div>
 
 
       {showShareForm && (
         <div className="card-enhanced p-6 border-l-4" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4 text-gold">Share a Claim</h3>
           {(selectedClaim || claimToShare) && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+            <div className="card-smudge p-4 mb-4">
             <div className="flex items-center space-x-2">
               {calculateDonationAmount((guestCounts?.[selectedClaim || claimToShare] || 0) + 1) === 0 ? (
                 <>
@@ -515,7 +515,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                 Cost for next guest: <strong>£{calculateDonationAmount((guestCounts?.[selectedClaim || claimToShare] || 0) + 1)}</strong>
               </p>
             )}
-            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
+            <div className="mt-2 p-2 card-smudge rounded">
               <p className="text-blue-800 text-sm font-medium">
                 ⚠️ Account Required: The person you're inviting must have a registered account on this app.
               </p>
@@ -550,7 +550,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Email Address *</label>
-              <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
+              <div className="mb-2 p-2 card-smudge rounded text-sm">
                 <p className="text-blue-800 font-medium">Account Required</p>
                 <p className="text-blue-700 text-xs">
                   The person must already have an account on this app. If they don't have an account, 
@@ -593,7 +593,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
             
             {/* Error Display */}
             {shareError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+              <div className="card-smudge p-3">
                 <div className="flex items-center">
                   <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
                   <p className="text-red-700 text-sm">{shareError}</p>
@@ -691,7 +691,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
               </div>
               
               {/* Active icon + Case number + Title inline */}
-              <div className="flex items-center space-x-2 mb-2">
+                <div className="flex items-center space-x-2 mb-2">
                 {share.permission === 'edit' ? (
                   <Edit className="w-4 h-4" style={{ color: '#fbbf24' }} />
                 ) : (
@@ -699,7 +699,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                 )}
                 <span className="text-sm font-medium dark:text-white">{share.claims.case_number}</span>
                 <span className="text-lg font-semibold dark:text-white">- {share.claims.title}</span>
-              </div>
+                </div>
               <p className="text-gray-600 dark:text-gray-300 mb-4">Host: {share.profiles.email}</p>
               
               <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
@@ -727,7 +727,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                   </div>
               
                 {share.donation_required && (
-                <div className="mt-4 p-2 bg-yellow-50 dark:bg-yellow-900 rounded text-sm">
+                <div className="mt-4 p-2 card-smudge rounded text-sm">
                   <div className="flex items-center space-x-2">
                     <DollarSign className="w-4 h-4 text-green-600" />
                     <span className="text-yellow-800 dark:text-yellow-200">
@@ -778,7 +778,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                 )}
                 <span className="text-sm font-medium dark:text-white">{guestClaim.claims.case_number}</span>
                 <span className="text-lg font-semibold dark:text-white">- {guestClaim.claims.title}</span>
-              </div>
+                        </div>
               <p className="text-gray-600 dark:text-gray-300 mb-4">Hosted by: {guestClaim.owner_profile.email}</p>
               
               <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
@@ -801,10 +801,10 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                       : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
                   }`}>
                     {guestClaim.can_view_evidence ? 'Can View Evidence' : 'No Evidence Access'}
-                            </span>
-                        </div>
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
           ))}
           </div>
                         </div>
@@ -813,7 +813,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
       {/* Show All Claims Button - Always visible */}
       {selectedClaim && (
         <div className="mb-6">
-          <button
+                <button
             onClick={() => {
               if (typeof window !== 'undefined') {
                 const url = new URL(window.location.href)
@@ -844,8 +844,8 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
               >
                 <X className="w-4 h-4" />
                 <span>Back</span>
-              </button>
-              <button
+                </button>
+                <button
                 onClick={() => {
                   if (typeof window !== 'undefined') {
                     const url = new URL(window.location.href)
@@ -860,7 +860,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
               >
                 <Home className="w-4 h-4" />
                 <span>Home</span>
-              </button>
+                </button>
                 </div>
               </div>
           
@@ -885,7 +885,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                 <button
                 onClick={() => setShowCollaboration(!showCollaboration)}
                 className="btn-gold px-4 py-2 rounded-lg flex items-center space-x-2"
-              >
+                >
                 <Users className="w-4 h-4" />
                 <span>{showCollaboration ? 'Hide' : 'Show'} Collaboration</span>
                 </button>

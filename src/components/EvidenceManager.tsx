@@ -36,9 +36,9 @@ const EvidenceManager = ({
     file_name: '',
     file_url: '',
     exhibit_id: '',
-    number_of_pages: '',
-    date_submitted: '',
-    method: 'upload',
+    number_of_pages: '1',
+    date_submitted: new Date().toISOString().split('T')[0], // Today's date
+    method: 'Email',
     url_link: '',
     book_of_deeds_ref: '',
     case_number: selectedClaim || ''
@@ -117,7 +117,7 @@ const EvidenceManager = ({
       setNewEvidence(prev => ({
         ...prev,
         exhibit_id: getNextExhibitId(),
-        method: 'upload',
+        method: 'Email',
         case_number: selectedClaim || ''
       }))
     }
@@ -176,9 +176,9 @@ const EvidenceManager = ({
         file_name: '',
         file_url: '',
         exhibit_id: '',
-        number_of_pages: '',
-        date_submitted: '',
-        method: 'upload',
+        number_of_pages: '1',
+        date_submitted: new Date().toISOString().split('T')[0], // Today's date
+        method: 'Email',
         url_link: '',
         book_of_deeds_ref: '',
         case_number: selectedClaim || ''
@@ -206,7 +206,7 @@ const EvidenceManager = ({
         file_name: evidenceData.file_name || null,
         file_url: evidenceData.file_url || null,
         exhibit_id: evidenceData.exhibit_id || null,
-        method: evidenceData.method || 'upload',
+        method: evidenceData.method || 'Email',
         url_link: evidenceData.url_link || null,
         book_of_deeds_ref: evidenceData.book_of_deeds_ref || null,
         number_of_pages: evidenceData.number_of_pages ? parseInt(evidenceData.number_of_pages) : null,
@@ -230,9 +230,9 @@ const EvidenceManager = ({
         file_name: '',
         file_url: '',
         exhibit_id: '',
-        number_of_pages: '',
-        date_submitted: '',
-        method: 'upload',
+        number_of_pages: '1',
+        date_submitted: new Date().toISOString().split('T')[0], // Today's date
+        method: 'Email',
         url_link: '',
         book_of_deeds_ref: '',
         case_number: selectedClaim || ''
@@ -310,7 +310,7 @@ const EvidenceManager = ({
             ...prev,
             file_name: file.name,
             file_url: fileUrl,
-            method: 'To-Do'
+            method: 'Upload'
           }))
         } else {
           throw uploadError
@@ -325,7 +325,7 @@ const EvidenceManager = ({
           ...prev,
           file_name: file.name,
           file_url: publicUrl,
-          method: 'To-Do'
+          method: 'Upload'
         }))
       }
     } catch (error) {
@@ -435,7 +435,7 @@ const EvidenceManager = ({
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+      <div className="card-smudge p-4">
         <div className="text-red-800">Error loading evidence: {error.message}</div>
       </div>
     )
@@ -595,10 +595,9 @@ const EvidenceManager = ({
                   className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 >
                   <option value="Post">Post</option>
-                  <option value="Todo">To-Do</option>
                   <option value="Email">Email</option>
                   <option value="Hand">Hand</option>
-                  <option value="Call">Call</option>
+                  <option value="Upload">Upload</option>
                 </select>
               </div>
               <div>
