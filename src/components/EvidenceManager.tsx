@@ -759,8 +759,9 @@ const EvidenceManager = ({
         </div>
       )}
 
-      {/* Evidence Table */}
-      <div className="card-enhanced overflow-hidden mt-12">
+      {/* Evidence Table - Hide when form is open */}
+      {!showAddForm && !editingEvidence && (
+        <div className="card-enhanced overflow-hidden mt-12">
         <div className="px-6 py-4 border-b border-yellow-400/20">
           <h3 className="text-lg font-semibold text-gold">Evidence List</h3>
         </div>
@@ -1003,6 +1004,7 @@ const EvidenceManager = ({
           </table>
         </div>
       </div>
+      )}
     </div>
   )
 }
