@@ -41,7 +41,7 @@ export const EvidenceFormFields = ({
           placeholder="Enter evidence description"
           disabled={uploading}
           required
-          className="h-6 text-xs"
+          className="h-6 text-xs w-full"
         />
       </div>
 
@@ -65,7 +65,7 @@ export const EvidenceFormFields = ({
             onChange={(e) => setNumberOfPages(e.target.value)}
             disabled={uploading}
             min="1"
-            className="h-6 text-xs"
+            className="h-6 text-xs w-full"
           />
         </div>
         
@@ -78,7 +78,7 @@ export const EvidenceFormFields = ({
             onChange={(e) => setBookOfDeedsRef(e.target.value)}
             disabled={uploading}
             placeholder="Enter reference number"
-            className="h-6 text-xs"
+            className="h-6 text-xs w-full"
           />
         </div>
       </div>
@@ -92,7 +92,7 @@ export const EvidenceFormFields = ({
           onChange={(e) => setUrlLink(e.target.value)}
           placeholder="https://example.com"
           disabled={uploading}
-          className="h-6 text-xs"
+          className="h-6 text-xs w-full"
         />
       </div>
     </>
