@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Evidence } from "@/types/evidence";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
@@ -23,17 +23,21 @@ export const AddEvidenceModal = ({ onClose, onAdd }: Props) => {
   const [bookOfDeedsRef, setBookOfDeedsRef] = useState("");
   const [description, setDescription] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const hasSetInitialExhibit = useRef(false);
 
   const { uploading, uploadProgress, submitEvidence } = useEvidenceUpload();
   const { exhibits, getNextExhibitNumber, addExhibit } = useExhibits();
 
-  // Auto-generate exhibit reference when modal opens
+  // Auto-generate exhibit reference when modal opens (only once)
   useEffect(() => {
-    if (exhibits.length === 0) {
-      setExhibitRef("Exhibit-001");
-    } else {
-      const nextNumber = getNextExhibitNumber();
-      setExhibitRef(`Exhibit-${nextNumber.toString().padStart(3, '0')}`);
+    if (!hasSetInitialExhibit.current && exhibits.length >= 0) {
+      if (exhibits.length === 0) {
+        setExhibitRef("Exhibit-001");
+      } else {
+        const nextNumber = getNextExhibitNumber();
+        setExhibitRef(`Exhibit-${nextNumber.toString().padStart(3, '0')}`);
+      }
+      hasSetInitialExhibit.current = true;
     }
   }, [exhibits, getNextExhibitNumber]);
 

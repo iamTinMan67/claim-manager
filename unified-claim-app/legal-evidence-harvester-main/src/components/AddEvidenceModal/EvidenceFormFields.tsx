@@ -1,7 +1,7 @@
 
 import { Label } from "../ui/label";
 import { Input } from "../ui/input";
-import { ExhibitSelector } from "../ExhibitSelector";
+import { EditableExhibitSelector } from "../EditableExhibitSelector";
 
 interface Props {
   exhibitRef: string;
@@ -46,7 +46,7 @@ export const EvidenceFormFields = ({
 
       <div className="space-y-2">
         <Label htmlFor="exhibit-ref">Exhibit Reference</Label>
-        <ExhibitSelector
+        <EditableExhibitSelector
           value={exhibitRef}
           onChange={setExhibitRef}
           disabled={uploading}
