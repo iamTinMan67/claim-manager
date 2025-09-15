@@ -247,6 +247,7 @@ const EvidenceManager = ({
 
   const updateEvidenceMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string, data: Partial<Evidence> }) => {
+
       // Clean the data before submission
       const cleanData = {
         ...data,
@@ -267,6 +268,10 @@ const EvidenceManager = ({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evidence'] })
       setEditingEvidence(null)
+    },
+    onError: (error: any) => {
+      console.error('Evidence update error:', error)
+      alert(`Failed to update evidence: ${error.message || 'Unknown error'}`)
     }
   })
 

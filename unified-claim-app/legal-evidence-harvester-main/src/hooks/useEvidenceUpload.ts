@@ -4,9 +4,11 @@ import { Evidence } from "@/types/evidence";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
+import { useExhibits } from "./useExhibits";
 
 export const useEvidenceUpload = () => {
   const { user } = useAuth();
+  const { addExhibit, getNextExhibitNumber } = useExhibits();
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
@@ -51,6 +53,7 @@ export const useEvidenceUpload = () => {
       method: string;
       urlLink: string;
       bookOfDeedsRef: string;
+      description: string;
     },
     selectedFile: File | null,
     onAdd: (evidence: Omit<Evidence, "id" | "claimIds" | "display_order">) => void
@@ -76,8 +79,24 @@ export const useEvidenceUpload = () => {
         fileName = uploadResult.fileName;
       }
 
-      // Use the auto-generated exhibit ref as the exhibit_id
-      const exhibitId = formData.exhibitRef;
+      // Create or find exhibit
+      let exhibitId = formData.exhibitRef;
+      
+      // If exhibitRef looks like "Exhibit-001", create a new exhibit
+      if (formData.exhibitRef.match(/^Exhibit-\d+$/)) {
+        const exhibitNumber = parseInt(formData.exhibitRef.replace('Exhibit-', ''));
+        const newExhibit = await addExhibit({
+          name: formData.description || `Exhibit ${exhibitNumber}`,
+          exhibit_number: exhibitNumber,
+          description: formData.description || null
+        });
+        
+        if (newExhibit) {
+          exhibitId = newExhibit.id;
+        } else {
+          throw new Error('Failed to create exhibit');
+        }
+      }
       
       onAdd({
         exhibit_id: exhibitId,
@@ -88,6 +107,7 @@ export const useEvidenceUpload = () => {
         method: formData.method || null,
         url_link: formData.urlLink || null,
         book_of_deeds_ref: formData.bookOfDeedsRef || null,
+        description: formData.description || null,
         created_at: "",
         updated_at: "",
       });

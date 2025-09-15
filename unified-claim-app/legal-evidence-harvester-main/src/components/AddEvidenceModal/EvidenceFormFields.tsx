@@ -12,6 +12,8 @@ interface Props {
   setUrlLink: (value: string) => void;
   bookOfDeedsRef: string;
   setBookOfDeedsRef: (value: string) => void;
+  description: string;
+  setDescription: (value: string) => void;
   uploading: boolean;
 }
 
@@ -24,10 +26,24 @@ export const EvidenceFormFields = ({
   setUrlLink,
   bookOfDeedsRef,
   setBookOfDeedsRef,
+  description,
+  setDescription,
   uploading
 }: Props) => {
   return (
     <>
+      <div className="space-y-2">
+        <Label htmlFor="description">Description *</Label>
+        <Input
+          id="description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Enter evidence description"
+          disabled={uploading}
+          required
+        />
+      </div>
+
       <div className="space-y-2">
         <Label htmlFor="exhibit-ref">Exhibit Reference</Label>
         <ExhibitSelector

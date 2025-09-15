@@ -18,13 +18,14 @@ export const AddEvidenceModal = ({ onClose, onAdd }: Props) => {
   const [exhibitRef, setExhibitRef] = useState(""); // This will be auto-generated
   const [numberOfPages, setNumberOfPages] = useState("");
   const [dateSubmitted, setDateSubmitted] = useState("");
-  const [method, setMethod] = useState("");
+  const [method, setMethod] = useState("Email");
   const [urlLink, setUrlLink] = useState("");
   const [bookOfDeedsRef, setBookOfDeedsRef] = useState("");
+  const [description, setDescription] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const { uploading, uploadProgress, submitEvidence } = useEvidenceUpload();
-  const { exhibits, getNextExhibitNumber } = useExhibits();
+  const { exhibits, getNextExhibitNumber, addExhibit } = useExhibits();
 
   // Auto-generate exhibit reference when modal opens
   useEffect(() => {
@@ -47,6 +48,7 @@ export const AddEvidenceModal = ({ onClose, onAdd }: Props) => {
         method,
         urlLink,
         bookOfDeedsRef,
+        description,
       },
       selectedFile,
       onAdd
@@ -69,6 +71,8 @@ export const AddEvidenceModal = ({ onClose, onAdd }: Props) => {
             setUrlLink={setUrlLink}
             bookOfDeedsRef={bookOfDeedsRef}
             setBookOfDeedsRef={setBookOfDeedsRef}
+            description={description}
+            setDescription={setDescription}
             uploading={uploading}
           />
 

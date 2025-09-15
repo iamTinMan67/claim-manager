@@ -244,7 +244,7 @@ const SortableRow = ({
           )}
         </div>
       </td>
-      <td className="px-2 py-4 text-sm text-gray-900" style={{ width: '35%', minWidth: '200px' }}>
+      <td className="px-2 py-4 text-sm text-gray-900" style={{ width: '25%', minWidth: '200px' }}>
         {isEditMode ? (
           <Input
             value={localEvidence.file_name || ''}
@@ -275,6 +275,22 @@ const SortableRow = ({
             ) : (
               <span className="text-gray-400">No file</span>
             )}
+          </div>
+        )}
+      </td>
+      <td className="px-2 py-4 text-sm text-gray-900" style={{ width: '20%', minWidth: '150px' }}>
+        {isEditMode ? (
+          <Input
+            value={localEvidence.description || ''}
+            onChange={(e) => onFieldChange(evidence.id, 'description', e.target.value)}
+            className="w-full h-8 text-sm"
+            placeholder="Description..."
+          />
+        ) : (
+          <div className="w-full overflow-hidden">
+            <span className="truncate block text-gray-900" title={evidence.description || ''}>
+              {evidence.description || 'N/A'}
+            </span>
           </div>
         )}
       </td>
@@ -589,8 +605,11 @@ export const EvidenceTable = ({
                 <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: unlinkedMode ? '11%' : '12%' }}>
                   Exhibit
                 </th>
-                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '35%' }}>
+                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '25%' }}>
                   File
+                </th>
+                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '20%' }}>
+                  Description
                 </th>
                 <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '8%' }}>
                   Pages

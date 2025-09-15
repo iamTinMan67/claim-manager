@@ -20,10 +20,6 @@ export const DateMethodFields = ({
   setMethod,
   uploading
 }: Props) => {
-  // Set default method to "To-Do" if not already set
-  if (!method) {
-    setMethod("To-Do");
-  }
   return (
     <div className="space-y-4">
       {method === 'To-Do' && dateSubmitted && (

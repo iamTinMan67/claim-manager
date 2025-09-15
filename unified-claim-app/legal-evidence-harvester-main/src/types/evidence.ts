@@ -10,6 +10,7 @@ export interface Evidence {
   url_link: string | null;
   book_of_deeds_ref: string | null;
   display_order: number | null;
+  description: string | null;
   created_at: string;
   updated_at: string;
   claimIds: string[];
