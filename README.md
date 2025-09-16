@@ -67,3 +67,30 @@ Simply open [Lovable](https://lovable.dev/projects/a474e1d4-01d4-497c-9ab3-7e293
 ## I want to use a custom domain - is that possible?
 
 We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+
+## Calendar and To‑Do behavior (private vs shared)
+
+- Navigation tabs
+  - Private Claims page: shows “Private To‑Do Lists” and “Private Calendar”.
+  - Shared Claims page: shows “Shared To‑Do Lists” and “Shared Calendar”.
+
+- Default assignment
+  - If a claim is selected, new Calendar/To‑Do entries default to that claim’s case number and adopt its color.
+  - When no claim is selected (private calendar), entries are general. Use the Associated Claim dropdown to assign.
+
+- Associated Claim control
+  - Dropdown lists all non‑Closed claims (Pending/Active/Appealing).
+  - Changing the selection updates the association; for Calendar, the color auto‑updates to the claim color.
+
+- Color coding (Calendar)
+  - Private (your events): purple default if no custom color.
+  - Shared (others’ events): green default.
+  - Event or claim color takes precedence when provided.
+
+- Forms styling
+  - Inputs use translucent background with gold/yellow text and placeholders to match the Add Evidence form.
+  - Action buttons: green (Add/Save) and red (Cancel) borders/text on translucent background.
+
+- UX details
+  - Calendar “Color” label shows “No claim selected” until a claim is chosen, then “Claim Selected” (tooltip mirrors state).
+  - Opening “Add New Event” hides the calendar grid to avoid overlapping controls.

@@ -41,9 +41,11 @@ export default function AuthComponent({
   // Navigation items
   const navItems = [
     { id: 'claims', label: 'Claims', icon: FileText },
-    { id: 'todos', label: activeTab === 'shared' ? 'Shared To-Do Lists' : 'To-Do Lists', icon: CheckSquare, requiresClaim: true },
-    { id: 'calendar', label: activeTab === 'shared' ? 'Shared Calendar' : 'Calendar', icon: Calendar, requiresClaim: true },
-    { id: 'export', label: activeTab === 'shared' ? 'Shared Export' : 'Export', icon: Download, requiresClaim: true },
+    { id: 'todos', label: 'To-Do Lists', icon: CheckSquare, requiresClaim: true },
+    { id: 'calendar-private', label: 'Private Calendar', icon: Calendar, requiresClaim: true },
+    // Show shared calendar entry only when on shared context
+    ...(activeTab === 'shared' ? [{ id: 'calendar-shared', label: 'Shared Calendar', icon: Calendar, requiresClaim: true }] : [] as any),
+    { id: 'export', label: 'Export', icon: Download, requiresClaim: true },
     { id: 'shared', label: 'Shared Claims', icon: Users },
   ]
 
@@ -304,8 +306,13 @@ export default function AuthComponent({
             <div className="flex space-x-8">
               {navItems.map((item) => {
                 // Hide nav items that require a claim when on claims page and no claim selected
-                if (activeTab === 'claims' && item.requiresClaim && !selectedClaim) {
-                  return null
+                if (item.requiresClaim && !selectedClaim) {
+                  // Always show To-Do Lists and Private Calendar on private claims view for clarity
+                  const isPrivateClaimsView = activeTab === 'claims'
+                  const isAlwaysVisibleHere = isPrivateClaimsView && (item.id === 'todos' || item.id === 'calendar-private')
+                  if (!isAlwaysVisibleHere) {
+                    return null
+                  }
                 }
                 
                 // When on shared claims page, allow navigation to todos, calendar, and export

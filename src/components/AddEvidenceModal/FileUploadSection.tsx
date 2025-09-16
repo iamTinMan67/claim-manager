@@ -42,7 +42,7 @@ export const FileUploadSection = forwardRef<HTMLInputElement, Props>(({ selected
         accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.mp4,.mov,.avi,.mkv,.mp3,.wav,.flac,.aac,.ogg"
         onChange={handleFileChange}
         disabled={uploading || disabled}
-        className="h-10 text-sm w-full border border-yellow-400/30 rounded-md bg-white/10 text-white file:bg-white/10 file:text-white file:border-0 file:mr-4 file:py-1 file:px-2 file:rounded file:text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+        className="h-12 text-base w-full border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 file:bg-white/10 file:text-yellow-300 file:border-0 file:mr-4 file:py-2 file:px-3 file:rounded file:text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
       />
       <p className="text-sm text-yellow-300/70">
         Allowed: PDF, Word docs, Excel files, text files, images, videos (MP4, MOV, AVI, MKV), and audio files (MP3, WAV, FLAC, AAC, OGG) - max 50MB

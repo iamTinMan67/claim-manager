@@ -273,20 +273,23 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                 <input
                   type="text"
                   value={newClaim.case_number}
-                  onChange={(e) => setNewClaim({ ...newClaim, case_number: e.target.value })}
+                  onChange={(e) => setNewClaim({ ...newClaim, case_number: e.target.value, title: newClaim.title || e.target.value })}
                   className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Title *</label>
-                <input
-                  type="text"
-                  value={newClaim.title}
-                  onChange={(e) => setNewClaim({ ...newClaim, title: e.target.value })}
+                <label className="block text-sm font-medium mb-1">Status</label>
+                <select
+                  value={newClaim.status}
+                  onChange={(e) => setNewClaim({ ...newClaim, status: e.target.value })}
                   className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
-                  required
-                />
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="Active">Active</option>
+                  <option value="Appealing">Appealing</option>
+                  <option value="Closed">Closed</option>
+                </select>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">
@@ -296,7 +299,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                   type="text"
                   value={newClaim.court}
                   onChange={(e) => setNewClaim({ ...newClaim, court: e.target.value })}
-                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  className="w-2/3 border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
               <div>
@@ -305,7 +308,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                   type="text"
                   value={newClaim.plaintiff_name}
                   onChange={(e) => setNewClaim({ ...newClaim, plaintiff_name: e.target.value })}
-                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  className="w-2/3 border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
               <div>
@@ -314,7 +317,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                   type="text"
                   value={newClaim.defendant_name}
                   onChange={(e) => setNewClaim({ ...newClaim, defendant_name: e.target.value })}
-                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  className="w-2/3 border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
             </div>

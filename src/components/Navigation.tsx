@@ -1,5 +1,5 @@
 import React from 'react'
-import { Calendar, FileText, Users, CheckSquare, Home, Upload, Download, Moon, Sun, MessageCircle, Crown } from 'lucide-react'
+import { Calendar, FileText, Users, CheckSquare, Download, Moon, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
 
 interface NavigationProps {
@@ -16,10 +16,15 @@ const Navigation = ({ activeTab, onTabChange, selectedClaim, isGuest = false, sh
 
   const navItems = [
     { id: 'claims', label: 'Claims', icon: FileText },
-    { id: 'todos', label: activeTab === 'shared' ? 'Shared To-Do Lists' : 'To-Do Lists', icon: CheckSquare, requiresClaim: true },
-    { id: 'calendar', label: activeTab === 'shared' ? 'Shared Calendar' : 'Calendar', icon: Calendar, requiresClaim: true },
-    { id: 'export', label: activeTab === 'shared' ? 'Shared Export' : 'Export', icon: Download, requiresClaim: true },
+    { id: 'todos-private', label: 'Private To-Do Lists', icon: CheckSquare, requiresClaim: true },
+    { id: 'calendar-private', label: 'Private Calendar', icon: Calendar },
     { id: 'shared', label: 'Shared Claims', icon: Users },
+    // Shared-specific entries appear only when activeTab === 'shared'
+    ...(activeTab === 'shared' ? [
+      { id: 'todos-shared', label: 'Shared To-Do Lists', icon: CheckSquare, requiresClaim: true },
+      { id: 'calendar-shared', label: 'Shared Calendar', icon: Calendar, requiresClaim: true },
+      { id: 'export', label: 'Export', icon: Download, requiresClaim: true },
+    ] : [{ id: 'export', label: 'Export', icon: Download, requiresClaim: true }])
   ]
 
   return (
@@ -33,9 +38,8 @@ const Navigation = ({ activeTab, onTabChange, selectedClaim, isGuest = false, sh
               return null
             }
             
-            // When on shared claims page, allow navigation to todos, calendar, and export
-            // but only if a claim is selected
-            if (activeTab === 'shared' && item.requiresClaim && !selectedClaim) {
+            // Allow navigation to claim-scoped tabs only if a claim is selected
+            if (item.requiresClaim && !selectedClaim) {
               return null
             }
             

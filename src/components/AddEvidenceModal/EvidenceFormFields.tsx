@@ -26,19 +26,6 @@ export const EvidenceFormFields = ({
   return (
     <>
       <div className="space-y-3">
-        <Label htmlFor="description" className="text-base font-medium">Description *</Label>
-        <Input
-          id="description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Enter evidence description"
-          disabled={uploading || disabled}
-          required
-          className="h-12 text-base w-full border border-yellow-400/30 rounded-md bg-white/10 text-white placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
-        />
-      </div>
-
-      <div className="space-y-3">
         <Label htmlFor="exhibit-ref" className="text-base font-medium">Exhibit Reference</Label>
         <Input
           id="exhibit-ref"
@@ -46,7 +33,7 @@ export const EvidenceFormFields = ({
           onChange={(e) => setExhibitRef(e.target.value)}
           disabled={uploading || disabled}
           placeholder="Enter exhibit reference"
-          className="h-12 text-base w-full border border-yellow-400/30 rounded-md bg-white/10 text-white placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+          className="h-12 text-base w-full border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
         />
       </div>
 
@@ -56,9 +43,8 @@ export const EvidenceFormFields = ({
           id="book-of-deeds-ref"
           value={bookOfDeedsRef}
           onChange={(e) => setBookOfDeedsRef(e.target.value)}
-          disabled={uploading || disabled}
-          placeholder="Enter reference number"
-          className="h-12 text-base w-full border border-yellow-400/30 rounded-md bg-white/10 text-white placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+          disabled={false}
+          className={`h-12 text-base w-full px-4 py-3 border border-yellow-400/30 rounded-md bg-white/10 ${bookOfDeedsRef ? 'text-yellow-300' : 'text-yellow-300'} placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 cursor-text opacity-100 disabled:opacity-100 caret-yellow-300`}
         />
       </div>
     </>

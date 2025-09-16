@@ -70,39 +70,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
     }
   })
 
-  // Check for due alarms
-  useEffect(() => {
-    const checkAlarms = () => {
-      if (!currentUser) return;
-      
-      const now = new Date();
-      const todosToCheck = todayTodos || [];
-      const dueAlarms = todosToCheck.filter(todo => 
-        !todo.completed && 
-        todo.alarm_enabled && 
-        todo.alarm_time && 
-        new Date(todo.alarm_time) <= now &&
-        !activeAlarm // Don't show multiple alarms at once
-      );
-
-      if (dueAlarms.length > 0 && !activeAlarm) {
-        setActiveAlarm(dueAlarms[0]);
-        
-        // Browser notification
-        if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification(`Task Alarm: ${dueAlarms[0].title}`, {
-            body: dueAlarms[0].description || 'You have a task alarm.',
-            icon: '/favicon.ico'
-          });
-        }
-      }
-    };
-
-    const interval = setInterval(checkAlarms, 30000); // Check every 30 seconds
-    checkAlarms(); // Check immediately
-    
-    return () => clearInterval(interval);
-  }, [todayTodos, currentUser, activeAlarm]);
+  // (moved) Check for due alarms effect is placed after todayTodos query to avoid TDZ errors
 
   // Request notification permission on component mount
   useEffect(() => {
@@ -116,9 +84,8 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
     queryFn: async () => {
       const { data, error } = await supabase
         .from('claims')
-        .select('case_number, title, color')
+        .select('case_number, title, color, status')
         .order('title')
-      
       if (error) throw error
       return data
     }
@@ -146,14 +113,9 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         query = query.eq('claim_id', selectedClaim)
       }
       
-      // Filter based on view type
-      if (showGuestContent) {
-        // Show only events created by guests
-        query = query.neq('user_id', user.id)
-      } else {
-        // Show only events created by the current user
-        query = query.eq('user_id', user.id)
-      }
+      // For private vs shared tabs, the parent sets isGuest/showGuestContent.
+      // Private calendar: show only current user's events. Shared calendar: show others'.
+      query = showGuestContent ? query.neq('user_id', user.id) : query.eq('user_id', user.id)
       
       const { data, error } = await query
         .order('start_time', { ascending: true })
@@ -197,6 +159,34 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       return data as TodoWithUser[]
     }
   })
+
+  // Check for due alarms (must be after todayTodos declaration)
+  useEffect(() => {
+    const checkAlarms = () => {
+      if (!currentUser) return;
+      const now = new Date();
+      const todosToCheck = todayTodos || [];
+      const dueAlarms = todosToCheck.filter(todo =>
+        !todo.completed &&
+        todo.alarm_enabled &&
+        todo.alarm_time &&
+        new Date(todo.alarm_time) <= now &&
+        !activeAlarm
+      );
+      if (dueAlarms.length > 0 && !activeAlarm) {
+        setActiveAlarm(dueAlarms[0]);
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification(`Task Alarm: ${dueAlarms[0].title}`, {
+            body: dueAlarms[0].description || 'You have a task alarm.',
+            icon: '/favicon.ico'
+          });
+        }
+      }
+    };
+    const interval = setInterval(checkAlarms, 30000);
+    checkAlarms();
+    return () => clearInterval(interval);
+  }, [todayTodos, currentUser, activeAlarm]);
 
   const addEventMutation = useMutation({
     mutationFn: async (event: typeof newEvent) => {
@@ -280,9 +270,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
   const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd })
 
   const getEventsForDay = (date: Date) => {
-    return events?.filter(event => 
-      isSameDay(new Date(event.start_time), date)
-    ) || []
+    return events?.filter(event => isSameDay(new Date(event.start_time), date)) || []
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -356,7 +344,18 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
           </button>
           {!isGuest && (
             <button
-              onClick={() => setShowAddForm(true)}
+              onClick={() => {
+                const now = new Date()
+                const nowStr = format(now, "yyyy-MM-dd'T'HH:mm")
+                setNewEvent(prev => ({
+                  ...prev,
+                  start_time: nowStr,
+                  end_time: nowStr,
+                  claim_id: selectedClaim || '',
+                  color: selectedClaim ? claimColor : prev.color
+                }))
+                setShowAddForm(true)
+              }}
               className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
               style={{ backgroundColor: claimColor }}
             >
@@ -383,7 +382,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
             <h3 className="text-lg font-semibold">Add New Event</h3>
             <button
               onClick={() => setShowAddForm(false)}
-              className="text-gray-500 hover:text-gray-700"
+              className="bg-white/10 border border-red-400 text-red-400 p-1 rounded hover:opacity-90"
             >
               <X className="w-5 h-5" />
             </button>
@@ -395,7 +394,8 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                 type="text"
                 value={newEvent.title}
                 onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                className="w-full border rounded-lg px-3 py-2"
+                placeholder="Enter event title"
+                className="w-1/2 border border-yellow-400/30 rounded-md px-3 py-2 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
                 required
               />
             </div>
@@ -404,7 +404,8 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
               <textarea
                 value={newEvent.description}
                 onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                className="w-full border rounded-lg px-3 py-2"
+                placeholder="Enter description"
+                className="w-1/2 border border-yellow-400/30 rounded-md px-3 py-2 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
                 rows={3}
               />
             </div>
@@ -418,14 +419,14 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
               />
               <label htmlFor="all-day" className="text-sm">All day event</label>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="w-1/2 grid grid-cols-2 gap-2">
               <div>
                 <label className="block text-sm font-medium mb-1">Start Time *</label>
                 <input
                   type={newEvent.all_day ? "date" : "datetime-local"}
                   value={newEvent.start_time}
                   onChange={(e) => setNewEvent({ ...newEvent, start_time: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-md px-3 py-2 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
                   required
                 />
               </div>
@@ -435,56 +436,83 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                   type={newEvent.all_day ? "date" : "datetime-local"}
                   value={newEvent.end_time}
                   onChange={(e) => setNewEvent({ ...newEvent, end_time: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-yellow-400/30 rounded-md px-3 py-2 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
                 />
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Color</label>
-              <input
-                type="color"
-                value={newEvent.color || claimColor}
-                onChange={(e) => setNewEvent({ ...newEvent, color: e.target.value })}
-                className="w-16 h-10 border rounded-lg"
-              />
+            <div className="w-1/2 grid grid-cols-2 gap-2 items-end">
+              <div>
+                <label className="block text-sm font-medium mb-1">Associated Claim</label>
+                <select
+                  value={newEvent.claim_id}
+                  onChange={(e) => {
+                    const claimId = e.target.value
+                    const selected = (claims as any[] | undefined)?.find(c => c.case_number === claimId)
+                    setNewEvent({
+                      ...newEvent,
+                      claim_id: claimId,
+                      color: selected?.color || newEvent.color || claimColor
+                    })
+                  }}
+                  className="w-full border border-yellow-400/30 rounded-md px-3 py-2 bg-white/10 text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                >
+                  <option value="">No specific claim</option>
+                  {claims?.filter((c: any) => c.status !== 'Closed').map((claim) => (
+                    <option key={claim.case_number} value={claim.case_number}>
+                      {claim.case_number} - {claim.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex w-full items-end justify-between">
+                <div className="flex flex-col items-center ml-auto" title={newEvent.claim_id ? 'Claim Selected' : 'No claim selected'}>
+                  <span className="block text-sm font-medium mb-1 text-center">{newEvent.claim_id ? 'Claim Selected' : 'No claim selected'}</span>
+                  {newEvent.claim_id ? (
+                    <input
+                      type="color"
+                      value={newEvent.color || claimColor}
+                      onChange={(e) => setNewEvent({ ...newEvent, color: e.target.value })}
+                      className="w-16 h-10 border rounded-lg"
+                      title="Event color"
+                    />
+                  ) : (
+                    <div
+                      className="w-16 h-10 border rounded-lg"
+                      title="Select a claim to set color"
+                      style={{
+                        backgroundImage:
+                          'repeating-linear-gradient(45deg, rgba(239,68,68,0.85) 0 10px, transparent 10px 20px)',
+                        backgroundColor: 'rgba(239,68,68,0.15)',
+                        borderColor: 'rgba(239,68,68,0.7)'
+                      }}
+                    />
+                  )}
+                </div>
+                <div className="flex space-x-3 ml-4">
+                  <button
+                    type="submit"
+                    disabled={addEventMutation.isPending}
+                    className="bg-white/10 border border-green-400 text-green-400 px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50"
+                  >
+                    {addEventMutation.isPending ? 'Adding...' : 'Add Event'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddForm(false)}
+                    className="bg-white/10 border border-red-400 text-red-400 px-4 py-2 rounded-lg hover:opacity-90"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Associated Claim</label>
-              <select
-                value={newEvent.claim_id}
-                onChange={(e) => setNewEvent({ ...newEvent, claim_id: e.target.value })}
-                className="w-full border rounded-lg px-3 py-2"
-              >
-                <option value="">No specific claim</option>
-                {claims?.map((claim) => (
-                  <option key={claim.case_number} value={claim.case_number}>
-                    {claim.case_number} - {claim.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex space-x-3">
-              <button
-                type="submit"
-                disabled={addEventMutation.isPending}
-                className="text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50"
-                style={{ backgroundColor: claimColor }}
-              >
-                {addEventMutation.isPending ? 'Adding...' : 'Add Event'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowAddForm(false)}
-                className="bg-yellow-400/20 text-gold px-4 py-2 rounded-lg hover:bg-yellow-400/30"
-              >
-                Cancel
-              </button>
-            </div>
+            
           </form>
         </div>
       )}
 
       {/* Daily View with To-Do List and Calendar */}
+      {!showAddForm && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* To-Do List Section */}
         <div className="lg:col-span-1">
@@ -607,11 +635,24 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                       {format(date, 'd')}
                     </div>
                     <div className="space-y-1">
-                      {dayEvents.slice(0, 3).map(event => (
+                      {dayEvents.slice(0, 3).map(event => {
+                        // Color coding:
+                        // - Private (own events): purple (#7C3AED)
+                        // - Shared (others' events): green (#10B981)
+                        // - Fallback/use event.color/claimColor for custom
+                        const isOwn = event.user_id === currentUser?.id
+                        const bg = event.color
+                          ? event.color
+                          : isOwn && !showGuestContent
+                            ? '#7C3AED'
+                            : showGuestContent
+                              ? '#10B981'
+                              : claimColor
+                        return (
                         <div
                           key={event.id}
                           className="text-xs p-1 rounded truncate text-white relative group"
-                          style={{ backgroundColor: event.color || claimColor }}
+                          style={{ backgroundColor: bg }}
                         >
                           <div>{event.title}</div>
                           {event.profiles?.email && (
@@ -649,7 +690,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                             <X className="w-2 h-2" />
                           </button>
                         </div>
-                      ))}
+                      )})}
                       {dayEvents.length > 3 && (
                         <div className="text-xs text-gray-500">
                           +{dayEvents.length - 3} more
@@ -663,6 +704,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
           </div>
         </div>
       </div>
+      )}
     </div>
   )
 }

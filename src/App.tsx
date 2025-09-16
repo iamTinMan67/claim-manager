@@ -199,18 +199,17 @@ function LoggedInContent({
         return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} onClaimColorChange={setSelectedClaimColor} isGuest={currentlyGuest} />
       case 'subscription':
         return <SubscriptionManager />
-      case 'todos':
+      case 'todos-private':
         // If viewing shared claims, show shared version of todos
-        if (isViewingSharedClaims) {
-          return <TodoList selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={true} showGuestContent={true} isGuestFrozen={false} />
-        }
-        return <TodoList selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={currentlyGuest} showGuestContent={showGuestContent} isGuestFrozen={guestStatus?.is_frozen || false} />
-      case 'calendar':
-        // If viewing shared claims, show shared version of calendar
-        if (isViewingSharedClaims) {
-          return <Calendar selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={true} showGuestContent={true} isGuestFrozen={false} />
-        }
-        return <Calendar selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={currentlyGuest} showGuestContent={showGuestContent} isGuestFrozen={guestStatus?.is_frozen || false} />
+        return <TodoList selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={false} showGuestContent={false} isGuestFrozen={false} />
+      case 'todos-shared':
+        return <TodoList selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={true} showGuestContent={true} isGuestFrozen={false} />
+      case 'calendar-private':
+        // Private calendar at top-level: not tied to a specific claim. Entries must be assigned explicitly.
+        return <Calendar selectedClaim={null} claimColor={selectedClaimColor} isGuest={false} showGuestContent={false} isGuestFrozen={false} />
+      case 'calendar-shared':
+        // Only show shared calendar when explicitly in shared context
+        return <Calendar selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={true} showGuestContent={true} isGuestFrozen={false} />
       case 'shared':
         return <SharedClaims selectedClaim={selectedClaim} claimColor={selectedClaimColor} currentUserId={user?.id} isGuest={currentlyGuest} />
       case 'export':

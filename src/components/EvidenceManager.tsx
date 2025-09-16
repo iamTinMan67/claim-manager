@@ -518,6 +518,27 @@ const EvidenceManager = ({
                                     className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                                   />
                                 </div>
+                                <div className="col-span-2">
+                                  <label className="block text-sm font-medium mb-1">Replace File</label>
+                                  <input
+                                    type="file"
+                                    onChange={async (e) => {
+                                      const file = e.target.files?.[0]
+                                      if (!file || !editingEvidence) return
+                                      // Upload new file using storage bucket
+                                      const fileExt = file.name.split('.').pop()
+                                      const filePath = `${editingEvidence.user_id || 'user'}/${Date.now()}.${fileExt}`
+                                      const { data: up, error: upErr } = await supabase.storage.from('evidence-files').upload(filePath, file)
+                                      if (upErr) {
+                                        console.error('Upload error:', upErr)
+                                        return
+                                      }
+                                      const { data: { publicUrl } } = supabase.storage.from('evidence-files').getPublicUrl(filePath)
+                                      setEditingEvidence({ ...editingEvidence, file_url: publicUrl, file_name: file.name })
+                                    }}
+                                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold file:bg-white/10 file:text-gold file:border-0 file:mr-4 file:py-1 file:px-2"
+                                  />
+                                </div>
                               </div>
                               <div className="grid grid-cols-3 gap-4">
                                 <div>
@@ -626,6 +647,19 @@ const EvidenceManager = ({
         <AddEvidenceModal
           open={showAddModal}
           onClose={() => setShowAddModal(false)}
+          selectedClaim={selectedClaim}
+          initialExhibitRef={(function(){
+            const list = evidenceData?.filter(e => e.case_number === selectedClaim) || []
+            const nums = list.map(e => {
+              const fromId = (e.exhibit_id || '').match(/(\d+)/)?.[1]
+              const fromNum = (e as any).exhibit_number
+              const a = fromId ? parseInt(fromId,10) : 0
+              const b = typeof fromNum === 'number' ? fromNum : 0
+              return Math.max(a,b)
+            })
+            const max = nums.length ? Math.max(...nums) : 0
+            return `Exhibit ${max + 1}`
+          })()}
           onAdd={async (evidence) => {
             try {
               const { data: { user } } = await supabase.auth.getUser()

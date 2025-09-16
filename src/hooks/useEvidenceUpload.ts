@@ -10,11 +10,20 @@ export const useEvidenceUpload = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
+  const sanitizeFileName = (name: string): string => {
+    const trimmed = name.trim().toLowerCase();
+    const replaced = trimmed.replace(/[^a-z0-9._-]+/g, '-');
+    return replaced.replace(/-+/g, '-');
+  };
+
   const uploadFile = async (file: File): Promise<{ fileUrl: string; fileName: string } | null> => {
     if (!user) return null;
 
-    const fileExt = file.name.split('.').pop();
-    const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+    const originalExt = file.name.includes('.') ? `.${file.name.split('.').pop()}` : '';
+    const baseName = file.name.replace(/\.[^.]+$/, '');
+    const safeBase = sanitizeFileName(baseName) || 'file';
+    const safeName = `${safeBase}-${Date.now()}${originalExt}`;
+    const filePath = `${user.id}/${safeName}`;
     
     setUploadProgress(25);
     
@@ -40,7 +49,7 @@ export const useEvidenceUpload = () => {
       .getPublicUrl(filePath);
 
     setUploadProgress(100);
-    return { fileUrl: publicUrl, fileName: file.name };
+    return { fileUrl: publicUrl, fileName: safeName };
   };
 
   const submitEvidence = async (

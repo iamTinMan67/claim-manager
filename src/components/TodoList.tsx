@@ -95,10 +95,9 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
     queryFn: async () => {
       const { data, error } = await supabase
         .from('claims')
-        .select('case_number, title, color')
-        .eq('status', 'Active')
+        .select('case_number, title, color, status')
+        .neq('status', 'Closed')
         .order('title')
-      
       if (error) throw error
       return data
     }
@@ -433,20 +432,63 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                 />
               </div>
             )}
-            <div>
-              <label className="block text-sm font-medium mb-1">Associated Claim</label>
-              <select
-                value={newTodo.case_number}
-                onChange={(e) => setNewTodo({ ...newTodo, case_number: e.target.value })}
-                className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
-              >
-                <option value="">No specific claim</option>
-                {claims?.map((claim) => (
-                  <option key={claim.case_number} value={claim.case_number}>
-                    {claim.case_number} - {claim.title}
-                  </option>
-                ))}
-              </select>
+            <div className="grid grid-cols-4 gap-2 items-end">
+              <div className="col-span-2">
+                <label className="block text-sm font-medium mb-1">Associated Claim</label>
+                <select
+                  value={newTodo.case_number}
+                  onChange={(e) => setNewTodo({ ...newTodo, case_number: e.target.value })}
+                  className="w-2/3 border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                >
+                  <option value="">No specific claim</option>
+                  {claims?.map((claim) => (
+                    <option key={claim.case_number} value={claim.case_number}>
+                      {claim.case_number} - {claim.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Color</label>
+                {newTodo.case_number ? (
+                  <div
+                    className="w-8 h-8 rounded border"
+                    style={{
+                      backgroundColor: (claims?.find(c => c.case_number === newTodo.case_number)?.color) || '#6B7280',
+                      borderColor: (claims?.find(c => c.case_number === newTodo.case_number)?.color) || '#6B7280'
+                    }}
+                    title="Claim color"
+                  />
+                ) : (
+                  <div
+                    className="w-8 h-8 rounded border"
+                    title="Select a claim to set color"
+                    style={{
+                      backgroundImage:
+                        'repeating-linear-gradient(45deg, rgba(239,68,68,0.85) 0 10px, transparent 10px 20px)',
+                      backgroundColor: 'rgba(239,68,68,0.15)',
+                      borderColor: 'rgba(239,68,68,0.7)'
+                    }}
+                  />
+                )}
+              </div>
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="submit"
+                  disabled={addTodoMutation.isPending}
+                  className="text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50"
+                  style={{ backgroundColor: claimColor }}
+                >
+                  {addTodoMutation.isPending ? 'Adding...' : 'Add Todo'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddForm(false)}
+                  className="bg-yellow-400/20 text-gold px-4 py-2 rounded-lg hover:bg-yellow-400/30"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
             {showGuestContent && sharedUsers && sharedUsers.length > 0 && (
               <div>

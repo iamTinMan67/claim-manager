@@ -4,9 +4,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "./ui/button";
 import { EvidenceFormFields } from "./AddEvidenceModal/EvidenceFormFields";
 import { FileUploadSection } from "./AddEvidenceModal/FileUploadSection";
-import { DateMethodFields } from "./AddEvidenceModal/DateMethodFields";
 import { useEvidenceUpload } from "@/hooks/useEvidenceUpload";
-import { X } from "lucide-react";
+import { X, Plus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   onClose: () => void;
@@ -14,19 +14,22 @@ interface Props {
   isGuest?: boolean;
   isGuestFrozen?: boolean;
   open?: boolean;
+  selectedClaim?: string | null;
+  initialExhibitRef?: string;
 }
 
-export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFrozen = false, open = true }: Props) => {
+export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFrozen = false, open = true, selectedClaim = null, initialExhibitRef }: Props) => {
   
   const [exhibitRef, setExhibitRef] = useState(""); // This will be auto-generated
-  const [numberOfPages, setNumberOfPages] = useState("");
+  const [numberOfPages, setNumberOfPages] = useState("1");
   const [dateSubmitted, setDateSubmitted] = useState(() => {
     // Get the last selected date from localStorage, or default to today
     const lastDate = localStorage.getItem('lastEvidenceDate');
     return lastDate || new Date().toISOString().split('T')[0];
   });
   const [method, setMethod] = useState("Email");
-  const [bookOfDeedsRef, setBookOfDeedsRef] = useState("");
+  const PLACEHOLDER_REF = "Enter any Reference #";
+  const [bookOfDeedsRef, setBookOfDeedsRef] = useState(PLACEHOLDER_REF);
   const [description, setDescription] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const hasSetInitialExhibit = useRef(false);
@@ -36,11 +39,45 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
 
   // Auto-generate exhibit reference when modal opens (only once)
   useEffect(() => {
-    if (!hasSetInitialExhibit.current) {
-      setExhibitRef("Exhibit-001");
-      hasSetInitialExhibit.current = true;
-    }
-  }, []);
+    const initExhibit = async () => {
+      if (hasSetInitialExhibit.current || !open) return;
+      // If parent provided a precomputed exhibit ref, use it directly
+      if (initialExhibitRef) {
+        setExhibitRef(initialExhibitRef)
+        hasSetInitialExhibit.current = true
+        return
+      }
+      try {
+        let query = supabase
+          .from('evidence')
+          .select('exhibit_id, exhibit_number')
+          .limit(2000);
+        if (selectedClaim) {
+          query = query.eq('case_number', selectedClaim);
+        }
+        const { data, error } = await query;
+        if (error) throw error;
+        let maxNum = 0;
+        (data || []).forEach((row: any) => {
+          const ref: string = row.exhibit_id || '';
+          const match = ref.match(/exhibit[-\s_]*(\d+)/i);
+          if (match) {
+            const n = parseInt(match[1], 10);
+            if (!Number.isNaN(n)) maxNum = Math.max(maxNum, n);
+          }
+          if (row.exhibit_number && Number.isFinite(row.exhibit_number)) {
+            maxNum = Math.max(maxNum, Number(row.exhibit_number));
+          }
+        });
+        setExhibitRef(`Exhibit ${maxNum + 1}`);
+      } catch (_) {
+        setExhibitRef("Exhibit 1");
+      } finally {
+        hasSetInitialExhibit.current = true;
+      }
+    };
+    initExhibit();
+  }, [open, selectedClaim, initialExhibitRef]);
 
   // Save date to localStorage whenever it changes
   useEffect(() => {
@@ -68,14 +105,15 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
   }, [selectedFile, method]);
 
   const resetForm = () => {
-    // Generate new exhibit reference
-    const nextNumber = getNextExhibitNumber();
-    setExhibitRef(`Exhibit-${nextNumber.toString().padStart(3, '0')}`);
+    // Generate next exhibit reference by incrementing current number
+    const currentMatch = exhibitRef.match(/(\d+)/);
+    const nextNum = currentMatch ? parseInt(currentMatch[1], 10) + 1 : 1;
+    setExhibitRef(`Exhibit ${nextNum}`);
     
     setNumberOfPages("");
     // Keep the last selected date instead of resetting it
     // setDateSubmitted(""); // Removed this line
-    setMethod("Email");
+    setMethod("To-Do");
     setBookOfDeedsRef("");
     setDescription("");
     setSelectedFile(null);
@@ -92,13 +130,14 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    const normalizedRef = bookOfDeedsRef === PLACEHOLDER_REF ? "" : bookOfDeedsRef;
     await submitEvidence(
       {
         exhibitRef,
         numberOfPages,
         dateSubmitted,
         method,
-        bookOfDeedsRef,
+        bookOfDeedsRef: normalizedRef,
         description,
       },
       selectedFile,
@@ -116,12 +155,14 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
           <DialogTitle>
             {isGuest ? 'Submit Evidence for Review' : 'Add New Evidence'}
           </DialogTitle>
-          <DialogDescription>
-            {isGuest ? 'Submit evidence for review by the claim owner' : 'Add new evidence to your case file'}
+          <DialogDescription className="text-yellow-300">
+            {isGuest
+              ? 'Submit evidence for review by the claim owner'
+              : 'To ensure the file you are uploading has an appropriate title that the application will automatically imput as the file name'}
           </DialogDescription>
           <button
             onClick={onClose}
-            className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            className="absolute right-4 top-4 rounded-sm opacity-90 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-yellow-400/40 bg-white/10 border border-red-400 text-red-400 px-2 py-1"
             style={{ zIndex: 1000 }}
           >
             <X className="h-4 w-4" />
@@ -139,9 +180,20 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
           </div>
         )}
         <form onSubmit={handleSubmit} className="space-y-6 p-6" style={{ opacity: isGuest && isGuestFrozen ? 0.5 : 1 }}>
-          {/* Pages, Method, and Date at the top */}
-          <div className="grid grid-cols-3 gap-6">
-            <div className="space-y-3">
+          {/* Row 1: File Upload (4/6), Pages (1/6), Method (1/6) */}
+          <div className="grid grid-cols-6 gap-6 items-start">
+            {/* File Upload - moved to the first position */}
+            <div className="space-y-3 col-span-4">
+              <FileUploadSection
+                ref={fileInputRef}
+                selectedFile={selectedFile}
+                uploading={uploading}
+                uploadProgress={uploadProgress}
+                onFileChange={setSelectedFile}
+                disabled={isGuest && isGuestFrozen}
+              />
+            </div>
+            <div className="space-y-2 col-span-1">
               <label htmlFor="number-of-pages" className="text-base font-medium">Pages</label>
               <input
                 id="number-of-pages"
@@ -150,28 +202,31 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
                 onChange={(e) => setNumberOfPages(e.target.value)}
                 disabled={uploading || (isGuest && isGuestFrozen)}
                 min="1"
-                className="h-12 text-base w-full px-4 py-3 border border-yellow-400/30 rounded-md bg-white/10 text-white placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                className="h-12 text-base w-full px-4 py-3 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
               />
             </div>
             
-            <div className="space-y-3">
+            <div className="space-y-2 col-span-1">
               <label htmlFor="method" className="text-base font-medium">Method</label>
               <select
                 id="method"
                 value={method}
                 onChange={(e) => setMethod(e.target.value)}
                 disabled={uploading || (isGuest && isGuestFrozen)}
-                className="h-12 text-base w-full px-4 py-3 border border-yellow-400/30 rounded-md bg-white/10 text-white placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                className="h-12 text-base w-full px-4 py-3 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
               >
                 <option value="Post">Post</option>
                 <option value="Email">Email</option>
                 <option value="Hand">Hand</option>
-                <option value="Call">Call</option>
+                
                 <option value="Online">Online</option>
                 <option value="To-Do">To-Do</option>
               </select>
             </div>
-            
+          </div>
+
+          {/* Row 2: Date, Exhibit, Book of Deeds (3 columns) */}
+          <div className="grid grid-cols-3 gap-6 items-start">
             <div className="space-y-3">
               <label htmlFor="date-submitted" className="text-base font-medium">Date Submitted</label>
               <input
@@ -180,39 +235,53 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
                 value={dateSubmitted}
                 onChange={(e) => setDateSubmitted(e.target.value)}
                 disabled={uploading || (isGuest && isGuestFrozen)}
-                className="h-12 text-base w-full px-4 py-3 border border-yellow-400/30 rounded-md bg-white/10 text-white placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                className="h-12 text-base w-full px-4 py-3 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
               />
+            </div>
+            <EvidenceFormFields
+              exhibitRef={exhibitRef}
+              setExhibitRef={setExhibitRef}
+              bookOfDeedsRef={bookOfDeedsRef}
+              setBookOfDeedsRef={setBookOfDeedsRef}
+              description={description}
+              setDescription={setDescription}
+              uploading={uploading}
+              disabled={isGuest && isGuestFrozen}
+            />
+          </div>
+
+          {/* Row 3: Description label, then textarea + actions aligned to textarea edges */}
+          <div className="grid grid-cols-3 gap-6">
+            <div className="col-span-3">
+              <label htmlFor="description" className="text-base font-medium">Description *</label>
+            </div>
+            <div className="col-span-3 grid grid-cols-3 gap-6 items-stretch">
+              <div className="col-span-2">
+                <textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Enter evidence description"
+                  disabled={uploading || (isGuest && isGuestFrozen)}
+                  required
+                  rows={2}
+                  className="text-base w-full px-4 py-3 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 h-full"
+                />
+              </div>
+              <div className="h-full flex flex-col items-end justify-between">
+                <Button className="bg-white/10 border border-green-400 text-green-400 min-w-[100px] w-2/5 h-8 flex items-center justify-center" type="submit" disabled={uploading || (isGuest && isGuestFrozen)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  {uploading ? "Uploading..." : isGuest ? "Submit for Review" : "Add"}
+                </Button>
+                <Button className="bg-white/10 border border-red-400 text-red-400 min-w-[100px] w-2/5 h-8 flex items-center justify-center" onClick={onClose} disabled={uploading}>
+                  <X className="w-4 h-4 mr-2" />
+                  Close
+                </Button>
+              </div>
             </div>
           </div>
 
-          <EvidenceFormFields
-            exhibitRef={exhibitRef}
-            setExhibitRef={setExhibitRef}
-            bookOfDeedsRef={bookOfDeedsRef}
-            setBookOfDeedsRef={setBookOfDeedsRef}
-            description={description}
-            setDescription={setDescription}
-            uploading={uploading}
-            disabled={isGuest && isGuestFrozen}
-          />
-
-          <FileUploadSection
-            ref={fileInputRef}
-            selectedFile={selectedFile}
-            uploading={uploading}
-            uploadProgress={uploadProgress}
-            onFileChange={setSelectedFile}
-            disabled={isGuest && isGuestFrozen}
-          />
-
-          <div className="flex justify-between space-x-2">
-            <Button variant="outline" onClick={onClose} disabled={uploading}>
-              Close
-            </Button>
-            <Button type="submit" disabled={uploading || (isGuest && isGuestFrozen)}>
-              {uploading ? "Uploading..." : isGuest ? "Submit for Review" : "Save & Add Another"}
-            </Button>
-          </div>
+          
         </form>
       </DialogContent>
     </Dialog>
