@@ -17,9 +17,12 @@ export const AddEvidenceModal = ({ onClose, onAdd }: Props) => {
   
   const [exhibitRef, setExhibitRef] = useState(""); // This will be auto-generated
   const [numberOfPages, setNumberOfPages] = useState("");
-  const [dateSubmitted, setDateSubmitted] = useState("");
+  const [dateSubmitted, setDateSubmitted] = useState(() => {
+    // Get the last selected date from localStorage, or default to today
+    const lastDate = localStorage.getItem('lastEvidenceDate');
+    return lastDate || new Date().toISOString().split('T')[0];
+  });
   const [method, setMethod] = useState("Email");
-  const [urlLink, setUrlLink] = useState("");
   const [bookOfDeedsRef, setBookOfDeedsRef] = useState("");
   const [description, setDescription] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -42,6 +45,13 @@ export const AddEvidenceModal = ({ onClose, onAdd }: Props) => {
     }
   }, [exhibits, getNextExhibitNumber]);
 
+  // Save date to localStorage whenever it changes
+  useEffect(() => {
+    if (dateSubmitted) {
+      localStorage.setItem('lastEvidenceDate', dateSubmitted);
+    }
+  }, [dateSubmitted]);
+
   // Debug: Log when method changes
   useEffect(() => {
     console.log('Method changed to:', method);
@@ -61,11 +71,14 @@ export const AddEvidenceModal = ({ onClose, onAdd }: Props) => {
   }, [selectedFile, method]);
 
   const resetForm = () => {
-    setExhibitRef("");
+    // Generate new exhibit reference
+    const nextNumber = getNextExhibitNumber();
+    setExhibitRef(`Exhibit-${nextNumber.toString().padStart(3, '0')}`);
+    
     setNumberOfPages("");
-    setDateSubmitted("");
+    // Keep the last selected date instead of resetting it
+    // setDateSubmitted(""); // Removed this line
     setMethod("Email");
-    setUrlLink("");
     setBookOfDeedsRef("");
     setDescription("");
     setSelectedFile(null);
@@ -88,7 +101,6 @@ export const AddEvidenceModal = ({ onClose, onAdd }: Props) => {
         numberOfPages,
         dateSubmitted,
         method,
-        urlLink,
         bookOfDeedsRef,
         description,
       },
@@ -102,18 +114,60 @@ export const AddEvidenceModal = ({ onClose, onAdd }: Props) => {
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-[200px] w-full">
+      <DialogContent className="max-w-2xl w-full">
         <DialogHeader>
           <DialogTitle>Add New Evidence</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-1">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Pages, Method, and Date at the top */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <label htmlFor="number-of-pages" className="text-sm font-medium">Pages</label>
+              <input
+                id="number-of-pages"
+                type="number"
+                value={numberOfPages}
+                onChange={(e) => setNumberOfPages(e.target.value)}
+                disabled={uploading}
+                min="1"
+                className="h-10 text-sm w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label htmlFor="method" className="text-sm font-medium">Method</label>
+              <select
+                id="method"
+                value={method}
+                onChange={(e) => setMethod(e.target.value)}
+                disabled={uploading}
+                className="h-10 text-sm w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="Post">Post</option>
+                <option value="Email">Email</option>
+                <option value="Hand">Hand</option>
+                <option value="Call">Call</option>
+                <option value="Online">Online</option>
+                <option value="To-Do">To-Do</option>
+              </select>
+            </div>
+            
+            <div className="space-y-2">
+              <label htmlFor="date-submitted" className="text-sm font-medium">Date Submitted</label>
+              <input
+                id="date-submitted"
+                type="date"
+                value={dateSubmitted}
+                onChange={(e) => setDateSubmitted(e.target.value)}
+                disabled={uploading}
+                className="h-10 text-sm w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
           <EvidenceFormFields
             exhibitRef={exhibitRef}
             setExhibitRef={setExhibitRef}
-            numberOfPages={numberOfPages}
-            setNumberOfPages={setNumberOfPages}
-            urlLink={urlLink}
-            setUrlLink={setUrlLink}
             bookOfDeedsRef={bookOfDeedsRef}
             setBookOfDeedsRef={setBookOfDeedsRef}
             description={description}
@@ -127,14 +181,6 @@ export const AddEvidenceModal = ({ onClose, onAdd }: Props) => {
             uploading={uploading}
             uploadProgress={uploadProgress}
             onFileChange={setSelectedFile}
-          />
-
-          <DateMethodFields
-            dateSubmitted={dateSubmitted}
-            setDateSubmitted={setDateSubmitted}
-            method={method}
-            setMethod={setMethod}
-            uploading={uploading}
           />
 
           <div className="flex justify-between space-x-2">

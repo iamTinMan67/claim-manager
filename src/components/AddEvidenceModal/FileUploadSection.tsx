@@ -32,8 +32,8 @@ export const FileUploadSection = forwardRef<HTMLInputElement, Props>(({ selected
   };
 
   return (
-    <div className="space-y-0.5">
-      <Label htmlFor="file" className="text-xs">File Upload</Label>
+    <div className="space-y-2">
+      <Label htmlFor="file" className="text-sm font-medium">File Upload</Label>
       <Input
         ref={ref}
         id="file"
@@ -41,18 +41,18 @@ export const FileUploadSection = forwardRef<HTMLInputElement, Props>(({ selected
         accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.mp4,.mov,.avi,.mkv,.mp3,.wav,.flac,.aac,.ogg"
         onChange={handleFileChange}
         disabled={uploading}
-        className="h-6 text-xs w-full"
+        className="h-10 text-sm w-full"
       />
-      <p className="text-xs text-gray-500">
+      <p className="text-sm text-gray-500">
         Allowed: PDF, Word docs, Excel files, text files, images, videos (MP4, MOV, AVI, MKV), and audio files (MP3, WAV, FLAC, AAC, OGG) - max 50MB
       </p>
       {selectedFile && (
-        <p className="text-xs text-green-600">Selected: {selectedFile.name}</p>
+        <p className="text-sm text-green-600">Selected: {selectedFile.name}</p>
       )}
       {uploading && (
-        <div className="space-y-0.5">
-          <Label className="text-xs">Upload Progress</Label>
-          <Progress value={uploadProgress} className="w-full h-1" />
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Upload Progress</Label>
+          <Progress value={uploadProgress} className="w-full h-2" />
         </div>
       )}
     </div>
