@@ -39,13 +39,13 @@ export const DateMethodFields = ({
           value={dateSubmitted}
           onChange={(e) => setDateSubmitted(e.target.value)}
           disabled={uploading}
-          className="h-10 text-sm w-full"
+          className="h-10 text-sm w-full border border-yellow-400/30 rounded-md bg-white/10 text-white placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
         />
       </div>
       <div className="space-y-2">
         <Label htmlFor="method" className="text-sm font-medium">Method</Label>
         <Select value={method} onValueChange={setMethod} disabled={uploading}>
-          <SelectTrigger className="h-10 text-sm w-full">
+          <SelectTrigger className="h-10 text-sm w-full border border-yellow-400/30 rounded-md bg-white/10 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400">
             <SelectValue placeholder="Select method" />
           </SelectTrigger>
           <SelectContent>

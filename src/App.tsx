@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-quer
 import { ThemeProvider } from 'next-themes'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { AuthProvider } from '@/contexts/AuthContext'
 import AuthComponent from './components/AuthComponent'
 import ClaimsTable from './components/ClaimsTable'
 import EvidenceManager from './components/EvidenceManager'
@@ -22,7 +23,9 @@ function App() {
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
       <QueryClientProvider client={queryClient}>
-        <AppContent />
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
       </QueryClientProvider>
     </ThemeProvider>
   )

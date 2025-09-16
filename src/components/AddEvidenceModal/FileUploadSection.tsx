@@ -10,9 +10,10 @@ interface Props {
   uploading: boolean;
   uploadProgress: number;
   onFileChange: (file: File | null) => void;
+  disabled?: boolean;
 }
 
-export const FileUploadSection = forwardRef<HTMLInputElement, Props>(({ selectedFile, uploading, uploadProgress, onFileChange }, ref) => {
+export const FileUploadSection = forwardRef<HTMLInputElement, Props>(({ selectedFile, uploading, uploadProgress, onFileChange, disabled = false }, ref) => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -40,14 +41,14 @@ export const FileUploadSection = forwardRef<HTMLInputElement, Props>(({ selected
         type="file"
         accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.mp4,.mov,.avi,.mkv,.mp3,.wav,.flac,.aac,.ogg"
         onChange={handleFileChange}
-        disabled={uploading}
-        className="h-10 text-sm w-full"
+        disabled={uploading || disabled}
+        className="h-10 text-sm w-full border border-yellow-400/30 rounded-md bg-white/10 text-white file:bg-white/10 file:text-white file:border-0 file:mr-4 file:py-1 file:px-2 file:rounded file:text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
       />
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-yellow-300/70">
         Allowed: PDF, Word docs, Excel files, text files, images, videos (MP4, MOV, AVI, MKV), and audio files (MP3, WAV, FLAC, AAC, OGG) - max 50MB
       </p>
       {selectedFile && (
-        <p className="text-sm text-green-600">Selected: {selectedFile.name}</p>
+        <p className="text-sm text-yellow-400">Selected: {selectedFile.name}</p>
       )}
       {uploading && (
         <div className="space-y-2">

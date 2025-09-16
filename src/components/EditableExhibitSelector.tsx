@@ -106,7 +106,7 @@ export const EditableExhibitSelector = ({ value, onChange, disabled }: Props) =>
         </SelectTrigger>
         <SelectContent>
           {exhibits.length === 0 ? (
-            <SelectItem value="" disabled>
+            <SelectItem value="no-exhibits" disabled>
               No exhibits available
             </SelectItem>
           ) : (

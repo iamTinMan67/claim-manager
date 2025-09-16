@@ -46,7 +46,7 @@ export const ExhibitSelector = ({ value, onChange, disabled, onCreateNew }: Prop
               </SelectItem>
             ))}
             {exhibits.length === 0 && (
-              <SelectItem value="" disabled>
+              <SelectItem value="no-exhibits" disabled>
                 No exhibits available
               </SelectItem>
             )}

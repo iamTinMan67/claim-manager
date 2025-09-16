@@ -1,19 +1,22 @@
 import { useState, useEffect, useRef } from "react";
 import { Evidence } from "@/types/evidence";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { EvidenceFormFields } from "./AddEvidenceModal/EvidenceFormFields";
 import { FileUploadSection } from "./AddEvidenceModal/FileUploadSection";
 import { DateMethodFields } from "./AddEvidenceModal/DateMethodFields";
 import { useEvidenceUpload } from "@/hooks/useEvidenceUpload";
-import { useExhibits } from "@/hooks/useExhibits";
+import { X } from "lucide-react";
 
 interface Props {
   onClose: () => void;
   onAdd: (evidence: Omit<Evidence, "id" | "claimIds">) => void;
+  isGuest?: boolean;
+  isGuestFrozen?: boolean;
+  open?: boolean;
 }
 
-export const AddEvidenceModal = ({ onClose, onAdd }: Props) => {
+export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFrozen = false, open = true }: Props) => {
   
   const [exhibitRef, setExhibitRef] = useState(""); // This will be auto-generated
   const [numberOfPages, setNumberOfPages] = useState("");
@@ -30,20 +33,14 @@ export const AddEvidenceModal = ({ onClose, onAdd }: Props) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { uploading, uploadProgress, submitEvidence } = useEvidenceUpload();
-  const { exhibits, getNextExhibitNumber, addExhibit } = useExhibits();
 
   // Auto-generate exhibit reference when modal opens (only once)
   useEffect(() => {
-    if (!hasSetInitialExhibit.current && exhibits.length >= 0) {
-      if (exhibits.length === 0) {
-        setExhibitRef("Exhibit-001");
-      } else {
-        const nextNumber = getNextExhibitNumber();
-        setExhibitRef(`Exhibit-${nextNumber.toString().padStart(3, '0')}`);
-      }
+    if (!hasSetInitialExhibit.current) {
+      setExhibitRef("Exhibit-001");
       hasSetInitialExhibit.current = true;
     }
-  }, [exhibits, getNextExhibitNumber]);
+  }, []);
 
   // Save date to localStorage whenever it changes
   useEffect(() => {
@@ -113,35 +110,58 @@ export const AddEvidenceModal = ({ onClose, onAdd }: Props) => {
   };
 
   return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl w-full">
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl w-full" style={{ backgroundColor: 'rgba(30, 58, 138, 0.9)', border: '2px solid #fbbf24', borderRadius: '16px' }}>
         <DialogHeader>
-          <DialogTitle>Add New Evidence</DialogTitle>
+          <DialogTitle>
+            {isGuest ? 'Submit Evidence for Review' : 'Add New Evidence'}
+          </DialogTitle>
+          <DialogDescription>
+            {isGuest ? 'Submit evidence for review by the claim owner' : 'Add new evidence to your case file'}
+          </DialogDescription>
+          <button
+            onClick={onClose}
+            className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            style={{ zIndex: 1000 }}
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </button>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {isGuest && (
+          <div className="bg-yellow-100 text-yellow-800 px-3 py-2 rounded-lg text-sm mb-4">
+            Your evidence will be submitted for review by the claim owner before being added to the case.
+          </div>
+        )}
+        {isGuest && isGuestFrozen && (
+          <div className="bg-red-100 text-red-800 px-3 py-2 rounded-lg text-sm mb-4">
+            Access Frozen - You cannot add evidence at this time.
+          </div>
+        )}
+        <form onSubmit={handleSubmit} className="space-y-6 p-6" style={{ opacity: isGuest && isGuestFrozen ? 0.5 : 1 }}>
           {/* Pages, Method, and Date at the top */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <label htmlFor="number-of-pages" className="text-sm font-medium">Pages</label>
+          <div className="grid grid-cols-3 gap-6">
+            <div className="space-y-3">
+              <label htmlFor="number-of-pages" className="text-base font-medium">Pages</label>
               <input
                 id="number-of-pages"
                 type="number"
                 value={numberOfPages}
                 onChange={(e) => setNumberOfPages(e.target.value)}
-                disabled={uploading}
+                disabled={uploading || (isGuest && isGuestFrozen)}
                 min="1"
-                className="h-10 text-sm w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="h-12 text-base w-full px-4 py-3 border border-yellow-400/30 rounded-md bg-white/10 text-white placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
               />
             </div>
             
-            <div className="space-y-2">
-              <label htmlFor="method" className="text-sm font-medium">Method</label>
+            <div className="space-y-3">
+              <label htmlFor="method" className="text-base font-medium">Method</label>
               <select
                 id="method"
                 value={method}
                 onChange={(e) => setMethod(e.target.value)}
-                disabled={uploading}
-                className="h-10 text-sm w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={uploading || (isGuest && isGuestFrozen)}
+                className="h-12 text-base w-full px-4 py-3 border border-yellow-400/30 rounded-md bg-white/10 text-white placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
               >
                 <option value="Post">Post</option>
                 <option value="Email">Email</option>
@@ -152,15 +172,15 @@ export const AddEvidenceModal = ({ onClose, onAdd }: Props) => {
               </select>
             </div>
             
-            <div className="space-y-2">
-              <label htmlFor="date-submitted" className="text-sm font-medium">Date Submitted</label>
+            <div className="space-y-3">
+              <label htmlFor="date-submitted" className="text-base font-medium">Date Submitted</label>
               <input
                 id="date-submitted"
                 type="date"
                 value={dateSubmitted}
                 onChange={(e) => setDateSubmitted(e.target.value)}
-                disabled={uploading}
-                className="h-10 text-sm w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={uploading || (isGuest && isGuestFrozen)}
+                className="h-12 text-base w-full px-4 py-3 border border-yellow-400/30 rounded-md bg-white/10 text-white placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
               />
             </div>
           </div>
@@ -173,6 +193,7 @@ export const AddEvidenceModal = ({ onClose, onAdd }: Props) => {
             description={description}
             setDescription={setDescription}
             uploading={uploading}
+            disabled={isGuest && isGuestFrozen}
           />
 
           <FileUploadSection
@@ -181,14 +202,15 @@ export const AddEvidenceModal = ({ onClose, onAdd }: Props) => {
             uploading={uploading}
             uploadProgress={uploadProgress}
             onFileChange={setSelectedFile}
+            disabled={isGuest && isGuestFrozen}
           />
 
           <div className="flex justify-between space-x-2">
             <Button variant="outline" onClick={onClose} disabled={uploading}>
               Close
             </Button>
-            <Button type="submit" disabled={uploading}>
-              {uploading ? "Uploading..." : "Save & Add Another"}
+            <Button type="submit" disabled={uploading || (isGuest && isGuestFrozen)}>
+              {uploading ? "Uploading..." : isGuest ? "Submit for Review" : "Save & Add Another"}
             </Button>
           </div>
         </form>

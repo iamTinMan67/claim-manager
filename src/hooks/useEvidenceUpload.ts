@@ -4,11 +4,9 @@ import { Evidence } from "@/types/evidence";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import { useExhibits } from "./useExhibits";
 
 export const useEvidenceUpload = () => {
   const { user } = useAuth();
-  const { exhibits, addExhibit, getNextExhibitNumber } = useExhibits();
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
@@ -80,33 +78,8 @@ export const useEvidenceUpload = () => {
         fileName = uploadResult.fileName;
       }
 
-      // Create or find exhibit
-      let exhibitId = formData.exhibitRef;
-      
-      // Always create or find the exhibit record
-      if (formData.exhibitRef.match(/^Exhibit-\d+$/)) {
-        const exhibitNumber = parseInt(formData.exhibitRef.replace('Exhibit-', ''));
-        
-        // First check if exhibit already exists
-        const existingExhibit = exhibits.find(e => e.exhibit_number === exhibitNumber);
-        
-        if (existingExhibit) {
-          exhibitId = existingExhibit.id;
-        } else {
-          // Create new exhibit
-          const newExhibit = await addExhibit({
-            name: formData.description || `Exhibit ${exhibitNumber}`,
-            exhibit_number: exhibitNumber,
-            description: formData.description || null
-          });
-          
-          if (newExhibit) {
-            exhibitId = newExhibit.id;
-          } else {
-            throw new Error('Failed to create exhibit');
-          }
-        }
-      }
+      // Use exhibit reference as-is
+      const exhibitId = formData.exhibitRef;
       
       const evidenceData = {
         exhibit_id: exhibitId,

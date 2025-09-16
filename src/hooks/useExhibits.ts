@@ -29,12 +29,9 @@ export const useExhibits = () => {
       .order('exhibit_number', { ascending: true });
 
     if (error) {
-      console.error('Error fetching exhibits:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch exhibits",
-        variant: "destructive",
-      });
+      // Silently handle missing table or other errors
+      console.log('Exhibits table not available, using empty array');
+      setExhibits([]);
     } else {
       setExhibits(data || []);
     }

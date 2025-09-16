@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase'
 import { Evidence } from '@/types/database'
 import { Plus, Edit, Trash2, Upload, Download, Eye, X, Save, Settings, FileText, Calendar, Hash, GripVertical } from 'lucide-react'
 import PendingEvidenceReview from './PendingEvidenceReview'
+import { AddEvidenceModal } from './AddEvidenceModal'
+import { toast } from '@/hooks/use-toast'
 
 interface EvidenceManagerProps {
   selectedClaim: string | null
@@ -28,23 +30,9 @@ const EvidenceManager = ({
   onDeleteClaim,
   onSetAmendMode
 }: EvidenceManagerProps) => {
-  const [showAddForm, setShowAddForm] = useState(false)
+  const [showAddModal, setShowAddModal] = useState(false)
   const [editingEvidence, setEditingEvidence] = useState<Evidence | null>(null)
   const [expandedEvidence, setExpandedEvidence] = useState<string | null>(null)
-  const [newEvidence, setNewEvidence] = useState({
-    title: '',
-    file_name: '',
-    file_url: '',
-    exhibit_id: '',
-    number_of_pages: '1',
-    date_submitted: new Date().toISOString().split('T')[0], // Today's date
-    method: 'Email',
-    url_link: '',
-    book_of_deeds_ref: '',
-    case_number: selectedClaim || '',
-    description: ''
-  })
-  const [uploadingFile, setUploadingFile] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [dragOverItem, setDragOverItem] = useState<string | null>(null)
@@ -88,178 +76,7 @@ const EvidenceManager = ({
     }
   })
 
-  // Auto-populate exhibit ID when adding new evidence
-  useEffect(() => {
-    if (showAddForm && evidenceData) {
-      const getNextExhibitId = () => {
-        if (!evidenceData || evidenceData.length === 0) {
-          return '1'
-        }
-        
-        // Extract numbers from exhibit IDs and find the highest number
-        const exhibitNumbers = evidenceData
-          .map(item => item.exhibit_id)
-          .filter(id => id && id.trim())
-          .map(id => {
-            // Try to extract just the number from the exhibit ID
-            const match = id.match(/(\d+)/)
-            return match ? parseInt(match[1], 10) : 0
-          })
-          .filter(num => !isNaN(num) && num > 0)
-        
-        if (exhibitNumbers.length === 0) {
-          return '1'
-        }
-        
-        const maxNumber = Math.max(...exhibitNumbers)
-        return (maxNumber + 1).toString()
-      }
 
-      setNewEvidence(prev => ({
-        ...prev,
-        exhibit_id: getNextExhibitId(),
-        method: 'Email',
-        case_number: selectedClaim || ''
-      }))
-    }
-  }, [showAddForm, evidenceData, selectedClaim])
-
-  const addEvidenceMutation = useMutation({
-    mutationFn: async (evidenceData: typeof newEvidence) => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
-
-      // Get the current maximum display_order for this claim
-      let query = supabase
-        .from('evidence')
-        .select('display_order')
-        .eq('user_id', user.id)
-        .not('display_order', 'is', null)
-        .order('display_order', { ascending: false })
-        .limit(1)
-      
-      if (selectedClaim) {
-        query = query.eq('case_number', selectedClaim)
-      }
-      
-      const { data: maxOrderData } = await query
-      const maxDisplayOrder = maxOrderData?.[0]?.display_order || 0
-      const newDisplayOrder = maxDisplayOrder + 1
-
-      // Auto-generate title from file name
-      const autoTitle = evidenceData.name?.trim() || evidenceData.title?.trim() || evidenceData.file_name?.trim() || 'Evidence Item'
-
-      // Clean the data before submission
-      const cleanData = {
-        ...evidenceData,
-        title: autoTitle,
-        user_id: user.id,
-        case_number: evidenceData.case_number || null,
-        number_of_pages: evidenceData.number_of_pages ? parseInt(evidenceData.number_of_pages) : null,
-        date_submitted: evidenceData.date_submitted || null,
-        display_order: newDisplayOrder,
-        description: evidenceData.description || null
-      }
-
-      const { data, error } = await supabase
-        .from('evidence')
-        .insert([cleanData])
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evidence'] })
-      // Keep form open and reset for new entry
-      setNewEvidence({
-        title: '',
-        file_name: '',
-        file_url: '',
-        exhibit_id: '',
-        number_of_pages: '1',
-        date_submitted: new Date().toISOString().split('T')[0], // Today's date
-        method: 'Email',
-        url_link: '',
-        book_of_deeds_ref: '',
-        case_number: selectedClaim || '',
-        description: ''
-      })
-      // Focus the file input after a short delay
-      setTimeout(() => {
-        if (fileInputRef.current) {
-          fileInputRef.current.focus()
-        }
-      }, 100)
-    },
-    onError: (error: any) => {
-      console.error('Evidence creation error:', error)
-      alert(`Failed to add evidence: ${error.message || 'Unknown error'}`)
-    }
-  })
-
-  // Mutation for guest users to submit pending evidence
-  const addPendingEvidenceMutation = useMutation({
-    mutationFn: async (evidenceData: typeof newEvidence) => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
-
-      if (!selectedClaim) throw new Error('No claim selected')
-
-      // Clean the data before submission
-      const cleanData = {
-        claim_id: selectedClaim,
-        submitter_id: user.id,
-        description: evidenceData.description?.trim() || evidenceData.name?.trim() || evidenceData.title?.trim() || evidenceData.file_name?.trim() || 'Evidence Item',
-        file_name: evidenceData.file_name || null,
-        file_url: evidenceData.file_url || null,
-        exhibit_id: evidenceData.exhibit_id || null,
-        method: evidenceData.method || 'Email',
-        url_link: evidenceData.url_link || null,
-        book_of_deeds_ref: evidenceData.book_of_deeds_ref || null,
-        number_of_pages: evidenceData.number_of_pages ? parseInt(evidenceData.number_of_pages) : null,
-        date_submitted: evidenceData.date_submitted || null
-      }
-
-      const { data, error } = await supabase
-        .from('pending_evidence')
-        .insert([cleanData])
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pending-evidence'] })
-      // Keep form open and reset for new entry
-      setNewEvidence({
-        title: '',
-        file_name: '',
-        file_url: '',
-        exhibit_id: '',
-        number_of_pages: '1',
-        date_submitted: new Date().toISOString().split('T')[0], // Today's date
-        method: 'Email',
-        url_link: '',
-        book_of_deeds_ref: '',
-        case_number: selectedClaim || '',
-        description: ''
-      })
-      // Focus the file input after a short delay
-      setTimeout(() => {
-        if (fileInputRef.current) {
-          fileInputRef.current.focus()
-        }
-      }, 100)
-      alert('Evidence submitted for review. The claim owner will be notified.')
-    },
-    onError: (error: any) => {
-      console.error('Pending evidence submission error:', error)
-      alert(`Failed to submit evidence: ${error.message || 'Unknown error'}`)
-    }
-  })
 
   const updateEvidenceMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string, data: Partial<Evidence> }) => {
@@ -305,56 +122,6 @@ const EvidenceManager = ({
     }
   })
 
-  // Handle file upload
-  const handleFileUpload = async (file: File) => {
-    if (!file) return
-    
-    setUploadingFile(true)
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
-
-      // Upload file to Supabase Storage
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${user.id}/${selectedClaim}/${Date.now()}.${fileExt}`
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('evidence-files')
-        .upload(fileName, file)
-
-      if (uploadError) {
-        // If bucket doesn't exist, create it and try again
-        if (uploadError.message.includes('Bucket not found')) {
-          // For now, just use a URL.createObjectURL as fallback
-          const fileUrl = URL.createObjectURL(file)
-        setNewEvidence(prev => ({
-          ...prev,
-          file_name: file.name,
-          file_url: fileUrl,
-          method: prev.method === 'Email' ? 'Online' : prev.method
-        }))
-        } else {
-          throw uploadError
-        }
-      } else {
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('evidence-files')
-          .getPublicUrl(uploadData.path)
-
-        setNewEvidence(prev => ({
-          ...prev,
-          file_name: file.name,
-          file_url: publicUrl,
-          method: prev.method === 'Email' ? 'Online' : prev.method
-        }))
-      }
-    } catch (error) {
-      alert('Error uploading file. Please try again.')
-    } finally {
-      setUploadingFile(false)
-    }
-  }
 
   const handleDragStart = (e: React.DragEvent, itemId: string) => {
     setDraggedItem(itemId)
@@ -403,27 +170,6 @@ const EvidenceManager = ({
     setDragOverItem(null)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newEvidence.file_name.trim() && !newEvidence.url_link.trim()) {
-      alert('Please provide either a file name or URL link')
-      return
-    }
-    
-    // Auto-generate title from file name if not provided
-    const evidenceData = {
-      ...newEvidence,
-      name: newEvidence.name?.trim() || newEvidence.title?.trim() || newEvidence.file_name?.trim() || 'Evidence Item',
-      title: newEvidence.name?.trim() || newEvidence.title?.trim() || newEvidence.file_name?.trim() || 'Evidence Item'
-    }
-    
-    // Use different mutations based on user type
-    if (isGuest) {
-      addPendingEvidenceMutation.mutate(evidenceData)
-    } else {
-      addEvidenceMutation.mutate(evidenceData)
-    }
-  }
 
   const handleUpdate = (e: React.FormEvent) => {
     e.preventDefault()
@@ -489,12 +235,12 @@ const EvidenceManager = ({
           )}
           {(!isGuest || (isGuest && !isGuestFrozen)) && (
             <button
-              onClick={() => setShowAddForm(true)}
+              onClick={() => setShowAddModal(true)}
               className="btn-gold px-4 py-2 rounded-lg flex items-center space-x-2"
               style={{ backgroundColor: claimColor }}
             >
               <Plus className="w-4 h-4" />
-              <span>Add Evidence</span>
+              <span>{isGuest ? 'Submit Evidence for Review' : 'Add Evidence'}</span>
             </button>
           )}
           {isGuest && isGuestFrozen && (
@@ -510,165 +256,6 @@ const EvidenceManager = ({
         </div>
       </div>
 
-      {showAddForm && (!isGuest || (isGuest && !isGuestFrozen)) && (
-        <div className="card-enhanced p-3 pb-4 border-l-4 mb-4 max-w-md mx-auto" style={{ borderLeftColor: claimColor }}>
-          <h3 className="text-sm font-semibold mb-2 text-gold">
-            {isGuest ? 'Submit Evidence for Review' : 'Add New Evidence'}
-          </h3>
-          {isGuest && (
-            <div className="bg-yellow-100 text-yellow-800 px-3 py-2 rounded-lg text-sm mb-4">
-              Your evidence will be submitted for review by the claim owner before being added to the case.
-            </div>
-          )}
-          <form onSubmit={handleSubmit} className="space-y-2">
-            <div className="card-smudge p-2">
-              <h4 className="font-medium text-gold mb-1 text-xs">Upload File</h4>
-              <div className="flex items-center space-x-3">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
-                  className="hidden"
-                  accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.mp4,.mp3,.wav"
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingFile}
-                  className="btn-gold px-2 py-1 rounded text-xs disabled:opacity-50 flex items-center space-x-1"
-                >
-                  <Upload className="w-3 h-3" />
-                  <span>{uploadingFile ? 'Uploading...' : 'Choose File'}</span>
-                </button>
-                {newEvidence.file_name && (
-                  <span className="text-xs text-green-600">
-                    ✓ {newEvidence.file_name.replace(/\.[^/.]+$/, "")}
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-gold mt-1">
-                PDF, DOC, DOCX, TXT, JPG, PNG, GIF, MP4, MP3, WAV
-              </p>
-            </div>
-            <div className="grid grid-cols-1 gap-2">
-              <div>
-                <label className="block text-xs font-medium mb-1 text-gold">CLC Ref#</label>
-                <input
-                  type="text"
-                  value={newEvidence.book_of_deeds_ref}
-                  onChange={(e) => setNewEvidence({ ...newEvidence, book_of_deeds_ref: e.target.value })}
-                  className="w-full border border-yellow-400/30 rounded px-2 py-1 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/20 text-xs"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium mb-1 text-gold">Evidence Name</label>
-                <input
-                  type="text"
-                  value={newEvidence.name || newEvidence.file_name || ''}
-                  onChange={(e) => setNewEvidence({ ...newEvidence, name: e.target.value, file_name: e.target.value })}
-                  className="w-full border border-yellow-400/30 rounded px-2 py-1 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/20 text-xs"
-                  placeholder="Enter evidence name"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium mb-1 text-gold">File URL</label>
-                <input
-                  type="url"
-                  value={newEvidence.file_url}
-                  onChange={(e) => setNewEvidence({ ...newEvidence, file_url: e.target.value })}
-                  className="w-full border border-yellow-400/30 rounded px-2 py-1 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/20 text-xs"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium mb-1 text-gold">Description</label>
-                <input
-                  type="text"
-                  value={newEvidence.description || ''}
-                  onChange={(e) => setNewEvidence({ ...newEvidence, description: e.target.value })}
-                  className="w-full border border-yellow-400/30 rounded px-2 py-1 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/20 text-xs"
-                  placeholder="Enter evidence description"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <label className="block text-xs font-medium mb-1 text-gold">Exhibit ID</label>
-                <input
-                  type="text"
-                  value={newEvidence.exhibit_id}
-                  className="w-full border border-yellow-400/30 rounded px-2 py-1 bg-gray-100 text-gray-600 cursor-not-allowed text-xs"
-                  placeholder="Auto-generated"
-                  readOnly
-                />
-                <p className="text-xs text-gray-500 mt-1">Auto-assigned</p>
-              </div>
-              <div>
-                <label className="block text-xs font-medium mb-1 text-gold">Pages</label>
-                <input
-                  type="number"
-                  value={newEvidence.number_of_pages}
-                  onChange={(e) => setNewEvidence({ ...newEvidence, number_of_pages: e.target.value })}
-                  className="w-full border border-yellow-400/30 rounded px-2 py-1 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/20 text-xs"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium mb-1 text-gold">Date</label>
-                <input
-                  type="date"
-                  value={newEvidence.date_submitted}
-                  onChange={(e) => setNewEvidence({ ...newEvidence, date_submitted: e.target.value })}
-                  className="w-full border border-yellow-400/30 rounded px-2 py-1 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/20 text-xs"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-xs font-medium mb-1 text-gold">Method</label>
-                <select
-                  value={newEvidence.method}
-                  onChange={(e) => setNewEvidence({ ...newEvidence, method: e.target.value })}
-                  className="w-full border border-yellow-400/30 rounded px-2 py-1 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/20 text-xs"
-                >
-                  <option value="Post">Post</option>
-                  <option value="Email">Email</option>
-                  <option value="Hand">Hand</option>
-                  <option value="Call">Call</option>
-                  <option value="Online">Online</option>
-                  <option value="To-Do">To-Do</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium mb-1 text-gold">URL Link</label>
-                <input
-                  type="url"
-                  value={newEvidence.url_link}
-                  onChange={(e) => setNewEvidence({ ...newEvidence, url_link: e.target.value })}
-                  className="w-full border border-yellow-400/30 rounded px-2 py-1 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/20 text-xs"
-                />
-              </div>
-            </div>
-            <div className="flex space-x-2 mt-3">
-              <button
-                type="submit"
-                disabled={addEvidenceMutation.isPending || addPendingEvidenceMutation.isPending}
-                className="btn-gold px-3 py-1 rounded text-xs disabled:opacity-50"
-                style={{ backgroundColor: claimColor }}
-              >
-                {(addEvidenceMutation.isPending || addPendingEvidenceMutation.isPending) 
-                  ? (isGuest ? 'Submitting...' : 'Adding...') 
-                  : (isGuest ? 'Submit for Review' : 'Save & Add Another')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowAddForm(false)}
-                className="bg-yellow-400/20 text-gold px-3 py-1 rounded text-xs hover:bg-yellow-400/30"
-              >
-                Close
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
 
       {editingEvidence && (
         <div className="card-enhanced p-6 border-l-4" style={{ borderLeftColor: claimColor }}>
@@ -787,8 +374,8 @@ const EvidenceManager = ({
         </div>
       )}
 
-      {/* Evidence Table - Hide when form is open */}
-      {!showAddForm && !editingEvidence && (
+      {/* Evidence Table - Hide when editing */}
+      {!editingEvidence && (
         <div className="card-enhanced overflow-hidden mt-12">
         <div className="px-6 py-4 border-b border-yellow-400/20">
           <h3 className="text-lg font-semibold text-gold">Evidence List</h3>
@@ -1032,6 +619,71 @@ const EvidenceManager = ({
           </table>
         </div>
       </div>
+      )}
+
+      {/* Add Evidence Modal */}
+      {showAddModal && (
+        <AddEvidenceModal
+          open={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          onAdd={async (evidence) => {
+            try {
+              const { data: { user } } = await supabase.auth.getUser()
+              if (!user) throw new Error('Not authenticated')
+
+              // Get the current maximum display_order for this claim
+              let query = supabase
+                .from('evidence')
+                .select('display_order')
+                .eq('user_id', user.id)
+                .not('display_order', 'is', null)
+                .order('display_order', { ascending: false })
+                .limit(1)
+              
+              if (selectedClaim) {
+                query = query.eq('case_number', selectedClaim)
+              }
+              
+              const { data: maxOrderData } = await query
+              const maxDisplayOrder = maxOrderData?.[0]?.display_order || 0
+              const newDisplayOrder = maxDisplayOrder + 1
+
+              // Clean the data before submission
+              const cleanData = {
+                ...evidence,
+                user_id: user.id,
+                case_number: selectedClaim || null,
+                display_order: newDisplayOrder,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }
+
+              const { error } = await supabase
+                .from('evidence')
+                .insert([cleanData])
+
+              if (error) throw error
+
+              // Close modal and refresh
+              setShowAddModal(false)
+              queryClient.invalidateQueries({ queryKey: ['evidence', selectedClaim] })
+              
+              toast({
+                title: "Success",
+                description: "Evidence added successfully!",
+              })
+            } catch (error) {
+              console.error('Error adding evidence:', error)
+              toast({
+                title: "Error",
+                description: `Failed to add evidence: ${error.message || 'Unknown error'}`,
+                variant: "destructive",
+              })
+            }
+          }}
+          isGuest={isGuest}
+          isGuestFrozen={isGuestFrozen}
+        />
       )}
     </div>
   )
