@@ -23,6 +23,7 @@ export type Database = {
           description: string | null
           end_time: string
           id: string
+          responsible_user_id: string | null
           start_time: string
           title: string
           updated_at: string
@@ -36,6 +37,7 @@ export type Database = {
           description?: string | null
           end_time: string
           id?: string
+          responsible_user_id?: string | null
           start_time: string
           title: string
           updated_at?: string
@@ -49,12 +51,21 @@ export type Database = {
           description?: string | null
           end_time?: string
           id?: string
+          responsible_user_id?: string | null
           start_time?: string
           title?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "calendar_events_responsible_user_fk",
+            columns: ["responsible_user_id"],
+            isOneToOne: false,
+            referencedRelation: "profiles",
+            referencedColumns: ["id"]
+          }
+        ]
       }
       chat_messages: {
         Row: {
@@ -441,6 +452,7 @@ export type Database = {
           due_date: string
           evidence_id: string | null
           id: string
+          responsible_user_id: string | null
           priority: string
           title: string
           updated_at: string
@@ -456,6 +468,7 @@ export type Database = {
           due_date: string
           evidence_id?: string | null
           id?: string
+          responsible_user_id?: string | null
           priority?: string
           title: string
           updated_at?: string
@@ -471,6 +484,7 @@ export type Database = {
           due_date?: string
           evidence_id?: string | null
           id?: string
+          responsible_user_id?: string | null
           priority?: string
           title?: string
           updated_at?: string
@@ -484,6 +498,13 @@ export type Database = {
             referencedRelation: "evidence"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "todos_responsible_user_fk",
+            columns: ["responsible_user_id"],
+            isOneToOne: false,
+            referencedRelation: "profiles",
+            referencedColumns: ["id"]
+          }
         ]
       }
     }

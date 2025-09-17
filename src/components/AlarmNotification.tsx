@@ -69,7 +69,7 @@ export const AlarmNotification = ({ todo, onComplete, onSnooze, onDismiss }: Pro
             <Button 
               onClick={onDismiss}
               variant="ghost"
-              className="text-gray-500"
+              className="text-green-600 hover:text-green-700"
             >
               Dismiss
             </Button>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/integrations/supabase/client'
 import { Evidence } from '@/types/database'
 import { Plus, Edit, Trash2, Upload, Download, Eye, X, Save, Settings, FileText, Calendar, Hash, GripVertical } from 'lucide-react'
 import PendingEvidenceReview from './PendingEvidenceReview'
@@ -210,51 +210,13 @@ const EvidenceManager = ({
 
   return (
     <div className="space-y-6 pb-16">
-      {/* Pending Evidence Review - Only show for hosts/claim owners */}
-      {!isGuest && selectedClaim && currentUserId && (
+      {/* Pending Evidence Review - Only show for shared claims (guests view) */}
+      {isGuest && selectedClaim && currentUserId && (
         <PendingEvidenceReview 
           selectedClaim={selectedClaim} 
           isOwner={true} 
         />
       )}
-      
-      <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-3">
-          {onSetAmendMode && (
-            <button
-              onClick={() => onSetAmendMode(!amendMode)}
-              className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
-                amendMode 
-                  ? 'bg-orange-600 text-white hover:bg-orange-700' 
-                  : 'bg-gray-600 text-white hover:bg-gray-700'
-              }`}
-            >
-              <Settings className="w-4 h-4" />
-              <span>{amendMode ? 'Exit Amend Mode' : 'Amend Mode'}</span>
-            </button>
-          )}
-          {(!isGuest || (isGuest && !isGuestFrozen)) && (
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="btn-gold px-4 py-2 rounded-lg flex items-center space-x-2"
-              style={{ backgroundColor: claimColor }}
-            >
-              <Plus className="w-4 h-4" />
-              <span>{isGuest ? 'Submit Evidence for Review' : 'Add Evidence'}</span>
-            </button>
-          )}
-          {isGuest && isGuestFrozen && (
-            <div className="bg-red-100 text-red-800 px-3 py-1 rounded-lg text-sm">
-              Access Frozen
-            </div>
-          )}
-          {isGuest && !isGuestFrozen && (
-            <div className="bg-green-100 text-green-800 px-3 py-1 rounded-lg text-sm">
-              Guest Access - Can Add/Edit Own Content
-            </div>
-          )}
-        </div>
-      </div>
 
 
       {editingEvidence && (
@@ -377,8 +339,28 @@ const EvidenceManager = ({
       {/* Evidence Table - Hide when editing */}
       {!editingEvidence && (
         <div className="card-enhanced overflow-hidden mt-12">
-        <div className="px-6 py-4 border-b border-yellow-400/20">
+        <div className="px-6 py-4 border-b border-yellow-400/20 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gold">Evidence List</h3>
+          <div className="flex items-center gap-2">
+            {onSetAmendMode && (
+              <button
+                onClick={() => onSetAmendMode(!amendMode)}
+                className={`px-3 py-2 rounded-lg flex items-center space-x-2 bg-white/10 border border-red-400 text-red-400 hover:opacity-90`}
+              >
+                <Settings className="w-4 h-4" />
+                <span>{amendMode ? 'Exit Amend Mode' : 'Amend Mode'}</span>
+              </button>
+            )}
+            {(!isGuest || (isGuest && !isGuestFrozen)) && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="bg-white/10 border border-green-400 text-green-400 px-3 py-2 rounded-lg flex items-center space-x-2 hover:opacity-90"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{isGuest ? 'Submit Evidence' : 'Add Evidence'}</span>
+              </button>
+            )}
+          </div>
         </div>
         <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-yellow-400/20">

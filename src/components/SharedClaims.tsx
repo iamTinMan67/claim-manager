@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/integrations/supabase/client'
 import PaymentModal from './PaymentModal'
 import CollaborationHub from './CollaborationHub'
-import { Users, Mail, Eye, Edit, Trash2, Plus, DollarSign, CreditCard, CheckCircle, Clock, AlertCircle, X, UserPlus, UserMinus, Crown, FileText, Home } from 'lucide-react'
+import { Users, Mail, Eye, Edit, Trash2, Plus, DollarSign, CreditCard, CheckCircle, Clock, AlertCircle, X, UserPlus, UserMinus, Crown, FileText, Home, ChevronLeft } from 'lucide-react'
+import { useNavigation } from '@/contexts/NavigationContext'
 import EvidenceManager from './EvidenceManager'
 
 interface ClaimShare {
@@ -39,6 +40,7 @@ interface SharedClaimsProps {
 }
 
 const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, isGuest = false }: SharedClaimsProps) => {
+  const { navigateBack, navigateTo } = useNavigation()
   const [showShareForm, setShowShareForm] = useState(false)
   const [amendMode, setAmendMode] = useState(false)
   const [selectedSharedClaim, setSelectedSharedClaim] = useState<string | null>(null)
@@ -600,7 +602,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                 </div>
                 <button
                   onClick={() => setShareError(null)}
-                  className="mt-2 text-red-600 hover:text-red-800 text-sm underline"
+                  className="mt-2 text-green-600 hover:text-green-800 text-sm underline"
                 >
                   Dismiss
                 </button>
@@ -621,7 +623,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
               <button
                 type="button"
                 onClick={() => setShowShareForm(false)}
-                className="bg-yellow-400/20 text-gold px-4 py-2 rounded-lg hover:bg-yellow-400/30"
+                className="bg-white/10 border border-green-400 text-green-400 px-4 py-2 rounded-lg hover:opacity-90"
               >
                 Cancel
               </button>
@@ -836,33 +838,25 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
       {selectedClaim && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold text-gold">Claim Details</h2>
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2">
               <button
-                onClick={() => window.history.back()}
-                className="btn-gold px-4 py-2 rounded-lg flex items-center space-x-2"
+                onClick={navigateBack}
+                className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
               >
-                <X className="w-4 h-4" />
+                <ChevronLeft className="w-4 h-4" />
                 <span>Back</span>
-                </button>
-                <button
-                onClick={() => {
-                  if (typeof window !== 'undefined') {
-                    const url = new URL(window.location.href)
-                    url.searchParams.delete('claim')
-                    window.history.pushState({}, '', url.toString())
-                  }
-                  // Reset shared context and go to private claims
-                  window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null, claimColor: '#3B82F6' } }))
-                  window.dispatchEvent(new CustomEvent('tabChange', { detail: 'claims' }))
-                }}
-                className="btn-gold px-4 py-2 rounded-lg flex items-center space-x-2"
+              </button>
+              <button
+                onClick={() => navigateTo('claims')}
+                className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
               >
                 <Home className="w-4 h-4" />
                 <span>Home</span>
-                </button>
-                </div>
-              </div>
+              </button>
+            </div>
+            <h2 className="text-2xl font-bold text-gold text-center flex-1">Claim Details</h2>
+            <div />
+          </div>
           
           
           {/* Evidence Management */}
@@ -926,7 +920,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
             <h3 className="text-xl font-semibold">Evidence for {selectedSharedClaim}</h3>
             <button
               onClick={() => setSelectedSharedClaim(null)}
-              className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center space-x-2"
+              className="bg-white/10 border border-red-400 text-red-400 px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
             >
               <X className="w-4 h-4" />
               <span>Close Evidence</span>

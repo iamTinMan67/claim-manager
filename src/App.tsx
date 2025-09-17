@@ -3,8 +3,9 @@ import { useState } from 'react'
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
 import type { User } from '@supabase/supabase-js'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/integrations/supabase/client'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { NavigationProvider, useNavigation } from '@/contexts/NavigationContext'
 import AuthComponent from './components/AuthComponent'
 import ClaimsTable from './components/ClaimsTable'
 import EvidenceManager from './components/EvidenceManager'
@@ -24,7 +25,9 @@ function App() {
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <AppContent />
+          <NavigationProvider>
+            <AppContent />
+          </NavigationProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ThemeProvider>
@@ -33,7 +36,7 @@ function App() {
 
 function AppContent() {
   const [user, setUser] = useState<User | null>(null)
-  const [activeTab, setActiveTab] = useState('claims')
+  const { currentPage, navigateTo } = useNavigation()
   const [selectedClaim, setSelectedClaim] = useState<string | null>(null)
   const [selectedClaimColor, setSelectedClaimColor] = useState<string>('#3B82F6')
   const [isGuest, setIsGuest] = useState(false) // TODO: Implement guest detection logic
@@ -42,10 +45,10 @@ function AppContent() {
 
   // Scroll to top when claims tab is active and no claim is selected
   React.useEffect(() => {
-    if (activeTab === 'claims' && !selectedClaim) {
+    if (currentPage === 'claims' && !selectedClaim) {
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
-  }, [activeTab, selectedClaim])
+  }, [currentPage, selectedClaim])
 
   // Scroll to top when component mounts to ensure navbar is visible
   React.useEffect(() => {
@@ -59,16 +62,16 @@ function AppContent() {
   return (
     <AuthComponent 
       onAuthChange={setUser}
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
+      activeTab={currentPage}
+      onTabChange={navigateTo}
       selectedClaim={selectedClaim}
       isGuest={isGuest}
       showGuestContent={showGuestContent}
       onToggleGuestContent={setShowGuestContent}
     >
       <LoggedInContent 
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        activeTab={currentPage}
+        setActiveTab={navigateTo}
         selectedClaim={selectedClaim}
         setSelectedClaim={setSelectedClaim}
         selectedClaimColor={selectedClaimColor}
@@ -111,6 +114,7 @@ function LoggedInContent({
   isInSharedContext: boolean
   setIsInSharedContext: (value: boolean) => void
 }) {
+  const { navigateBack, canGoBack } = useNavigation()
   // Listen for claim selection events from SharedClaims component
   React.useEffect(() => {
     const handleClaimSelected = (event: CustomEvent) => {

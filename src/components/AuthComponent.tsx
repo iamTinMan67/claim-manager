@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/integrations/supabase/client'
 import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
 import type { User } from '@supabase/supabase-js'
@@ -40,9 +40,8 @@ export default function AuthComponent({
 
   // Navigation items
   const navItems = [
-    { id: 'claims', label: 'Claims', icon: FileText },
-    { id: 'todos', label: 'To-Do Lists', icon: CheckSquare, requiresClaim: true },
-    { id: 'calendar-private', label: 'Private Calendar', icon: Calendar, requiresClaim: true },
+    { id: 'todos-private', label: 'To-Do Lists', icon: CheckSquare },
+    { id: 'calendar-private', label: 'Calendar', icon: Calendar },
     // Show shared calendar entry only when on shared context
     ...(activeTab === 'shared' ? [{ id: 'calendar-shared', label: 'Shared Calendar', icon: Calendar, requiresClaim: true }] : [] as any),
     { id: 'export', label: 'Export', icon: Download, requiresClaim: true },
@@ -305,19 +304,14 @@ export default function AuthComponent({
           <div className="flex justify-between items-center">
             <div className="flex space-x-8">
               {navItems.map((item) => {
-                // Hide nav items that require a claim when on claims page and no claim selected
-                if (item.requiresClaim && !selectedClaim) {
-                  // Always show To-Do Lists and Private Calendar on private claims view for clarity
-                  const isPrivateClaimsView = activeTab === 'claims'
-                  const isAlwaysVisibleHere = isPrivateClaimsView && (item.id === 'todos' || item.id === 'calendar-private')
-                  if (!isAlwaysVisibleHere) {
-                    return null
-                  }
-                }
-                
-                // When on shared claims page, allow navigation to todos, calendar, and export
-                // but only if a claim is selected
+                // Hide nav items that require a claim when in shared context and no claim selected
                 if (activeTab === 'shared' && item.requiresClaim && !selectedClaim) {
+                  return null
+                }
+
+                // Hide only the current private tab link to reduce clutter
+                if ((activeTab === 'calendar-private' && item.id === 'calendar-private') ||
+                    (activeTab === 'todos-private' && item.id === 'todos-private')) {
                   return null
                 }
                 

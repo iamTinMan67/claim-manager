@@ -43,7 +43,7 @@ export const EditableClaimInfo = ({ claim, onUpdate }: Props) => {
               variant="outline"
               size="sm"
               onClick={handleCancel}
-              className="text-gray-600 hover:text-gray-700"
+              className="text-green-600 hover:text-green-700"
             >
               <X className="w-4 h-4 mr-2" />
               Cancel

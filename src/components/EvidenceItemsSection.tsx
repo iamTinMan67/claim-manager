@@ -49,7 +49,7 @@ export const EvidenceItemsSection = ({
           </button>
           <button
             onClick={() => setShowAddEvidence(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm"
+            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors text-sm"
           >
             Add New Evidence
           </button>

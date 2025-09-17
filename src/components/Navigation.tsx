@@ -16,8 +16,8 @@ const Navigation = ({ activeTab, onTabChange, selectedClaim, isGuest = false, sh
 
   const navItems = [
     { id: 'claims', label: 'Claims', icon: FileText },
-    { id: 'todos-private', label: 'Private To-Do Lists', icon: CheckSquare, requiresClaim: true },
-    { id: 'calendar-private', label: 'Private Calendar', icon: Calendar },
+    { id: 'todos-private', label: 'To-Do Lists', icon: CheckSquare },
+    { id: 'calendar-private', label: 'Calendar', icon: Calendar },
     { id: 'shared', label: 'Shared Claims', icon: Users },
     // Shared-specific entries appear only when activeTab === 'shared'
     ...(activeTab === 'shared' ? [
@@ -33,13 +33,12 @@ const Navigation = ({ activeTab, onTabChange, selectedClaim, isGuest = false, sh
         <div className="flex justify-between items-center">
           <div className="flex space-x-8">
           {navItems.map((item) => {
-            // Hide nav items that require a claim when on claims page and no claim selected
-            if (activeTab === 'claims' && item.requiresClaim && !selectedClaim) {
+
+            // Hide only the current private tab link to reduce clutter
+            if (activeTab === 'calendar-private' && item.id === 'calendar-private') {
               return null
             }
-            
-            // Allow navigation to claim-scoped tabs only if a claim is selected
-            if (item.requiresClaim && !selectedClaim) {
+            if (activeTab === 'todos-private' && item.id === 'todos-private') {
               return null
             }
             

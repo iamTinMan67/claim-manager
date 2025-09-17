@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/integrations/supabase/client'
 import { X, CreditCard, Lock, CheckCircle, AlertCircle } from 'lucide-react'
 
 const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY 
