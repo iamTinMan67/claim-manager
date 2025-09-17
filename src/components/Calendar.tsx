@@ -66,6 +66,9 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
   })
 
   const queryClient = useQueryClient()
+  const timeFieldWidth = 180
+  const titleFieldWidth = timeFieldWidth
+  const colorFieldWidth = Math.round(timeFieldWidth * 0.2)
 
   // Get current user for permission checks
   const { data: currentUser } = useQuery({
@@ -90,7 +93,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
     queryFn: async () => {
       const { data, error } = await supabase
         .from('claims')
-        .select('case_number, title, color, status')
+        .select('case_number, title, color, status, court')
         .order('title')
       if (error) throw error
       return data
@@ -376,7 +379,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
             <Home className="w-4 h-4" />
             <span>Home</span>
           </button>
-          {!isGuest && (
+          {(!isGuest) || (isGuest && !isGuestFrozen) ? (
             <button
               onClick={() => {
                 const now = new Date()
@@ -396,7 +399,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
               <Plus className="w-4 h-4" />
               <span>Add</span>
             </button>
-          )}
+          ) : null}
         </div>
         <div className="flex-1 flex items-center justify-center space-x-4">
           <button
@@ -432,7 +435,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         </div>
       </div>
 
-      {showAddForm && !isGuest && (
+      {showAddForm && (
         // Form overlay - hide main content
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="p-6 rounded-[16px] shadow max-w-2xl w-full max-h-[90vh] overflow-y-auto"
@@ -447,36 +450,88 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
             </button>
           </div>
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <input
+            <div className="grid items-end gap-4" style={{ display: 'grid', gridTemplateColumns: `${timeFieldWidth}px ${timeFieldWidth}px ${colorFieldWidth}px` }}>
+              <div>
+                <label className="block text-base font-medium mb-1">Title</label>
+                <input
                 type="text"
                 value={newEvent.title}
                 onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
                 placeholder="Enter event title"
-                className="w-1/4 h-[27px] mr-2 border border-yellow-400/30 rounded-md px-2 bg-white/10 text-yellow-300 placeholder-yellow-300/70 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                className="h-[27px] mr-2 border border-yellow-400/30 rounded-md px-2 bg-white/10 text-yellow-300 placeholder-yellow-300/70 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                style={{ width: timeFieldWidth }}
                 required
               />
-            </div>
-            <div className="w-1/2">
-              <div className="grid grid-cols-[180px_180px_27px] gap-3 mb-1">
-                <label className="h-[27px] flex items-center justify-center text-sm font-medium">Start Time *</label>
-                <label className="h-[27px] flex items-center justify-center text-sm font-medium">End Time</label>
-                <label className="h-[27px] flex items-center justify-center text-sm font-medium">All day</label>
               </div>
-              <div className="grid grid-cols-[auto_auto_auto] gap-3 items-center">
+              <div>
+                <label className="block text-base font-medium mb-1">Associated Claim</label>
+                <select
+                  value={newEvent.claim_id}
+                  onChange={(e) => {
+                    const claimId = e.target.value
+                    const selected = (claims as any[] | undefined)?.find(c => c.case_number === claimId)
+                    setNewEvent({
+                      ...newEvent,
+                      claim_id: claimId,
+                      color: selected?.color || newEvent.color || claimColor
+                    })
+                  }}
+                  className="h-[27px] text-sm border border-yellow-400/30 rounded-md px-2 bg-white/10 text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                  style={{ width: timeFieldWidth }}
+                >
+                  <option value="">Select A Claim</option>
+                  {claims?.filter((c: any) => c.status !== 'Closed').map((claim) => (
+                    <option key={claim.case_number} value={claim.case_number}>
+                      {claim.court || '—'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ marginLeft: 35 }}>
+                <label className="block text-base font-medium mb-1 whitespace-nowrap" style={{ width: colorFieldWidth, textAlign: 'center' }}>{newEvent.claim_id ? 'Colour Code' : 'No Claim'}</label>
+                {newEvent.claim_id ? (
+                  <input
+                    type="color"
+                    value={newEvent.color || claimColor}
+                    onChange={(e) => setNewEvent({ ...newEvent, color: e.target.value })}
+                    className="h-[27px] border rounded-md"
+                    style={{ width: colorFieldWidth }}
+                    title="Event color"
+                  />
+                ) : (
+                  <div
+                    className="h-[27px] border rounded-md"
+                    style={{ width: colorFieldWidth, backgroundImage: 'repeating-linear-gradient(45deg, rgba(239,68,68,0.85) 0 10px, transparent 10px 20px)', backgroundColor: 'rgba(239,68,68,0.15)', borderColor: 'rgba(239,68,68,0.7)' }}
+                    title="Select a claim to set color"
+                  />
+                )}
+              </div>
+            </div>
+            {/* Second row: Start Time (col 1), End Time (col 2), All day (col 3) */}
+            <div className="w-1/2 grid items-end" style={{ display: 'grid', gridTemplateColumns: `${timeFieldWidth}px ${timeFieldWidth}px 120px`, columnGap: '1rem' }}>
+              <div>
+                <label className="block text-base font-medium mb-1">Start Time</label>
                 <input
                   type={newEvent.all_day ? "date" : "datetime-local"}
                   value={newEvent.start_time}
                   onChange={(e) => setNewEvent({ ...newEvent, start_time: e.target.value })}
-                  className="w-[180px] h-[27px] border border-yellow-400/30 rounded-md px-2 bg-white/10 text-yellow-300 text-sm placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                  className="h-[27px] border border-yellow-400/30 rounded-md px-2 bg-white/10 text-yellow-300 text-sm placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                  style={{ width: timeFieldWidth }}
                   required
                 />
+              </div>
+              <div>
+                <label className="block text-base font-medium mb-1">End Time</label>
                 <input
                   type={newEvent.all_day ? "date" : "datetime-local"}
                   value={newEvent.end_time}
                   onChange={(e) => setNewEvent({ ...newEvent, end_time: e.target.value })}
-                  className="w-[180px] h-[27px] border border-yellow-400/30 rounded-md px-2 bg-white/10 text-yellow-300 text-sm placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                  className="h-[27px] border border-yellow-400/30 rounded-md px-2 bg-white/10 text-yellow-300 text-sm placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                  style={{ width: timeFieldWidth }}
                 />
+              </div>
+              <div>
+                <label className="block text-base font-medium mb-1 whitespace-nowrap text-center">All day</label>
                 <div className="h-[27px] flex items-center justify-center">
                   <input
                     type="checkbox"
@@ -488,55 +543,26 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                 </div>
               </div>
             </div>
-            <div className="w-1/2 grid grid-cols-2 gap-2 items-end">
-            <div>
-              <label className="block text-base font-medium mb-1">Associated Claim</label>
-              <select
-                value={newEvent.claim_id}
-                  onChange={(e) => {
-                    const claimId = e.target.value
-                    const selected = (claims as any[] | undefined)?.find(c => c.case_number === claimId)
-                    setNewEvent({
-                      ...newEvent,
-                      claim_id: claimId,
-                      color: selected?.color || newEvent.color || claimColor
-                    })
-                  }}
-                  className="w-full h-[27px] text-sm border border-yellow-400/30 rounded-md px-2 bg-white/10 text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
-              >
-                <option value="">No specific claim</option>
-                  {claims?.filter((c: any) => c.status !== 'Closed').map((claim) => (
-                  <option key={claim.case_number} value={claim.case_number}>
-                    {claim.case_number} - {claim.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-              <div className="flex w-full items-end justify-between mr-2">
-                <div className="flex flex-col items-center ml-auto" title={newEvent.claim_id ? 'Claim Selected' : 'No claim selected'}>
-                  <span className="block text-sm font-medium mb-1 text-center">{newEvent.claim_id ? 'Claim Selected' : 'No claim selected'}</span>
-                  {newEvent.claim_id ? (
-                    <input
-                      type="color"
-                      value={newEvent.color || claimColor}
-                      onChange={(e) => setNewEvent({ ...newEvent, color: e.target.value })}
-                      className="w-16 h-10 border rounded-lg"
-                      title="Event color"
-                    />
-                  ) : (
-                    <div
-                      className="w-16 h-10 border rounded-lg"
-                      title="Select a claim to set color"
-                      style={{
-                        backgroundImage:
-                          'repeating-linear-gradient(45deg, rgba(239,68,68,0.85) 0 10px, transparent 10px 20px)',
-                        backgroundColor: 'rgba(239,68,68,0.15)',
-                        borderColor: 'rgba(239,68,68,0.7)'
-                      }}
-                    />
-                  )}
+            <div className="w-1/2 grid grid-cols-2 items-end">
+              {showGuestContent && (
+                <div>
+                  <label className="block text-base font-medium mb-1">Assignee</label>
+                  <select
+                    value={newEvent.assignee_id || currentUser?.id || ''}
+                    onChange={(e) => setNewEvent({ ...newEvent, assignee_id: e.target.value })}
+                    className="w-[90%] h-[27px] text-sm border border-yellow-400/30 rounded-md px-2 bg-white/10 text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                  >
+                    <option value={currentUser?.id || ''}>Assign to yourself</option>
+                    {(collaborators || []).map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.full_name || u.email || 'User'}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <div className="flex space-x-3 ml-4">
+              )}
+              <div className="flex w-full items-end justify-end mr-2">
+                <div className="flex space-x-3 ml-4" style={{ marginRight: -50 }}>
               <button
                 type="submit"
                 disabled={addEventMutation.isPending}
@@ -544,26 +570,10 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
               >
                 {addEventMutation.isPending ? 'Adding...' : 'Add'}
               </button>
-            </div>
+                </div>
               </div>
             </div>
-            {showGuestContent && (
-              <div className="w-1/2">
-                <label className="block text-sm font-medium mb-1">Assignee</label>
-                <select
-                  value={newEvent.assignee_id || currentUser?.id || ''}
-                  onChange={(e) => setNewEvent({ ...newEvent, assignee_id: e.target.value })}
-                  className="w-full border border-yellow-400/30 rounded-md px-3 py-2 bg-white/10 text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
-                >
-                  <option value={currentUser?.id || ''}>Assign to yourself</option>
-                  {(collaborators || []).map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.full_name || u.email || 'User'}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+            
             
           </form>
           </div>
