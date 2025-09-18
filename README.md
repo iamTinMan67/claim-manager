@@ -6,6 +6,10 @@ A comprehensive legal case management application designed for managing claims, 
 
 Claim Manager is a powerful, feature-rich application that helps legal professionals and teams manage their cases efficiently. It provides tools for evidence management, task tracking, calendar integration, real-time collaboration, and secure sharing capabilities.
 
+### Terminology
+- **Claim Owner (Broadcaster)**: The creator/owner of a claim. Can share a claim, manage permissions, and initiate shared features (video, whiteboard, chat, assignments, export). Counted as a participant in collaboration features.
+- **Collaborator (Guest)**: An invited participant with scoped permissions on a shared claim. Cannot re‑share a claim or change permissions.
+
 ## ✨ Key Features
 
 ### 🏠 **Core Management**
@@ -158,7 +162,7 @@ The application uses a comprehensive PostgreSQL schema with the following key ta
 
 - **Shared Claims**
   - Shared with specific collaborators via secure invitations
-  - Ownership is retained by the host; guests cannot re-share claims
+  - Ownership is retained by the Claim Owner (Broadcaster); guests cannot re‑share claims
   - Shared To-Dos and Calendar are scoped to the selected shared claim
   - Collaboration Hub is enabled (Chat, Video, Whiteboard)
   - Export in shared context only includes the selected shared claim’s data
@@ -210,13 +214,30 @@ The application uses a comprehensive PostgreSQL schema with the following key ta
 2. Use the Collaboration Hub for team communication
 3. Start video calls for real-time discussion
 4. Manage tasks and calendar events together
+5. Only the Claim Owner (Broadcaster) can share/unshare and manage permissions; guests participate per granted permissions
 
-### Video Conferencing (Daily.co)
+### Video Conferencing (Daily.co or Google Meet)
 
 - Integrated into the Collaboration Hub under the “Video Conference” tab
-- Rooms are auto‑named per claim: `claim-{claim-id}`
-- Share the room link to invite collaborators
-- Free tier note: While the system supports multiple participants, Daily.co’s free plan effectively allows reliable 1‑to‑1 calls for up to 2 hours per day total usage. For multi‑party or longer sessions, consider upgrading your Daily.co plan.
+- Two provider options:
+  - **Google Meet (Recommended, no API required)**: The Claim Owner (Broadcaster) can paste an existing Google Meet URL (created at `https://meet.google.com`). Collaborators see a prominent “Join Google Meet” button. No Google Calendar API is needed for this workflow.
+  - **Daily.co (Built‑in video)**: If no Meet link is shared, the app falls back to the built‑in Daily.co video room.
+- Daily.co rooms are auto‑named per claim: `claim-{claim-id}` and can be joined directly from the app
+- Free tier note (Daily.co): while multiple participants are supported by the app, the Daily.co free plan effectively allows reliable 1‑to‑1 calls for up to 2 hours per day total usage. For multi‑party or longer sessions, consider upgrading your Daily.co plan.
+
+### Collaborative Documents (ONLYOFFICE / Collabora / External)
+
+- Integrated into the Collaboration Hub (owner tools in the Video tab)
+- Claim Owner (Broadcaster) can paste an external document URL for collaborative editing
+  - Recommended: **ONLYOFFICE Docs (Community Edition)** or **Collabora Online (CODE)**
+  - You host the document server (Docker) and generate shareable edit links
+  - Paste the link into the app; collaborators get an “Open Document” message/button
+- Benefits
+  - Real-time co-editing for .docx/.odt with familiar Office-like UI
+  - No proprietary vendor lock-in; open-source options available
+- Notes
+  - Community editions are free but require your own server resources
+  - For quick trials, you can paste any public document link; for secure editing, configure JWT/permissions on your doc server and share time-limited links
 
 ## 🔒 Security Features
 

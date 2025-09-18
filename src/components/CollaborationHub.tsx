@@ -43,7 +43,7 @@ interface ChatMessage {
   claim_id: string
   sender_id: string
   message: string
-  message_type: 'text' | 'file' | 'image' | 'audio' | 'video' | 'system' | 'whiteboard_share'
+  message_type: 'text' | 'file' | 'image' | 'audio' | 'video' | 'document' | 'system' | 'whiteboard_share'
   file_url?: string
   file_name?: string
   file_size?: number
@@ -73,6 +73,8 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
   const [whiteboardTool, setWhiteboardTool] = useState<'pen' | 'text' | 'rectangle' | 'circle' | 'line'>('pen')
   const [isDrawing, setIsDrawing] = useState(false)
   const [whiteboardElements, setWhiteboardElements] = useState<WhiteboardElement[]>([])
+  const [meetLink, setMeetLink] = useState('')
+  const [docLink, setDocLink] = useState('')
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -147,6 +149,34 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
       message: newMessage.trim(),
       message_type: 'text'
     })
+  }
+
+  const shareMeetLink = () => {
+    if (!meetLink.trim() || !selectedClaim || !currentUserId) return
+    // Basic validation
+    const url = meetLink.trim()
+    if (!/^https?:\/\/meet\.google\.com\//.test(url)) return
+
+    sendMessageMutation.mutate({
+      message: `Join Google Meet: ${url}`,
+      message_type: 'video',
+      file_url: url
+    })
+    setMeetLink('')
+  }
+
+  const shareDocumentLink = () => {
+    if (!docLink.trim() || !selectedClaim || !currentUserId) return
+    const url = docLink.trim()
+    // Accept any https URL; owners should paste ONLYOFFICE/Collabora links
+    if (!/^https?:\/\//.test(url)) return
+
+    sendMessageMutation.mutate({
+      message: `Open Document: ${url}`,
+      message_type: 'document',
+      file_url: url
+    })
+    setDocLink('')
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -407,9 +437,65 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
           <div className="p-6">
             <div className="text-center mb-6">
               <h3 className="text-lg font-semibold mb-2">Video Conference</h3>
-              <p className="text-gray-600">Start a video call with other collaborators</p>
+              <p className="text-gray-600">Choose a provider or join an existing link</p>
             </div>
-            
+
+            {/* If any message contains a Meet link, show a Join button */}
+            {messages && (messages as any[]).some(m => m.message_type === 'video' && /^https?:\/\/meet\.google\.com\//.test(m.file_url || m.message)) ? (
+              <div className="card-enhanced p-4 mb-4">
+                <h4 className="font-semibold mb-2">Google Meet Link Shared</h4>
+                <button
+                  onClick={() => {
+                    const latest = [...(messages as any[])].reverse().find(m => m.message_type === 'video' && /^https?:\/\/meet\.google\.com\//.test(m.file_url || m.message))
+                    const href = latest?.file_url || (latest?.message?.match(/https?:\/\/meet\.google\.com\/[\w-]+/g)?.[0] ?? '')
+                    if (href) window.open(href, '_blank')
+                  }}
+                  className="bg-white/10 border border-green-400 text-green-400 px-4 py-2 rounded-lg hover:opacity-90"
+                >
+                  Join Google Meet
+                </button>
+              </div>
+            ) : null}
+
+            {/* Owner-only: share a Meet link */}
+            {!isGuest && (
+              <div className="card-smudge p-4 mb-4 flex items-center space-x-2">
+                <input
+                  type="url"
+                  placeholder="Paste Google Meet link (https://meet.google.com/...)"
+                  value={meetLink}
+                  onChange={(e) => setMeetLink(e.target.value)}
+                  className="flex-1 h-10 text-sm border border-yellow-400/30 rounded-md px-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                />
+                <button
+                  onClick={shareMeetLink}
+                  className="bg-white/10 border border-green-400 text-green-400 px-4 py-2 rounded-lg hover:opacity-90"
+                >
+                  Share Meet Link
+                </button>
+              </div>
+            )}
+
+            {/* Owner-only: share a document (ONLYOFFICE/Collabora) */}
+            {!isGuest && (
+              <div className="card-smudge p-4 mb-4 flex items-center space-x-2">
+                <input
+                  type="url"
+                  placeholder="Paste document link (ONLYOFFICE/Collabora/Nextcloud)"
+                  value={docLink}
+                  onChange={(e) => setDocLink(e.target.value)}
+                  className="flex-1 h-10 text-sm border border-yellow-400/30 rounded-md px-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                />
+                <button
+                  onClick={shareDocumentLink}
+                  className="bg-white/10 border border-green-400 text-green-400 px-4 py-2 rounded-lg hover:opacity-90"
+                >
+                  Share Document
+                </button>
+              </div>
+            )}
+
+            {/* Fallback: built-in Daily.co video */}
             <VideoConference 
               claimId={selectedClaim} 
               onClose={() => setActiveTab('chat')}
