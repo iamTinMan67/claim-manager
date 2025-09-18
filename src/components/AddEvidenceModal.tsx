@@ -28,6 +28,7 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
     return lastDate || new Date().toISOString().split('T')[0];
   });
   const [method, setMethod] = useState("Email");
+  const [urlLink, setUrlLink] = useState("");
   const PLACEHOLDER_REF = "Enter any Reference #";
   const [bookOfDeedsRef, setBookOfDeedsRef] = useState(PLACEHOLDER_REF);
   const [description, setDescription] = useState("");
@@ -137,6 +138,7 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
         numberOfPages,
         dateSubmitted,
         method,
+        urlLink: urlLink || '',
         bookOfDeedsRef: normalizedRef,
         description,
       },

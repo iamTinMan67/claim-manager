@@ -10,6 +10,9 @@ import JSZip from 'jszip'
 interface ExportFeaturesProps {
   selectedClaim: string | null
   claimColor?: string
+  isGuest?: boolean
+  showGuestContent?: boolean
+  isGuestFrozen?: boolean
 }
 
 const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeaturesProps) => {
