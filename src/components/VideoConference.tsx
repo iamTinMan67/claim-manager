@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Video, VideoOff, Mic, MicOff, PhoneOff, Users, Settings, Copy } from 'lucide-react'
-import { DailyProvider, useDaily, useParticipant, useParticipants } from '@daily-co/daily-react'
+import { DailyProvider, useDaily, useParticipant, useParticipantIds, useLocalSessionId } from '@daily-co/daily-react'
 
 interface VideoConferenceProps {
   claimId: string
@@ -129,7 +129,8 @@ const ParticipantVideo = ({ participantId }: { participantId: string }) => {
 // Main video conference room component
 const VideoConferenceRoom = ({ claimId, onClose }: VideoConferenceProps) => {
   const daily = useDaily()
-  const participants = useParticipants()
+  const participantIds = useParticipantIds()
+  const localId = useLocalSessionId()
   const [isJoining, setIsJoining] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [roomUrl, setRoomUrl] = useState('')
@@ -212,15 +213,16 @@ const VideoConferenceRoom = ({ claimId, onClose }: VideoConferenceProps) => {
     )
   }
 
-  const participantList = Object.values(participants)
-  const localParticipant = participantList.find(p => p.local)
-  const remoteParticipants = participantList.filter(p => !p.local)
+  const allIds = participantIds || []
+  const localParticipantId = localId || null
+  const remoteIds = allIds.filter(id => id !== localParticipantId)
+  const participantList = allIds
 
   return (
     <div className="card-enhanced rounded-lg overflow-hidden">
       {/* Video Grid */}
       <div className="relative bg-gray-900 p-4">
-        {participantList.length === 0 ? (
+        {allIds.length === 0 ? (
           <div className="flex items-center justify-center h-64 text-gold-light">
             <div className="text-center">
               <Video className="w-16 h-16 mx-auto mb-4 text-yellow-400" />
@@ -242,15 +244,15 @@ const VideoConferenceRoom = ({ claimId, onClose }: VideoConferenceProps) => {
           </div>
         ) : (
           <div className={`grid gap-4 ${
-            participantList.length === 1 ? 'grid-cols-1' :
-            participantList.length === 2 ? 'grid-cols-1 md:grid-cols-2' :
-            participantList.length <= 4 ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-3'
+            allIds.length === 1 ? 'grid-cols-1' :
+            allIds.length === 2 ? 'grid-cols-1 md:grid-cols-2' :
+            allIds.length <= 4 ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-3'
           }`}>
-            {localParticipant && (
-              <ParticipantVideo participantId={localParticipant.session_id} />
+            {localParticipantId && (
+              <ParticipantVideo participantId={localParticipantId} />
             )}
-            {remoteParticipants.map(participant => (
-              <ParticipantVideo key={participant.session_id} participantId={participant.session_id} />
+            {remoteIds.map(id => (
+              <ParticipantVideo key={id} participantId={id} />
             ))}
           </div>
         )}

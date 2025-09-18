@@ -2,33 +2,14 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import VideoConference from './VideoConference'
-import EnhancedWhiteboard from './EnhancedWhiteboard'
 import { 
   MessageCircle, 
   Video, 
-  Mic, 
-  MicOff, 
-  Camera, 
-  CameraOff, 
-  Share2, 
-  Palette, 
-  Type, 
-  Upload, 
   Send, 
-  Phone, 
-  PhoneOff,
   Users,
   FileText,
-  Image,
   Paperclip,
-  Download,
-  Trash2,
-  Edit3,
-  Square,
-  Circle,
-  Minus,
-  Save,
-  Crown
+  Trash2
 } from 'lucide-react'
 
 interface CollaborationHubProps {
@@ -64,15 +45,12 @@ interface WhiteboardElement {
 }
 
 const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, currentUserId }: CollaborationHubProps) => {
-  const [activeTab, setActiveTab] = useState<'chat' | 'video' | 'whiteboard'>('chat')
+  const [activeTab, setActiveTab] = useState<'chat' | 'video' | 'documents'>('chat')
   const [newMessage, setNewMessage] = useState('')
   const [isRecording, setIsRecording] = useState(false)
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null)
   const [isVideoOn, setIsVideoOn] = useState(false)
   const [isAudioOn, setIsAudioOn] = useState(false)
-  const [whiteboardTool, setWhiteboardTool] = useState<'pen' | 'text' | 'rectangle' | 'circle' | 'line'>('pen')
-  const [isDrawing, setIsDrawing] = useState(false)
-  const [whiteboardElements, setWhiteboardElements] = useState<WhiteboardElement[]>([])
   const [meetLink, setMeetLink] = useState('')
   const [docLink, setDocLink] = useState('')
   
@@ -115,6 +93,14 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
     },
     enabled: !!selectedClaim
   })
+
+  // Compute latest document link AFTER messages is defined to avoid TDZ errors
+  const latestDocLink = React.useMemo(() => {
+    const list = (messages as any[]) || []
+    const last = [...list].reverse().find(m => m.message_type === 'document' && typeof (m.file_url || m.message) === 'string')
+    if (!last) return ''
+    return last.file_url || (last.message?.match(/https?:\/\/\S+/)?.[0] ?? '')
+  }, [messages])
 
   // Send message mutation
   const sendMessageMutation = useMutation({
@@ -262,32 +248,12 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header with Subscription Button */}
-      <div className="border-l-4 rounded-lg p-4" style={{ 
-        borderLeftColor: claimColor,
-        backgroundColor: `${claimColor}10`
-      }}>
-        <div className="flex justify-between items-center">
-          <p style={{ color: claimColor }}>
-            Collaboration Hub for claim: <strong>{selectedClaim}</strong>
-          </p>
-          <button
-            onClick={() => {
-              // Dispatch custom event to change tab to subscription
-              window.dispatchEvent(new CustomEvent('tabChange', { detail: 'subscription' }))
-            }}
-            className="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700 flex items-center space-x-1"
-          >
-            <Crown className="w-3 h-3" />
-            <span>Subscription</span>
-          </button>
-        </div>
-      </div>
+    <div className="space-y-6 h-full overflow-hidden overscroll-contain">
+      
 
       {/* Tab Navigation */}
-      <div className="card-enhanced rounded-lg shadow border">
-        <div className="flex border-b">
+      <div className="card-enhanced rounded-lg shadow border h-full flex flex-col">
+        <div className="flex border-b flex-shrink-0">
           <button
             onClick={() => setActiveTab('chat')}
             className={`flex-1 px-6 py-3 text-center font-medium ${
@@ -320,28 +286,91 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
             <Video className="w-5 h-5 inline mr-2" />
             Video Conference
           </button>
+          
           <button
-            onClick={() => setActiveTab('whiteboard')}
+            onClick={() => setActiveTab('documents')}
             className={`flex-1 px-6 py-3 text-center font-medium ${
-              activeTab === 'whiteboard' 
+              activeTab === 'documents' 
                 ? 'border-b-2 text-white' 
                 : 'text-gray-600 hover:text-gray-800'
             }`}
-            style={activeTab === 'whiteboard' ? { 
+            style={activeTab === 'documents' ? { 
               borderBottomColor: claimColor,
               backgroundColor: `${claimColor}20`,
               color: claimColor
             } : {}}
           >
-            <Palette className="w-5 h-5 inline mr-2" />
-            Whiteboard
+            <FileText className="w-5 h-5 inline mr-2" />
+            Documents
           </button>
         </div>
 
         {/* Chat Tab */}
         {activeTab === 'chat' && (
-          <div className="p-6">
-            <div className="h-96 overflow-y-auto border rounded-lg p-4 mb-4 card-enhanced">
+          <div className="p-6 flex flex-col h-full">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-semibold text-gold">Chat</h4>
+              {!isGuest && (
+                <button
+                  onClick={async () => {
+                    if (!selectedClaim) return
+                    if (!window.confirm('Clear all chat messages for this claim? This cannot be undone.')) return
+                    try {
+                      // Verify user owns the claim before allowing clear
+                      const { data: { user } } = await supabase.auth.getUser()
+                      if (!user) throw new Error('Not authenticated')
+                      
+                      const { data: claim, error: claimError } = await supabase
+                        .from('claims')
+                        .select('user_id')
+                        .eq('case_number', selectedClaim)
+                        .single()
+                      
+                      if (claimError || !claim) throw new Error('Claim not found')
+                      if (claim.user_id !== user.id) throw new Error('Only the claim owner can clear chat messages')
+                      
+                      // Get all messages for this claim first
+                      const { data: messages, error: fetchError } = await supabase
+                        .from('chat_messages')
+                        .select('id')
+                        .eq('claim_id', selectedClaim)
+                      
+                      if (fetchError) throw fetchError
+                      
+                      if (!messages || messages.length === 0) {
+                        alert('No messages to clear.')
+                        return
+                      }
+                      
+                      // Delete each message individually (due to RLS policies)
+                      const deletePromises = messages.map(msg => 
+                        supabase.from('chat_messages').delete().eq('id', msg.id)
+                      )
+                      
+                      const results = await Promise.all(deletePromises)
+                      const errors = results.filter(result => result.error)
+                      
+                      if (errors.length > 0) {
+                        console.error('Some deletions failed:', errors)
+                        throw new Error('Some messages could not be deleted')
+                      }
+                      
+                      queryClient.invalidateQueries({ queryKey: ['chat-messages', selectedClaim] })
+                      alert(`Chat cleared successfully! Deleted ${messages.length} message(s).`)
+                    } catch (error) {
+                      console.error('Failed to clear chat:', error)
+                      alert(`Failed to clear chat: ${error.message || 'Please try again.'}`)
+                    }
+                  }}
+                  className="bg-white/10 border border-red-400 text-red-400 px-3 py-1 rounded-lg flex items-center space-x-2 hover:opacity-90"
+                  title="Clear Chat (Host Only)"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Clear Chat</span>
+                </button>
+              )}
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto border rounded-lg p-4 mb-4 card-enhanced">
               {messagesLoading ? (
                 <div className="text-center text-gray-500">Loading messages...</div>
               ) : messages && messages.length > 0 ? (
@@ -396,7 +425,7 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
               )}
             </div>
             
-            <div className="flex space-x-2">
+            <div className="flex space-x-2 mt-2 flex-shrink-0">
               <input
                 type="text"
                 value={newMessage}
@@ -434,7 +463,7 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
 
         {/* Video Tab */}
         {activeTab === 'video' && (
-          <div className="p-6">
+          <div className="p-6 overflow-auto">
             <div className="text-center mb-6">
               <h3 className="text-lg font-semibold mb-2">Video Conference</h3>
               <p className="text-gray-600">Choose a provider or join an existing link</p>
@@ -503,40 +532,43 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
           </div>
         )}
 
-        {/* Whiteboard Tab */}
-        {activeTab === 'whiteboard' && (
-          <div className="p-6">
-            <EnhancedWhiteboard
-              selectedClaim={selectedClaim}
-              claimColor={claimColor}
-              isGuest={isGuest}
-              onShare={(imageData) => {
-                // Share whiteboard content as chat message
-                sendMessageMutation.mutate({
-                  message: 'Shared whiteboard content',
-                  message_type: 'whiteboard_share',
-                  file_url: imageData,
-                  file_name: `whiteboard-${Date.now()}.png`
-                })
-              }}
-              onSave={(imageData) => {
-                // Save whiteboard content as evidence
-                // This could be implemented to save to evidence table
-                console.log('Saving whiteboard content:', imageData)
-              }}
-            />
+        
 
-            {/* Collaboration Notice */}
-            <div className="card-enhanced rounded-lg p-4 mt-4">
-              <div className="flex items-center space-x-2">
-                <Users className="w-5 h-5 text-yellow-400" />
-                <span className="font-medium text-white">Live Collaboration</span>
+        {/* Documents Tab */}
+        {activeTab === 'documents' && (
+          <div className="p-6 space-y-4 overflow-auto">
+            {!isGuest && (
+              <div className="card-smudge p-4 flex items-center space-x-2">
+                <input
+                  type="url"
+                  placeholder="Paste ONLYOFFICE/Collabora/Nextcloud doc link (https://...)"
+                  value={docLink}
+                  onChange={(e) => setDocLink(e.target.value)}
+                  className="flex-1 h-10 text-sm border border-yellow-400/30 rounded-md px-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                />
+                <button
+                  onClick={shareDocumentLink}
+                  className="bg-white/10 border border-green-400 text-green-400 px-4 py-2 rounded-lg hover:opacity-90"
+                >
+                  Share Document
+                </button>
               </div>
-              <p className="text-gray-300 text-sm mt-1">
-                All participants can draw, type, and upload files to this whiteboard. 
-                {isGuest ? ' Your contributions will be submitted for host approval before being added to evidence.' : ' You can save content directly to evidence.'}
-              </p>
-            </div>
+            )}
+            {latestDocLink ? (
+              <div className="card-enhanced p-0 overflow-hidden rounded-lg border">
+                <div className="px-4 py-2 text-sm text-gray-300 border-b flex items-center justify-between">
+                  <span>Embedded Document</span>
+                  <a href={latestDocLink} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Open in new tab</a>
+                </div>
+                <div className="h-[70vh]">
+                  <iframe src={latestDocLink} title="Collaborative Document" className="w-full h-full border-0" />
+                </div>
+              </div>
+            ) : (
+              <div className="card-enhanced p-6 text-center text-gray-400">
+                No document shared yet. {isGuest ? 'Ask the claim owner to share a document link.' : 'Paste and share a document link to embed it here.'}
+              </div>
+            )}
           </div>
         )}
       </div>

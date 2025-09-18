@@ -17,6 +17,8 @@ interface EvidenceManagerProps {
   onEditClaim?: () => void
   onDeleteClaim?: () => void
   onSetAmendMode?: (mode: boolean) => void
+  isStatic?: boolean
+  hidePendingReview?: boolean
 }
 
 const EvidenceManager = ({ 
@@ -28,8 +30,11 @@ const EvidenceManager = ({
   isGuestFrozen = false,
   onEditClaim,
   onDeleteClaim,
-  onSetAmendMode
+  onSetAmendMode,
+  isStatic = false,
+  hidePendingReview = false
 }: EvidenceManagerProps) => {
+  const isInteractive = !isStatic && !isGuest
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingEvidence, setEditingEvidence] = useState<Evidence | null>(null)
   const [expandedEvidence, setExpandedEvidence] = useState<string | null>(null)
@@ -170,6 +175,21 @@ const EvidenceManager = ({
     setDragOverItem(null)
   }
 
+  const downloadFile = (url?: string, filename?: string) => {
+    if (!url) return
+    try {
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename || ''
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    } catch (err) {
+      // Fallback: open in new tab if download fails
+      window.open(url, '_blank')
+    }
+  }
+
 
   const handleUpdate = (e: React.FormEvent) => {
     e.preventDefault()
@@ -210,8 +230,8 @@ const EvidenceManager = ({
 
   return (
     <div className="space-y-6 pb-16">
-      {/* Pending Evidence Review - Only show for shared claims (guests view) */}
-      {isGuest && selectedClaim && currentUserId && (
+      {/* Pending Evidence Review - hide when collaboration hub is active */}
+      {isGuest && selectedClaim && currentUserId && !hidePendingReview && (
         <PendingEvidenceReview 
           selectedClaim={selectedClaim} 
           isOwner={true} 
@@ -338,56 +358,56 @@ const EvidenceManager = ({
 
       {/* Evidence Table - Hide when editing */}
       {!editingEvidence && (
-        <div className="card-enhanced overflow-hidden mt-12">
+        <div className={`card-enhanced overflow-hidden mt-12 ${isStatic ? 'min-h-[75vh]' : ''}`}>
         <div className="px-6 py-4 border-b border-yellow-400/20 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gold">Evidence List</h3>
           <div className="flex items-center gap-2">
-            {onSetAmendMode && (
+            {onSetAmendMode && isInteractive && (
               <button
                 onClick={() => onSetAmendMode(!amendMode)}
                 className={`px-3 py-2 rounded-lg flex items-center space-x-2 bg-white/10 border border-red-400 text-red-400 hover:opacity-90`}
               >
                 <Settings className="w-4 h-4" />
-                <span>{amendMode ? 'Exit Amend Mode' : 'Amend Mode'}</span>
+                <span>{amendMode ? 'Exit Amend' : 'Amend'}</span>
               </button>
             )}
-            {(!isGuest || (isGuest && !isGuestFrozen)) && (
+            {isInteractive && (!isGuest || (isGuest && !isGuestFrozen)) && (
               <button
                 onClick={() => setShowAddModal(true)}
                 className="bg-white/10 border border-green-400 text-green-400 px-3 py-2 rounded-lg flex items-center space-x-2 hover:opacity-90"
               >
                 <Plus className="w-4 h-4" />
-                <span>{isGuest ? 'Submit Evidence' : 'Add Evidence'}</span>
+                <span>{isGuest ? 'Submit' : 'Add'}</span>
               </button>
             )}
           </div>
         </div>
-        <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-yellow-400/20">
+        <div className={`${isStatic ? 'max-h-[75vh] overflow-y-auto overflow-x-hidden' : ''} ${!isStatic ? 'overflow-x-auto' : ''}`} style={{ scrollbarGutter: isStatic ? 'stable both-edges' as any : undefined }}>
+            <table className={`min-w-full ${isStatic ? 'table-fixed' : 'table-auto'} divide-y divide-yellow-400/20`}>
             <thead className="bg-yellow-400/10">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider w-12">
+                <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-16' : 'w-12'}`}>
                   Order
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider">
+                <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-48' : ''}`}>
                   File Name
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider">
+                <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-20' : ''}`}>
                   Method
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider">
+                <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-16' : ''}`}>
                   Pages
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider">
+                <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-24' : ''}`}>
                   Date Submitted
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider">
+                <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-20' : ''}`}>
                   Exhibit #
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider">
+                <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-32' : ''}`}>
                   Description
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider">
+                <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-24' : ''}`}>
                   Actions
                 </th>
               </tr>
@@ -397,20 +417,20 @@ const EvidenceManager = ({
                 evidenceData.map((item) => (
                   <React.Fragment key={item.id}>
                     <tr 
-                      draggable={amendMode && !isGuest}
+                      draggable={isInteractive && amendMode}
                       onDragStart={(e) => handleDragStart(e, item.id)}
                       onDragOver={(e) => handleDragOver(e, item.id)}
                       onDragLeave={handleDragLeave}
                       onDrop={(e) => handleDrop(e, item.id)}
                       onDragEnd={handleDragEnd}
-                      className={`hover:bg-yellow-400/10 ${amendMode ? 'cursor-pointer' : ''} ${
+                      className={`${isInteractive ? 'hover:bg-yellow-400/10' : ''} ${isInteractive && amendMode ? 'cursor-pointer' : ''} ${
                         expandedEvidence === item.id ? 'bg-yellow-400/20' : ''
                       } ${dragOverItem === item.id ? 'border-t-2 border-blue-500' : ''} ${
                         draggedItem === item.id ? 'opacity-50' : ''
-                      }`}
-                      onClick={() => !isGuest ? handleRowClick(item) : undefined}
+                      } align-middle ${isStatic ? 'h-14' : 'h-12'}`}
+                      onClick={() => (isInteractive ? handleRowClick(item) : undefined)}
                     >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-500`}>
                       {amendMode && !isGuest ? (
                         <div className="flex items-center space-x-2">
                           <GripVertical className="w-4 h-4 text-gray-400 cursor-move" />
@@ -420,34 +440,46 @@ const EvidenceManager = ({
                         <span>{item.display_order || '-'}</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-900`}>
                       {item.file_name || item.title || item.name || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-500`}>
                       {item.method || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-500`}>
                       {item.number_of_pages || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-500`}>
                       {item.date_submitted ? new Date(item.date_submitted).toLocaleDateString() : '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-500`}>
                       {item.exhibit_number || '-'}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                    <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} text-sm text-gray-500 ${isStatic ? 'max-w-xs' : 'max-w-xs'} truncate`}>
                       {item.description || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm font-medium`}>
                       <div className="flex space-x-2">
                         {item.file_url && (
-                          <button
-                            onClick={() => window.open(item.file_url, '_blank')}
-                            className="text-blue-600 hover:text-blue-900"
-                            title="View file"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
+                          <>
+                            <button
+                              onClick={() => window.open(item.file_url as string, '_blank')}
+                              className="text-blue-600 hover:text-blue-900"
+                              title="View file"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                downloadFile(item.file_url as string, item.file_name || item.title || 'evidence')
+                              }}
+                              className="text-green-600 hover:text-green-900"
+                              title="Download file"
+                            >
+                              <Download className="w-4 h-4" />
+                            </button>
+                          </>
                         )}
                         {amendMode && !isGuest && (
                           <button

@@ -1,6 +1,7 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Calendar, FileText, Users, CheckSquare, Download, Moon, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
+import { supabase } from '@/integrations/supabase/client'
 
 interface NavigationProps {
   activeTab: string
@@ -13,6 +14,29 @@ interface NavigationProps {
 
 const Navigation = ({ activeTab, onTabChange, selectedClaim, isGuest = false, showGuestContent = false, onToggleGuestContent }: NavigationProps) => {
   const { theme, setTheme } = useTheme()
+  const [isSubscribed, setIsSubscribed] = useState<boolean>(false)
+  const [subReady, setSubReady] = useState<boolean>(false)
+
+  useEffect(() => {
+    let mounted = true
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!mounted) return
+      if (!user) { setIsSubscribed(false); setSubReady(true); return }
+      const { data } = await supabase
+        .from('subscribers')
+        .select('subscribed')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      setIsSubscribed(!!data?.subscribed)
+      setSubReady(true)
+    })
+    return () => { mounted = false }
+  }, [])
+
+  // Hide entire navbar until subscribed
+  if (!subReady || !isSubscribed) {
+    return null
+  }
 
   const navItems = [
     { id: 'claims', label: 'Claims', icon: FileText },
@@ -32,7 +56,8 @@ const Navigation = ({ activeTab, onTabChange, selectedClaim, isGuest = false, sh
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center">
           <div className="flex space-x-8">
-          {navItems.map((item) => {
+          {/* Hide all navigation when on welcome screen and not subscribed */}
+          {!(activeTab === 'subscription' && !isSubscribed) && navItems.map((item) => {
 
             // Hide only the current private tab link to reduce clutter
             if (activeTab === 'calendar-private' && item.id === 'calendar-private') {

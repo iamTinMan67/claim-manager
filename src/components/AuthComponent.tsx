@@ -3,7 +3,9 @@ import { supabase } from '@/integrations/supabase/client'
 import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
 import type { User } from '@supabase/supabase-js'
-import { Calendar, FileText, Users, CheckSquare, Download, Moon, Sun } from 'lucide-react'
+import { Calendar, FileText, Users, CheckSquare, Download, Moon, Sun, X } from 'lucide-react'
+import { toast } from '@/hooks/use-toast'
+import SubscriptionManager from './SubscriptionManager'
 import { useTheme } from 'next-themes'
 
 interface AuthComponentProps {
@@ -37,6 +39,15 @@ export default function AuthComponent({
   const [resetSuccess, setResetSuccess] = useState(false)
   const [resetTokens, setResetTokens] = useState<{accessToken: string, refreshToken: string} | null>(null)
   const { theme, setTheme } = useTheme()
+  const [showAccountModal, setShowAccountModal] = useState(false)
+  const [profileFullName, setProfileFullName] = useState('')
+  const [accountEmail, setAccountEmail] = useState('')
+  const [newPassword1, setNewPassword1] = useState('')
+  const [newPassword2, setNewPassword2] = useState('')
+  const [accountSaving, setAccountSaving] = useState(false)
+  const [accountMessage, setAccountMessage] = useState<string | null>(null)
+  const [isSubscribed, setIsSubscribed] = useState<boolean>(false)
+  const [subReady, setSubReady] = useState<boolean>(false)
 
   // Navigation items
   const navItems = activeTab === 'shared'
@@ -84,6 +95,21 @@ export default function AuthComponent({
       setUser(session?.user ?? null)
       onAuthChange(session?.user ?? null)
       setLoading(false)
+      // Load subscription state
+      if (session?.user?.id) {
+        supabase
+          .from('subscribers')
+          .select('subscribed')
+          .eq('user_id', session.user.id)
+          .maybeSingle()
+          .then(({ data }) => {
+            setIsSubscribed(!!data?.subscribed)
+            setSubReady(true)
+          })
+      } else {
+        setIsSubscribed(false)
+        setSubReady(true)
+      }
     })
 
     // Listen for auth changes
@@ -92,6 +118,21 @@ export default function AuthComponent({
     } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null)
       onAuthChange(session?.user ?? null)
+      // Refresh subscription state
+      if (session?.user?.id) {
+        supabase
+          .from('subscribers')
+          .select('subscribed')
+          .eq('user_id', session.user.id)
+          .maybeSingle()
+          .then(({ data }) => {
+            setIsSubscribed(!!data?.subscribed)
+            setSubReady(true)
+          })
+      } else {
+        setIsSubscribed(false)
+        setSubReady(true)
+      }
       
       // Handle auth errors
       if (event === 'SIGNED_IN') {
@@ -112,6 +153,104 @@ export default function AuthComponent({
     setAuthError(null)
     await supabase.auth.signOut()
   }
+
+  const handleNavClick = async (tabId: string) => {
+    // Allow navigating to subscription always
+    if (tabId === 'subscription') {
+      onTabChange?.(tabId)
+      return
+    }
+
+    // When on welcome screen, block nav until a backend selection exists
+    if (activeTab === 'subscription') {
+      const { data: { user: current } } = await supabase.auth.getUser()
+      if (!current) {
+        toast({ title: 'Please sign in', description: 'You need to sign in first.' })
+        return
+      }
+      const { data } = await supabase
+        .from('subscribers')
+        .select('subscribed')
+        .eq('user_id', current.id)
+        .maybeSingle()
+      const allowed = !!data?.subscribed
+      if (!allowed) {
+        toast({ title: 'Choose a package', description: 'Select a package on the welcome screen to continue.' })
+        return
+      }
+    }
+
+    onTabChange?.(tabId)
+  }
+
+  const openAccountModal = async () => {
+    // Prevent opening while not subscribed or on welcome screen
+    if (!isSubscribed || activeTab === 'subscription') return
+    setAccountMessage(null)
+    setShowAccountModal(true)
+    try {
+      const { data: { user: current } } = await supabase.auth.getUser()
+      if (current) {
+        setAccountEmail(current.email || '')
+        // Load profile full_name
+        const { data } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', current.id)
+          .maybeSingle()
+        setProfileFullName((data?.full_name as string) || '')
+      }
+    } catch {}
+  }
+
+  const saveAccountChanges = async () => {
+    setAccountMessage(null)
+    setAccountSaving(true)
+    try {
+      const { data: { user: current } } = await supabase.auth.getUser()
+      if (!current) throw new Error('Not authenticated')
+
+      // Update profile name
+      await supabase
+        .from('profiles')
+        .update({ full_name: profileFullName })
+        .eq('id', current.id)
+
+      // Update email if changed
+      if (accountEmail && accountEmail !== (current.email || '')) {
+        const { error: emailErr } = await supabase.auth.updateUser({ email: accountEmail })
+        if (emailErr) throw emailErr
+      }
+
+      // Update password if provided
+      if (newPassword1 || newPassword2) {
+        if (newPassword1 !== newPassword2) {
+          throw new Error('Passwords do not match')
+        }
+        if (newPassword1.length < 6) {
+          throw new Error('Password must be at least 6 characters')
+        }
+        const { error: passErr } = await supabase.auth.updateUser({ password: newPassword1 })
+        if (passErr) throw passErr
+      }
+
+      setAccountMessage('Account updated successfully')
+      // Brief toast then close modal
+      toast({ title: 'Saved', description: 'Your account settings were updated.' })
+      setTimeout(() => setShowAccountModal(false), 800)
+    } catch (e: any) {
+      setAccountMessage(e?.message || 'Failed to update account')
+    } finally {
+      setAccountSaving(false)
+    }
+  }
+
+  // Ensure account modal is closed when on welcome screen or not subscribed
+  useEffect(() => {
+    if (!isSubscribed || activeTab === 'subscription') {
+      if (showAccountModal) setShowAccountModal(false)
+    }
+  }, [isSubscribed, activeTab])
 
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -301,92 +440,199 @@ export default function AuthComponent({
     )
   }
 
+  // Only show welcome screen if user is not subscribed AND we're not on subscription page
+  const gating = !subReady ? true : (!isSubscribed && activeTab !== 'subscription')
+
+  if (gating) {
+    // Ensure account modal is not shown over welcome screen
+    if (showAccountModal) setShowAccountModal(false)
+    return (
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+        <div className="container mx-auto px-4 py-2">
+          <SubscriptionManager />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-      <div className="card-smudge shadow-lg border-b border-yellow-400/20">
-        <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center">
-            <div className="flex space-x-8">
-              {navItems.map((item) => {
-                // Hide nav items that require a claim when in shared context and no claim selected
-                if (activeTab === 'shared' && item.requiresClaim && !selectedClaim) {
-                  return null
-                }
-
-                // Hide only the current private tab link to reduce clutter
-                if ((activeTab === 'calendar-private' && item.id === 'calendar-private') ||
-                    (activeTab === 'todos-private' && item.id === 'todos-private')) {
-                  return null
-                }
-                
-                const Icon = item.icon
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => onTabChange?.(item.id)}
-                    className={`flex items-center space-x-2 py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-                      activeTab === item.id
-                          ? 'border-yellow-400 text-gold'
-                          : 'border-transparent text-gold-light hover:text-gold hover:border-yellow-400/50'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span>{item.label}</span>
-                  </button>
-                )
-              })}
-            </div>
-            <div className="flex items-center space-x-3">
-              {/* Guest Content Toggle - only show for claim owners when viewing todos/calendar */}
-              {!isGuest && (activeTab === 'todos' || activeTab === 'calendar') && onToggleGuestContent && (
-                <button
-                  onClick={() => onToggleGuestContent(!showGuestContent)}
-                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                    showGuestContent
-                      ? 'bg-orange-100 text-orange-800 hover:bg-orange-200'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-                  }`}
-                  title={showGuestContent ? 'Switch to your private view' : 'View guest contributions'}
-                >
-                  <Users className="w-4 h-4 inline mr-1" />
-                  {showGuestContent ? 'Guest View' : 'My View'}
-                </button>
-              )}
-              
-              {/* Guest Indicator */}
-              {isGuest && (
-                <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-lg text-sm font-medium">
-                  <Users className="w-4 h-4 inline mr-1" />
-                  Guest Access
+      <div>
+        {subReady && isSubscribed && (
+          <div className="card-smudge shadow-lg border-b border-yellow-400/20">
+            <div className="container mx-auto px-4">
+              <div className="flex justify-between items-center">
+                <div className="flex space-x-8">
+                  {/* Hide navbar items on welcome screen until subscribed */}
+                  {!(activeTab === 'subscription' && !isSubscribed) && navItems.map((item) => {
+                    // Hide nav items that require a claim when in shared context and no claim selected
+                    if (activeTab === 'shared' && item.requiresClaim && !selectedClaim) {
+                      return null
+                    }
+                    // Hide only the current private tab link to reduce clutter
+                    if ((activeTab === 'calendar-private' && item.id === 'calendar-private') ||
+                        (activeTab === 'todos-private' && item.id === 'todos-private')) {
+                      return null
+                    }
+                    const Icon = item.icon
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => handleNavClick(item.id)}
+                        className={`flex items-center space-x-2 py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                          activeTab === item.id
+                              ? 'border-yellow-400 text-gold'
+                              : 'border-transparent text-gold-light hover:text-gold hover:border-yellow-400/50'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                        <span>{item.label}</span>
+                      </button>
+                    )
+                  })}
                 </div>
-              )}
-              
+                <div className="flex items-center space-x-3">
+                  {/* Guest Content Toggle - only show for claim owners when viewing todos/calendar */}
+                  {!isGuest && (activeTab === 'todos' || activeTab === 'calendar') && onToggleGuestContent && (
+                    <button
+                      onClick={() => onToggleGuestContent(!showGuestContent)}
+                      className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                        showGuestContent
+                          ? 'bg-orange-100 text-orange-800 hover:bg-orange-200'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                      }`}
+                      title={showGuestContent ? 'Switch to your private view' : 'View guest contributions'}
+                    >
+                      <Users className="w-4 h-4 inline mr-1" />
+                      {showGuestContent ? 'Guest View' : 'My View'}
+                    </button>
+                  )}
+                  {isGuest && (
+                    <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-lg text-sm font-medium">
+                      <Users className="w-4 h-4 inline mr-1" />
+                      Guest Access
+                    </div>
+                  )}
+                  <button
+                    onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                    className="p-2 rounded-lg hover:bg-yellow-400/20 transition-colors text-gold"
+                    title="Toggle dark mode"
+                  >
+                    {theme === 'dark' ? (
+                      <Sun className="w-5 h-5" />
+                    ) : (
+                      <Moon className="w-5 h-5" />
+                    )}
+                  </button>
+                  {!(activeTab === 'subscription' && !isSubscribed) && (
+                    <button
+                      onClick={openAccountModal}
+                      className="text-sm bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded hover:bg-green-400/10"
+                      title={user?.email ? `Account: ${user.email}` : 'Account'}
+                    >
+                      <Users className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="container mx-auto px-4 py-2">
+          {children}
+        </div>
+      </div>
+
+      {showAccountModal && (
+        <div className="fixed inset-0 bg-black/50 z-[99999] flex items-center justify-center p-4">
+          <div className="p-6 rounded-[16px] shadow max-w-lg w-full card-enhanced">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gold">Account Settings</h3>
               <button
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className="p-2 rounded-lg hover:bg-yellow-400/20 transition-colors text-gold"
-                title="Toggle dark mode"
+                onClick={() => setShowAccountModal(false)}
+                className="bg-white/10 border border-red-400 text-red-400 px-2 py-1 rounded hover:opacity-90"
+                aria-label="Close"
               >
-                {theme === 'dark' ? (
-                  <Sun className="w-5 h-5" />
-                ) : (
-                  <Moon className="w-5 h-5" />
-                )}
+                <X className="w-4 h-4" />
               </button>
-              
-              <button
-                onClick={handleSignOut}
-                className="text-sm bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
-                title={user?.email ? `Signed in as: ${user.email}` : 'Sign Out'}
-              >
-                Sign Out
-              </button>
+            </div>
+
+            {accountMessage && (
+              <div className="mb-3 text-sm text-yellow-300">{accountMessage}</div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Full Name</label>
+                <input
+                  type="text"
+                  value={profileFullName}
+                  onChange={(e) => setProfileFullName(e.target.value)}
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  placeholder="Your full name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Email Address</label>
+                <input
+                  type="email"
+                  value={accountEmail}
+                  onChange={(e) => setAccountEmail(e.target.value)}
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  placeholder="you@example.com"
+                />
+                <p className="text-xs text-gold-light mt-1">You may need to confirm via email.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1">New Password</label>
+                  <input
+                    type="password"
+                    value={newPassword1}
+                    onChange={(e) => setNewPassword1(e.target.value)}
+                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                    placeholder="Leave blank to keep current"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Confirm Password</label>
+                  <input
+                    type="password"
+                    value={newPassword2}
+                    onChange={(e) => setNewPassword2(e.target.value)}
+                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                    placeholder="Repeat new password"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2">
+                <button
+                  onClick={() => { setShowAccountModal(false); onTabChange?.('subscription') }}
+                  className="px-4 py-2 text-slate-900 bg-gradient-to-r from-yellow-300 to-yellow-400 font-semibold rounded-lg hover:from-yellow-400 hover:to-yellow-500"
+                >
+                  Upgrade
+                </button>
+                <button
+                  onClick={handleSignOut}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                >
+                  Sign Out
+                </button>
+                <button
+                  onClick={saveAccountChanges}
+                  disabled={accountSaving}
+                  className="px-4 py-2 text-slate-900 bg-gradient-to-r from-yellow-400 to-yellow-500 font-semibold rounded-lg hover:from-yellow-500 hover:to-yellow-600 disabled:opacity-50"
+                >
+                  {accountSaving ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      <div className="container mx-auto px-4 py-2">
-        {children}
-      </div>
+      )}
     </div>
   )
 }

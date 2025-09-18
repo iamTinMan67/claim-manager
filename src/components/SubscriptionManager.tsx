@@ -12,8 +12,20 @@ const SubscriptionManager = () => {
 
   const handleDonationSelection = (donationType: string) => {
     if (donationType === 'free') {
-      // Free tier - go directly to claims
-      navigateTo('claims')
+      // Free tier - mark as subscribed in backend and go to claims
+      supabase.auth.getUser().then(async ({ data: { user } }) => {
+        if (!user) return
+        await supabase.from('subscribers').upsert({
+          user_id: user.id,
+          email: user.email,
+          subscription_tier: 'free',
+          subscribed: true,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' })
+        // Clear any previous local selection to avoid gating issues
+        try { window.localStorage.removeItem('guest_pricing_selected') } catch {}
+        navigateTo('claims')
+      })
     } else {
       // Donation tiers - show payment modal
       setSelectedPackage(donationType)
@@ -26,9 +38,8 @@ const SubscriptionManager = () => {
 
     // Get donation details
     const donationDetails = {
-      basic: { amount: 5, name: 'Basic Donation - 2 guests total' },
-      premium: { amount: 12, name: 'Premium Donation - 5 guests total' },
-      unlimited: { amount: 22, name: 'Unlimited Donation - Unlimited guests forever' }
+      basic: { amount: 5, name: 'Basic Donation - 2–7 guests total' },
+      frontend: { amount: 10, name: 'Premium - Buy All Files. (8+ guests)' }
     }
 
     const donationInfo = donationDetails[selectedPackage as keyof typeof donationDetails]
@@ -105,10 +116,10 @@ const SubscriptionManager = () => {
           <p className="text-gold-light text-sm mb-4">
             Support further application development and unlock collaboration features:
           </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="flex flex-wrap justify-center gap-4 text-sm">
             <button 
               onClick={() => handleDonationSelection('free')}
-              className="card-enhanced p-3 hover:bg-slate-700/50 transition-colors cursor-pointer border-2 border-green-400/30 hover:border-green-400/60"
+              className="card-enhanced p-3 hover:bg-slate-700/50 transition-colors cursor-pointer border-2 border-green-400/30 hover:border-green-400/60 w-56"
             >
               <div className="font-medium text-gold">Free Tier</div>
               <div className="text-green-400 font-bold">FREE</div>
@@ -116,27 +127,20 @@ const SubscriptionManager = () => {
             </button>
             <button 
               onClick={() => handleDonationSelection('basic')}
-              className="card-enhanced p-3 hover:bg-slate-700/50 transition-colors cursor-pointer border-2 border-yellow-400/30 hover:border-yellow-400/60"
+              className="card-enhanced p-3 hover:bg-slate-700/50 transition-colors cursor-pointer border-2 border-yellow-400/30 hover:border-yellow-400/60 w-56"
             >
               <div className="font-medium text-gold">Basic Donation</div>
               <div className="text-gold font-bold">£5</div>
-              <div className="text-xs text-gold-light mt-1">2 guests total</div>
+              <div className="text-xs text-gold-light mt-1">2–7 guests total</div>
             </button>
+            {/* Moderate tier removed per requirements */}
             <button 
-              onClick={() => handleDonationSelection('premium')}
-              className="card-enhanced p-3 hover:bg-slate-700/50 transition-colors cursor-pointer border-2 border-yellow-400/30 hover:border-yellow-400/60"
+              onClick={() => handleDonationSelection('frontend')}
+              className="card-enhanced p-3 hover:bg-slate-700/50 transition-colors cursor-pointer border-2 border-yellow-400/30 hover:border-yellow-400/60 w-56"
             >
-              <div className="font-medium text-gold">Premium Donation</div>
-              <div className="text-gold font-bold">£12</div>
-              <div className="text-xs text-gold-light mt-1">5 guests total</div>
-            </button>
-            <button 
-              onClick={() => handleDonationSelection('unlimited')}
-              className="card-enhanced p-3 hover:bg-slate-700/50 transition-colors cursor-pointer border-2 border-yellow-400/30 hover:border-yellow-400/60"
-            >
-              <div className="font-medium text-gold">Unlimited Donation</div>
-              <div className="text-gold font-bold">£22</div>
-              <div className="text-xs text-gold-light mt-1">Unlimited guests</div>
+              <div className="font-medium text-gold">Premium - Buy All Files.</div>
+              <div className="text-gold font-bold">£10</div>
+              <div className="text-xs text-gold-light mt-1">8+ guests, all frontend files</div>
             </button>
           </div>
           <div className="mt-4 p-3 card-enhanced">
@@ -180,9 +184,8 @@ const SubscriptionManager = () => {
             <div className="text-center mb-6">
               <CreditCard className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
               <h4 className="text-gold font-semibold mb-2">
-                {selectedPackage === 'basic' && 'Basic Donation - £5 (2 guests total)'}
-                {selectedPackage === 'premium' && 'Premium Donation - £12 (5 guests total)'}
-                {selectedPackage === 'unlimited' && 'Unlimited Donation - £22 (Unlimited guests)'}
+                {selectedPackage === 'basic' && 'Basic Donation - £5 (2–7 guests total)'}
+                {selectedPackage === 'frontend' && 'Premium - Buy All Files. - £10 (8+ guests, all frontend files)'}
               </h4>
               <p className="text-gold-light text-sm">
                 One-time donation to support app development and unlock collaboration features
@@ -196,6 +199,26 @@ const SubscriptionManager = () => {
                 className="w-full px-4 py-3 bg-gradient-to-r from-yellow-400 to-yellow-500 text-slate-900 font-semibold rounded-lg hover:from-yellow-500 hover:to-yellow-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isProcessingPayment ? 'Processing Donation...' : 'Donate with Stripe'}
+              </button>
+              <button
+                onClick={async () => {
+                  // Fallback: mark as subscribed without Stripe (for manual/test scenarios)
+                  const { data: { user } } = await supabase.auth.getUser()
+                  if (!user || !selectedPackage) return
+                  await supabase.from('subscribers').upsert({
+                    user_id: user.id,
+                    email: user.email,
+                    subscription_tier: selectedPackage,
+                    subscribed: true,
+                    updated_at: new Date().toISOString()
+                  }, { onConflict: 'user_id' })
+                  try { window.localStorage.removeItem('guest_pricing_selected') } catch {}
+                  setShowPaymentModal(false)
+                  navigateTo('claims')
+                }}
+                className="w-full px-4 py-3 bg-slate-700/50 border border-yellow-400 text-yellow-400 rounded-lg hover:bg-slate-700/70 transition-colors"
+              >
+                I’ve already donated (continue)
               </button>
               <button
                 onClick={() => setShowPaymentModal(false)}

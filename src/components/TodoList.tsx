@@ -466,7 +466,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                   <option value="">No specific claim</option>
                   {claims?.map((claim) => (
                     <option key={claim.case_number} value={claim.case_number}>
-                      {claim.case_number} - {claim.title}
+                      {claim.title}
                     </option>
                   ))}
                 </select>
