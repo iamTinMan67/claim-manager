@@ -23,9 +23,9 @@ interface NavigationProviderProps {
 }
 
 export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children }) => {
-  const [currentPage, setCurrentPage] = useState('claims')
+  const [currentPage, setCurrentPage] = useState('subscription')
   const [previousPage, setPreviousPage] = useState<string | null>(null)
-  const [pageHistory, setPageHistory] = useState<string[]>(['claims'])
+  const [pageHistory, setPageHistory] = useState<string[]>(['subscription'])
 
   const navigateTo = useCallback((page: string) => {
     setPreviousPage(currentPage)

@@ -58,6 +58,9 @@ serve(async (req) => {
       case 'invoice.payment_failed':
         await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice)
         break
+      case 'checkout.session.completed':
+        await handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session)
+        break
       default:
         console.log(`Unhandled event type: ${event.type}`)
     }
@@ -211,5 +214,41 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
       .from('user_subscriptions')
       .update({ status: 'past_due' })
       .eq('stripe_subscription_id', invoice.subscription as string)
+  }
+}
+
+async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
+  // Handle successful one-time payments for collaboration packages
+  const userId = session.metadata?.userId || session.metadata?.user_id
+  const packageType = session.metadata?.packageType || session.metadata?.package_type
+  const packageName = session.metadata?.packageName || session.metadata?.package_name
+
+  if (!userId) {
+    console.error('Missing user ID in checkout session metadata:', session.id)
+    return
+  }
+
+  // Only process app development donations (not regular claim donations)
+  if (packageType && packageName) {
+    // Update user's subscription in the subscribers table
+    const { error } = await supabaseClient
+      .from('subscribers')
+      .upsert({
+        user_id: userId,
+        email: session.customer_email || '',
+        subscription_tier: packageType,
+        subscribed: true,
+        stripe_customer_id: session.customer as string,
+        updated_at: new Date().toISOString()
+      })
+
+    if (error) {
+      console.error('Failed to update subscription after donation:', error)
+      throw error
+    }
+
+    console.log(`Successfully processed app development donation for user ${userId}, tier: ${packageName}`)
+  } else {
+    console.log(`Checkout session completed for user ${userId} (regular claim donation, not app development donation)`)
   }
 }

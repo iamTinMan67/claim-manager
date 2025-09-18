@@ -47,30 +47,40 @@ serve(async (req) => {
 
     // Parse request body
     const body = await req.json();
-    const { claimId, shareId, customAmount } = body;
+    const { claimId, shareId, customAmount, packageType, packageName } = body;
     
-    if (!claimId || !shareId) {
+    // Check if this is a subscription upgrade (not a claim-specific donation)
+    const isSubscriptionUpgrade = claimId === 'subscription-upgrade' || claimId === 'app-development-donation';
+    
+    if (!isSubscriptionUpgrade && (!claimId || !shareId)) {
       throw new Error("Missing required parameters: claimId and shareId");
     }
-    logStep("Request parameters validated", { claimId, shareId });
+    logStep("Request parameters validated", { claimId, shareId, isSubscriptionUpgrade });
 
-    // Verify user owns the claim and the share exists
-    const { data: shareData, error: shareError } = await supabaseClient
-      .from("claim_shares")
-      .select("*, claims!inner(*)")
-      .eq("id", shareId)
-      .eq("claim_id", claimId)
-      .eq("claims.user_id", user.id)
-      .single();
+    let shareData = null;
+    
+    if (!isSubscriptionUpgrade) {
+      // Verify user owns the claim and the share exists (only for claim-specific donations)
+      const { data: shareDataResult, error: shareError } = await supabaseClient
+        .from("claim_shares")
+        .select("*, claims!inner(*)")
+        .eq("id", shareId)
+        .eq("claim_id", claimId)
+        .eq("claims.user_id", user.id)
+        .single();
 
-    if (shareError || !shareData) {
-      throw new Error("Share not found or unauthorized");
+      if (shareError || !shareDataResult) {
+        throw new Error("Share not found or unauthorized");
+      }
+      shareData = shareDataResult;
+      logStep("Share verified", { shareId: shareData.id });
+    } else {
+      logStep("Skipping share verification for subscription upgrade");
     }
-    logStep("Share verified", { shareId: shareData.id });
 
     // Use custom amount if provided, otherwise calculate donation amount
     let donationAmount = customAmount;
-    if (!donationAmount) {
+    if (!donationAmount && !isSubscriptionUpgrade) {
       const { data: calculatedAmount, error: donationError } = await supabaseClient
         .rpc('calculate_donation_amount', { claim_id_param: claimId });
       
@@ -80,7 +90,11 @@ serve(async (req) => {
       donationAmount = calculatedAmount;
     }
     
-    logStep("Donation amount determined", { donationAmount, customAmount });
+    if (isSubscriptionUpgrade && !donationAmount) {
+      throw new Error("Custom amount is required for subscription upgrades");
+    }
+    
+    logStep("Donation amount determined", { donationAmount, customAmount, isSubscriptionUpgrade });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
     
@@ -103,8 +117,8 @@ serve(async (req) => {
           price_data: {
             currency: "gbp",
             product_data: { 
-              name: "Collaboration Donation",
-              description: "Support additional claim collaborator"
+              name: isSubscriptionUpgrade ? packageName : "Collaboration Donation",
+              description: isSubscriptionUpgrade ? `Collaboration package upgrade - ${packageName}` : "Support additional claim collaborator"
             },
             unit_amount: donationAmount, // Dynamic amount in pence
           },
@@ -116,23 +130,33 @@ serve(async (req) => {
         claimId: claimId,
         shareId: shareId,
         userId: user.id,
+        ...(isSubscriptionUpgrade && {
+          packageType: packageType,
+          packageName: packageName
+        })
       },
-      success_url: `${req.headers.get("origin")}/donation-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.get("origin")}/`,
+      success_url: isSubscriptionUpgrade 
+        ? `${req.headers.get("origin")}/?payment=success&package=${packageType}`
+        : `${req.headers.get("origin")}/donation-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.headers.get("origin")}/?payment=cancelled`,
     });
 
     logStep("Stripe session created", { sessionId: session.id });
 
-    // Update the share with payment intent information
-    await supabaseClient
-      .from("claim_shares")
-      .update({
-        stripe_payment_intent_id: session.id,
-        donation_amount: donationAmount,
-      })
-      .eq("id", shareId);
+    // Update the share with payment intent information (only for claim-specific donations)
+    if (!isSubscriptionUpgrade) {
+      await supabaseClient
+        .from("claim_shares")
+        .update({
+          stripe_payment_intent_id: session.id,
+          donation_amount: donationAmount,
+        })
+        .eq("id", shareId);
 
-    logStep("Share updated with payment info");
+      logStep("Share updated with payment info");
+    } else {
+      logStep("Skipping share update for subscription upgrade");
+    }
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -20,7 +20,7 @@ interface AuthComponentProps {
 export default function AuthComponent({ 
   children, 
   onAuthChange, 
-  activeTab = 'claims',
+  activeTab,
   onTabChange,
   selectedClaim,
   isGuest = false,
@@ -39,14 +39,18 @@ export default function AuthComponent({
   const { theme, setTheme } = useTheme()
 
   // Navigation items
-  const navItems = [
-    { id: 'todos-private', label: 'To-Do Lists', icon: CheckSquare },
-    { id: 'calendar-private', label: 'Calendar', icon: Calendar },
-    // Show shared calendar entry only when on shared context
-    ...(activeTab === 'shared' ? [{ id: 'calendar-shared', label: 'Shared Calendar', icon: Calendar, requiresClaim: true }] : [] as any),
-    { id: 'export', label: 'Export', icon: Download, requiresClaim: true },
-    { id: 'shared', label: 'Shared Claims', icon: Users },
-  ]
+  const navItems = activeTab === 'shared'
+    ? [
+        { id: 'todos-shared', label: 'Shared To-Do Lists', icon: CheckSquare, requiresClaim: true },
+        { id: 'calendar-shared', label: 'Shared Calendar', icon: Calendar, requiresClaim: true },
+        ...(selectedClaim ? [{ id: 'export', label: 'Export', icon: Download, requiresClaim: true }] : [] as any),
+      ]
+    : [
+        { id: 'todos-private', label: 'To-Do Lists', icon: CheckSquare },
+        { id: 'calendar-private', label: 'Calendar', icon: Calendar },
+        { id: 'export', label: 'Export', icon: Download, requiresClaim: true },
+        { id: 'shared', label: 'Shared Claims', icon: Users },
+      ]
 
   useEffect(() => {
     // Check if this is a password reset flow - do this FIRST before any auth calls

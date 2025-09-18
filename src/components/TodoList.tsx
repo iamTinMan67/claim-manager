@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { Todo } from '@/types/database'
-import { Plus, Check, Clock, AlertCircle, Trash2, User, Calendar as CalendarIcon, ChevronLeft, Home } from 'lucide-react'
+import { Plus, Check, Clock, AlertCircle, Trash2, User, Calendar as CalendarIcon, ChevronLeft, Home, X } from 'lucide-react'
 import { useNavigation } from '@/contexts/NavigationContext'
 import { format } from 'date-fns'
 
@@ -88,6 +88,12 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         .order('due_date', { ascending: true })
       
       if (error) throw error
+      if (showGuestContent) {
+        console.log('Shared To-Dos query', {
+          selectedClaim: selectedClaim || null,
+          resultCount: (data || []).length
+        })
+      }
       return data as TodoWithUser[]
     }
   })
@@ -340,13 +346,19 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => navigateTo('claims')}
+            onClick={() => {
+              try {
+                window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null } }))
+                window.dispatchEvent(new CustomEvent('tabChange', { detail: 'claims' }))
+              } catch {}
+              navigateTo('claims')
+            }}
             className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
           >
             <Home className="w-4 h-4" />
             <span>Home</span>
           </button>
-          {!isGuest && (
+          {(!isGuest) || (showGuestContent && !isGuestFrozen) ? (
             <button
               onClick={() => {
               setNewTodo(prev => ({ ...prev, responsible_user_id: currentUser?.id || '' }))
@@ -357,26 +369,13 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
               <Plus className="w-4 h-4" />
               <span>Add New Task</span>
             </button>
-          )}
+          ) : null}
         </div>
-        <h2 className="text-2xl font-bold text-center flex-1">
-          {showGuestContent ? 'Guest To-Do Lists' : 'To-Do Lists'}
-        </h2>
-        <div className="flex items-center space-x-3 justify-end">
-          {isGuest && isGuestFrozen && (
-            <div className="bg-red-100 text-red-800 px-3 py-1 rounded-lg text-sm">
-              Access Frozen
-            </div>
-          )}
-          {isGuest && !isGuestFrozen && (
-            <div className="bg-green-100 text-green-800 px-3 py-1 rounded-lg text-sm">
-              Guest Access - Can Add/Edit Own Content
-            </div>
-          )}
-        </div>
+        <h2 className="text-2xl font-bold text-center flex-1">To-Do Lists</h2>
+        <div className="flex items-center space-x-3 justify-end" />
       </div>
 
-      {showAddForm && !isGuest ? (
+      {showAddForm && (!isGuest || (showGuestContent && !isGuestFrozen)) ? (
         // Form overlay - hide main content
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="p-6 rounded-[16px] shadow max-w-2xl w-full max-h-[90vh] overflow-y-auto"
@@ -519,7 +518,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                 <select
                   value={newTodo.responsible_user_id}
                   onChange={(e) => setNewTodo({ ...newTodo, responsible_user_id: e.target.value })}
-                  className="w-full h-12 text-base border border-yellow-400/30 rounded-md px-4 py-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                  className="w-2/3 h-12 text-base border border-yellow-400/30 rounded-md px-4 py-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
                 >
                   <option value="">Assign to yourself</option>
                   {sharedUsers.map((user) => (
@@ -528,9 +527,6 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                     </option>
                   ))}
                 </select>
-                <p className="text-sm text-gray-600 mt-1">
-                  If assigned to someone else, this task will appear in their private calendar and not in your private todo list.
-                </p>
               </div>
             )}
             <div className="flex space-x-3">

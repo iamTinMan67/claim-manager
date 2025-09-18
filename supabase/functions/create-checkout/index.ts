@@ -25,6 +25,9 @@ serve(async (req) => {
     const user = data.user;
     if (!user?.email) throw new Error("User not authenticated or email not available");
 
+    // Get request body
+    const { price_data, quantity, success_url, cancel_url, metadata } = await req.json();
+
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", { apiVersion: "2023-10-16" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     let customerId;
@@ -38,17 +41,23 @@ serve(async (req) => {
       line_items: [
         {
           price_data: {
-            currency: "usd",
-            product_data: { name: "Premium Subscription" },
-            unit_amount: 799, // $7.99 per month
-            recurring: { interval: "month" },
+            currency: price_data.currency || "gbp",
+            product_data: { 
+              name: price_data.product_data.name,
+              description: price_data.product_data.description
+            },
+            unit_amount: price_data.unit_amount,
           },
-          quantity: 1,
+          quantity: quantity || 1,
         },
       ],
-      mode: "subscription",
-      success_url: `${req.headers.get("origin")}/?success=true`,
-      cancel_url: `${req.headers.get("origin")}/?canceled=true`,
+      mode: "payment", // One-time payment
+      success_url: success_url || `${req.headers.get("origin")}/?payment=success`,
+      cancel_url: cancel_url || `${req.headers.get("origin")}/?payment=cancelled`,
+      metadata: {
+        user_id: user.id,
+        ...metadata
+      },
     });
 
     return new Response(JSON.stringify({ url: session.url }), {
@@ -56,7 +65,12 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('Create checkout error:', error);
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      details: error.toString(),
+      stack: error.stack 
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });

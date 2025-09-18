@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { Todo } from '@/types/database'
@@ -66,6 +66,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
   })
 
   const queryClient = useQueryClient()
+  const controlsRef = useRef<HTMLDivElement | null>(null)
   const timeFieldWidth = 180
   const titleFieldWidth = timeFieldWidth
   const colorFieldWidth = Math.round(timeFieldWidth * 0.2)
@@ -87,6 +88,13 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       Notification.requestPermission();
     }
   }, []);
+
+  // Ensure calendar controls are at the top on shared view load
+  useEffect(() => {
+    if (showGuestContent && controlsRef.current) {
+      controlsRef.current.scrollIntoView({ behavior: 'auto', block: 'start' })
+    }
+  }, [showGuestContent])
 
   const { data: claims } = useQuery({
     queryKey: ['claims-for-calendar'],
@@ -355,17 +363,8 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
 
   return (
     <div className="space-y-6">
-      {selectedClaim && (
-        <div className="border-l-4 rounded-lg p-4" style={{ 
-          borderLeftColor: claimColor,
-          backgroundColor: `${claimColor}10`
-        }}>
-          <p style={{ color: claimColor }}>
-            Showing calendar events for selected claim: <strong>{selectedClaim}</strong>
-          </p>
-        </div>
-      )}
-      <div className="flex justify-between items-center">
+      {/* Claim banner removed to match private calendar view */}
+      <div className="flex justify-between items-center" ref={controlsRef}>
         <div className="flex items-center space-x-2">
           <button
             onClick={() => {
@@ -417,21 +416,9 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
           >
             Next
           </button>
-        </div>
+            </div>
         <div className="flex items-center space-x-4 justify-end">
-          {showGuestContent && (
-            <h2 className="text-2xl font-bold text-center">Guest Calendar</h2>
-          )}
-          {isGuest && isGuestFrozen && (
-            <div className="bg-red-100 text-red-800 px-3 py-1 rounded-lg text-sm">
-              Access Frozen
-            </div>
-          )}
-          {isGuest && !isGuestFrozen && (
-            <div className="bg-green-100 text-green-800 px-3 py-1 rounded-lg text-sm">
-              Guest Access - Can Add/Edit Own Content
-            </div>
-          )}
+          {/* Guest badges and title hidden on shared calendar per request */}
         </div>
       </div>
 
@@ -451,9 +438,9 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
           </div>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid items-end gap-4" style={{ display: 'grid', gridTemplateColumns: `${timeFieldWidth}px ${timeFieldWidth}px ${colorFieldWidth}px` }}>
-              <div>
+            <div>
                 <label className="block text-base font-medium mb-1">Title</label>
-                <input
+              <input
                 type="text"
                 value={newEvent.title}
                 onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
@@ -462,8 +449,8 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                 style={{ width: timeFieldWidth }}
                 required
               />
-              </div>
-              <div>
+            </div>
+            <div>
                 <label className="block text-base font-medium mb-1">Associated Claim</label>
                 <select
                   value={newEvent.claim_id}
@@ -486,11 +473,11 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                     </option>
                   ))}
                 </select>
-              </div>
+            </div>
               <div style={{ marginLeft: 35 }}>
                 <label className="block text-base font-medium mb-1 whitespace-nowrap" style={{ width: colorFieldWidth, textAlign: 'center' }}>{newEvent.claim_id ? 'Colour Code' : 'No Claim'}</label>
                 {newEvent.claim_id ? (
-                  <input
+              <input
                     type="color"
                     value={newEvent.color || claimColor}
                     onChange={(e) => setNewEvent({ ...newEvent, color: e.target.value })}
@@ -529,37 +516,38 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                   className="h-[27px] border border-yellow-400/30 rounded-md px-2 bg-white/10 text-yellow-300 text-sm placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
                   style={{ width: timeFieldWidth }}
                 />
-              </div>
-              <div>
+            </div>
+            <div>
                 <label className="block text-base font-medium mb-1 whitespace-nowrap text-center">All day</label>
                 <div className="h-[27px] flex items-center justify-center">
-                  <input
+              <input
                     type="checkbox"
                     id="all-day"
                     checked={newEvent.all_day}
                     onChange={(e) => setNewEvent({ ...newEvent, all_day: e.target.checked })}
                     className="rounded"
-                  />
-                </div>
+              />
+            </div>
               </div>
             </div>
             <div className="w-1/2 grid grid-cols-2 items-end">
               {showGuestContent && (
-                <div>
+            <div>
                   <label className="block text-base font-medium mb-1">Assignee</label>
-                  <select
+              <select
                     value={newEvent.assignee_id || currentUser?.id || ''}
                     onChange={(e) => setNewEvent({ ...newEvent, assignee_id: e.target.value })}
-                    className="w-[90%] h-[27px] text-sm border border-yellow-400/30 rounded-md px-2 bg-white/10 text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                    className="h-[27px] text-sm border border-yellow-400/30 rounded-md px-2 bg-white/10 text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                    style={{ width: timeFieldWidth }}
                   >
                     <option value={currentUser?.id || ''}>Assign to yourself</option>
                     {(collaborators || []).map((u) => (
                       <option key={u.id} value={u.id}>
                         {u.full_name || u.email || 'User'}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  </option>
+                ))}
+              </select>
+            </div>
               )}
               <div className="flex w-full items-end justify-end mr-2">
                 <div className="flex space-x-3 ml-4" style={{ marginRight: -50 }}>
@@ -570,7 +558,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
               >
                 {addEventMutation.isPending ? 'Adding...' : 'Add'}
               </button>
-                </div>
+            </div>
               </div>
             </div>
             

@@ -223,7 +223,7 @@ function LoggedInContent({
         }
         return <ExportFeatures selectedClaim={selectedClaim} claimColor={selectedClaimColor} />
       default:
-        return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} onClaimColorChange={setSelectedClaimColor} isGuest={currentlyGuest} />
+        return <SubscriptionManager />
     }
   }
 

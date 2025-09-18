@@ -49,6 +49,25 @@ export class CollaborationService {
     userEmail: string,
     permissions: SharePermissions
   ): Promise<ClaimShare> {
+    // Get current user
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) throw new Error('Not authenticated');
+
+    // SECURITY: Verify current user owns the claim they're trying to share
+    const { data: claimOwner, error: ownerError } = await supabase
+      .from('claims')
+      .select('user_id')
+      .eq('case_number', claimId)
+      .single();
+
+    if (ownerError || !claimOwner) {
+      throw new Error('Claim not found');
+    }
+
+    if (claimOwner.user_id !== currentUser.id) {
+      throw new Error('You can only share claims that you own');
+    }
+
     // First, find the user by email
     const { data: user, error: userError } = await supabase
       .from('profiles')
@@ -59,10 +78,6 @@ export class CollaborationService {
     if (userError || !user) {
       throw new Error('User not found');
     }
-
-    // Get current user
-    const { data: { user: currentUser } } = await supabase.auth.getUser();
-    if (!currentUser) throw new Error('Not authenticated');
 
     // Check if share already exists
     const { data: existingShare } = await supabase

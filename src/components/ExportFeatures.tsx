@@ -381,11 +381,8 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
   return (
     <div className="space-y-6">
       {selectedClaim && (
-        <div className="border-l-4 rounded-lg p-4" style={{ 
-          borderLeftColor: claimColor,
-          backgroundColor: `${claimColor}10`
-        }}>
-          <p style={{ color: claimColor }}>
+        <div className="border-l-4 rounded-lg p-4 border-yellow-400/60">
+          <p className="text-gold">
             Exporting data for selected claim: <strong>{selectedClaim}</strong>
           </p>
         </div>

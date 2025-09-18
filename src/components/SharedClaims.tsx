@@ -196,6 +196,21 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
+      // SECURITY: Verify user owns the claim they're trying to share
+      const { data: claimOwner, error: ownerError } = await supabase
+        .from('claims')
+        .select('user_id')
+        .eq('case_number', shareInfo.claim_id)
+        .single()
+
+      if (ownerError || !claimOwner) {
+        throw new Error('Claim not found')
+      }
+
+      if (claimOwner.user_id !== user.id) {
+        throw new Error('You can only share claims that you own')
+      }
+
       // First, check if user exists with an account (must be registered)
       const { data: existingUser, error: userLookupError } = await supabase
         .from('profiles')
@@ -812,27 +827,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                         </div>
                       )}
 
-      {/* Show All Claims Button - Always visible */}
-      {selectedClaim && (
-        <div className="mb-6">
-                <button
-            onClick={() => {
-              if (typeof window !== 'undefined') {
-                const url = new URL(window.location.href)
-                url.searchParams.delete('claim')
-                window.history.pushState({}, '', url.toString())
-              }
-              // Ensure we're in shared context
-              window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null, claimColor: '#3B82F6' } }))
-              window.dispatchEvent(new CustomEvent('tabChange', { detail: 'shared' }))
-            }}
-            className="btn-gold px-6 py-3 rounded-lg flex items-center space-x-2 text-lg"
-          >
-            <Home className="w-5 h-5" />
-            <span>Show All Shared Claims</span>
-          </button>
-                  </div>
-                )}
+      
 
       {/* Claim Details View - Show when claim is selected */}
       {selectedClaim && (
@@ -847,7 +842,13 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                 <span>Back</span>
               </button>
               <button
-                onClick={() => navigateTo('claims')}
+                onClick={() => {
+                  try {
+                    window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null, claimColor: '#3B82F6' } }))
+                    window.dispatchEvent(new CustomEvent('tabChange', { detail: 'claims' }))
+                  } catch {}
+                  navigateTo('claims')
+                }}
                 className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
               >
                 <Home className="w-4 h-4" />
@@ -892,7 +893,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                 <Crown className="w-4 h-4" />
                 <span>Subscription</span>
                 </button>
-              {!isGuest && (
+              {!isGuest && myClaims?.some(claim => claim.case_number === selectedClaim) && (
                 <button
                   onClick={() => setShowShareForm(true)}
                   className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
