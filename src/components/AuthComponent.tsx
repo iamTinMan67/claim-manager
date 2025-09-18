@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/integrations/supabase/client'
 import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
 import type { User } from '@supabase/supabase-js'
@@ -20,7 +20,7 @@ interface AuthComponentProps {
 export default function AuthComponent({ 
   children, 
   onAuthChange, 
-  activeTab = 'claims',
+  activeTab,
   onTabChange,
   selectedClaim,
   isGuest = false,
@@ -39,13 +39,18 @@ export default function AuthComponent({
   const { theme, setTheme } = useTheme()
 
   // Navigation items
-  const navItems = [
-    { id: 'claims', label: 'Claims', icon: FileText },
-    { id: 'todos', label: activeTab === 'shared' ? 'Shared To-Do Lists' : 'To-Do Lists', icon: CheckSquare, requiresClaim: true },
-    { id: 'calendar', label: activeTab === 'shared' ? 'Shared Calendar' : 'Calendar', icon: Calendar, requiresClaim: true },
-    { id: 'export', label: activeTab === 'shared' ? 'Shared Export' : 'Export', icon: Download, requiresClaim: true },
-    { id: 'shared', label: 'Shared Claims', icon: Users },
-  ]
+  const navItems = activeTab === 'shared'
+    ? [
+        { id: 'todos-shared', label: 'Shared To-Do Lists', icon: CheckSquare, requiresClaim: true },
+        { id: 'calendar-shared', label: 'Shared Calendar', icon: Calendar, requiresClaim: true },
+        ...(selectedClaim ? [{ id: 'export', label: 'Export', icon: Download, requiresClaim: true }] : [] as any),
+      ]
+    : [
+        { id: 'todos-private', label: 'To-Do Lists', icon: CheckSquare },
+        { id: 'calendar-private', label: 'Calendar', icon: Calendar },
+        { id: 'export', label: 'Export', icon: Download, requiresClaim: true },
+        { id: 'shared', label: 'Shared Claims', icon: Users },
+      ]
 
   useEffect(() => {
     // Check if this is a password reset flow - do this FIRST before any auth calls
@@ -179,7 +184,7 @@ export default function AuthComponent({
       if (resetSuccess) {
         return (
           <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-            <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
+            <div className="max-w-md w-full card-enhanced rounded-lg shadow-md p-6">
               <div className="text-center">
                 <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
                   <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -204,7 +209,7 @@ export default function AuthComponent({
 
       return (
         <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-          <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
+          <div className="max-w-md w-full card-enhanced rounded-lg shadow-md p-6">
             <h2 className="text-2xl font-bold text-center mb-6">Reset Your Password</h2>
             
             {authError && (
@@ -269,7 +274,7 @@ export default function AuthComponent({
     // Regular login form
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
+        <div className="max-w-md w-full card-enhanced rounded-lg shadow-md p-6">
           <h1 className="text-2xl font-bold text-center mb-6">Sign In</h1>
           {authError && (
             <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -303,14 +308,14 @@ export default function AuthComponent({
           <div className="flex justify-between items-center">
             <div className="flex space-x-8">
               {navItems.map((item) => {
-                // Hide nav items that require a claim when on claims page and no claim selected
-                if (activeTab === 'claims' && item.requiresClaim && !selectedClaim) {
+                // Hide nav items that require a claim when in shared context and no claim selected
+                if (activeTab === 'shared' && item.requiresClaim && !selectedClaim) {
                   return null
                 }
-                
-                // When on shared claims page, allow navigation to todos, calendar, and export
-                // but only if a claim is selected
-                if (activeTab === 'shared' && item.requiresClaim && !selectedClaim) {
+
+                // Hide only the current private tab link to reduce clutter
+                if ((activeTab === 'calendar-private' && item.id === 'calendar-private') ||
+                    (activeTab === 'todos-private' && item.id === 'todos-private')) {
                   return null
                 }
                 
@@ -371,6 +376,7 @@ export default function AuthComponent({
               <button
                 onClick={handleSignOut}
                 className="text-sm bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
+                title={user?.email ? `Signed in as: ${user.email}` : 'Sign Out'}
               >
                 Sign Out
               </button>

@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/integrations/supabase/client'
 import { Todo } from '@/types/database'
-import { Plus, Check, Clock, AlertCircle, Trash2, User, Calendar as CalendarIcon } from 'lucide-react'
+import { Plus, Check, Clock, AlertCircle, Trash2, User, Calendar as CalendarIcon, ChevronLeft, Home, X } from 'lucide-react'
+import { useNavigation } from '@/contexts/NavigationContext'
 import { format } from 'date-fns'
 
 interface TodoWithUser extends Todo {
@@ -29,6 +30,7 @@ interface TodoListProps {
 }
 
 const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, showGuestContent = false, isGuestFrozen = false }: TodoListProps) => {
+  const { navigateBack, navigateTo } = useNavigation()
   const [showAddForm, setShowAddForm] = useState(false)
   const [newTodo, setNewTodo] = useState({
     title: '',
@@ -64,7 +66,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
           *,
           profiles(email),
           claims(title, status),
-          responsible_user:responsible_user_id(id, email, full_name)
+          responsible_user:profiles!responsible_user_id(id, email, full_name)
         `)
       
       if (selectedClaim) {
@@ -76,8 +78,8 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         // Show all todos for shared claim (regardless of who created or is assigned)
         // This is handled by the RLS policy for shared claims
       } else {
-        // Show only todos created by the current user OR assigned to the current user
-        query = query.or(`user_id.eq.${user.id},responsible_user_id.eq.${user.id}`)
+        // Show only todos created by the current user
+        query = query.eq('user_id', user.id)
       }
       
       const { data, error } = await query
@@ -86,6 +88,12 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         .order('due_date', { ascending: true })
       
       if (error) throw error
+      if (showGuestContent) {
+        console.log('Shared To-Dos query', {
+          selectedClaim: selectedClaim || null,
+          resultCount: (data || []).length
+        })
+      }
       return data as TodoWithUser[]
     }
   })
@@ -95,10 +103,9 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
     queryFn: async () => {
       const { data, error } = await supabase
         .from('claims')
-        .select('case_number, title, color')
-        .eq('status', 'Active')
+        .select('case_number, title, color, status')
+        .neq('status', 'Closed')
         .order('title')
-      
       if (error) throw error
       return data
     }
@@ -138,8 +145,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         .from('todos')
         .select(`
           *,
-          profiles(email),
-          responsible_user:responsible_user_id(id, email, full_name)
+          profiles(email)
         `)
         .gte('due_date', todayString)
         .eq('completed', false)
@@ -153,8 +159,8 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         // Show all todos for shared claim (regardless of who created or is assigned)
         // This is handled by the RLS policy for shared claims
       } else {
-        // Show only todos created by the current user OR assigned to the current user
-        query = query.or(`user_id.eq.${user.id},responsible_user_id.eq.${user.id}`)
+        // Show only todos created by the current user
+        query = query.eq('user_id', user.id)
       }
       
       const { data, error } = await query
@@ -179,7 +185,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       }
       const { data, error } = await supabase
         .from('todos')
-        .insert([todoData])
+        .insert([{ ...todoData, responsible_user_id: todo.responsible_user_id || user.id }])
         .select()
         .single()
 
@@ -287,9 +293,9 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                 <div
                   key={todo.id}
                   className={`p-3 rounded border-l-2 ${
-                    isOverdue ? 'bg-red-50 border-red-400' : 
-                    isToday ? 'bg-yellow-50 border-yellow-400' : 
-                    'bg-blue-50 border-blue-400'
+                    isOverdue ? 'card-smudge border-red-400' : 
+                    isToday ? 'card-smudge border-yellow-400' : 
+                    'card-smudge border-blue-400'
                   }`}
                 >
                   <div className="flex justify-between items-start">
@@ -338,73 +344,89 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       )}
       
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">
-          {showGuestContent ? 'Guest To-Do Lists' : 'To-Do Lists'}
-        </h2>
-        <div className="flex items-center space-x-3">
-          {!isGuest && (
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => {
+              try {
+                window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null } }))
+                window.dispatchEvent(new CustomEvent('tabChange', { detail: 'claims' }))
+              } catch {}
+              navigateTo('claims')
+            }}
+            className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
+          >
+            <Home className="w-4 h-4" />
+            <span>Home</span>
+          </button>
+          {(!isGuest) || (showGuestContent && !isGuestFrozen) ? (
             <button
-              onClick={() => setShowAddForm(true)}
-              className="text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
-              style={{ backgroundColor: claimColor }}
+              onClick={() => {
+              setNewTodo(prev => ({ ...prev, responsible_user_id: currentUser?.id || '' }))
+              setShowAddForm(true)
+            }}
+              className="bg-white/10 border border-green-400 text-green-400 px-4 py-2 rounded-lg hover:opacity-90 flex items-center space-x-2"
             >
               <Plus className="w-4 h-4" />
               <span>Add New Task</span>
             </button>
-          )}
-          {isGuest && isGuestFrozen && (
-            <div className="bg-red-100 text-red-800 px-3 py-1 rounded-lg text-sm">
-              Access Frozen
-            </div>
-          )}
-          {isGuest && !isGuestFrozen && (
-            <div className="bg-green-100 text-green-800 px-3 py-1 rounded-lg text-sm">
-              Guest Access - Can Add/Edit Own Content
-            </div>
-          )}
+          ) : null}
         </div>
+        <h2 className="text-2xl font-bold text-center flex-1">To-Do Lists</h2>
+        <div className="flex items-center space-x-3 justify-end" />
       </div>
 
-      {showAddForm && !isGuest && (
-        <div className="card-enhanced p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
-          <h3 className="text-lg font-semibold mb-4">Add New Todo</h3>
-          <form onSubmit={handleSubmit} className="space-y-4">
+      {showAddForm && (!isGuest || (showGuestContent && !isGuestFrozen)) ? (
+        // Form overlay - hide main content
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="p-6 rounded-[16px] shadow max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            style={{ backgroundColor: 'rgba(30, 58, 138, 0.9)', border: '2px solid #fbbf24' }}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Add New Todo</h3>
+              <button
+                onClick={() => setShowAddForm(false)}
+                className="bg-white/10 border border-red-400 text-red-400 px-2 py-1 rounded flex items-center space-x-2"
+              >
+                <X className="w-4 h-4" />
+                <span>Close</span>
+              </button>
+            </div>
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium mb-1">Title *</label>
+              <label className="block text-base font-medium mb-1">Title *</label>
               <input
                 type="text"
                 value={newTodo.title}
                 onChange={(e) => setNewTodo({ ...newTodo, title: e.target.value })}
-                className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                className="w-full h-12 text-base border border-yellow-400/30 rounded-md px-4 py-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Description</label>
+              <label className="block text-base font-medium mb-1">Description</label>
               <textarea
                 value={newTodo.description}
                 onChange={(e) => setNewTodo({ ...newTodo, description: e.target.value })}
-                className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                className="w-full text-base border border-yellow-400/30 rounded-md px-4 py-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
                 rows={3}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Due Date *</label>
+                <label className="block text-base font-medium mb-1">Due Date *</label>
                 <input
                   type="datetime-local"
                   value={newTodo.due_date}
                   onChange={(e) => setNewTodo({ ...newTodo, due_date: e.target.value })}
-                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  className="w-full h-12 text-base border border-yellow-400/30 rounded-md px-4 py-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Priority</label>
+                <label className="block text-base font-medium mb-1">Priority</label>
                 <select
                   value={newTodo.priority}
                   onChange={(e) => setNewTodo({ ...newTodo, priority: e.target.value as 'low' | 'medium' | 'high' })}
-                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  className="w-full h-12 text-base border border-yellow-400/30 rounded-md px-4 py-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
                 >
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
@@ -424,37 +446,79 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
             </div>
             {newTodo.alarm_enabled && (
               <div>
-                <label className="block text-sm font-medium mb-1">Alarm Time</label>
+                <label className="block text-base font-medium mb-1">Alarm Time</label>
                 <input
                   type="datetime-local"
                   value={newTodo.alarm_time}
                   onChange={(e) => setNewTodo({ ...newTodo, alarm_time: e.target.value })}
-                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  className="w-full h-12 text-base border border-yellow-400/30 rounded-md px-4 py-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
                 />
               </div>
             )}
-            <div>
-              <label className="block text-sm font-medium mb-1">Associated Claim</label>
-              <select
-                value={newTodo.case_number}
-                onChange={(e) => setNewTodo({ ...newTodo, case_number: e.target.value })}
-                className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
-              >
-                <option value="">No specific claim</option>
-                {claims?.map((claim) => (
-                  <option key={claim.case_number} value={claim.case_number}>
-                    {claim.case_number} - {claim.title}
-                  </option>
-                ))}
-              </select>
+            <div className="grid grid-cols-4 gap-2 items-end">
+              <div className="col-span-2">
+                <label className="block text-base font-medium mb-1">Associated Claim</label>
+                <select
+                  value={newTodo.case_number}
+                  onChange={(e) => setNewTodo({ ...newTodo, case_number: e.target.value })}
+                  className="w-2/3 h-12 text-base border border-yellow-400/30 rounded-md px-4 py-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                >
+                  <option value="">No specific claim</option>
+                  {claims?.map((claim) => (
+                    <option key={claim.case_number} value={claim.case_number}>
+                      {claim.case_number} - {claim.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Color</label>
+                {newTodo.case_number ? (
+                  <div
+                    className="w-8 h-8 rounded border"
+                    style={{
+                      backgroundColor: (claims?.find(c => c.case_number === newTodo.case_number)?.color) || '#6B7280',
+                      borderColor: (claims?.find(c => c.case_number === newTodo.case_number)?.color) || '#6B7280'
+                    }}
+                    title="Claim color"
+                  />
+                ) : (
+                  <div
+                    className="w-8 h-8 rounded border"
+                    title="Select a claim to set color"
+                    style={{
+                      backgroundImage:
+                        'repeating-linear-gradient(45deg, rgba(239,68,68,0.85) 0 10px, transparent 10px 20px)',
+                      backgroundColor: 'rgba(239,68,68,0.15)',
+                      borderColor: 'rgba(239,68,68,0.7)'
+                    }}
+                  />
+                )}
+              </div>
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="submit"
+                  disabled={addTodoMutation.isPending}
+                  className="bg-white/10 border border-green-400 text-green-400 px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50"
+                >
+                  {addTodoMutation.isPending ? 'Adding...' : 'Add Todo'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddForm(false)}
+                  className="bg-white/10 border border-red-400 text-red-400 px-4 py-2 rounded-lg hover:opacity-90"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
             {showGuestContent && sharedUsers && sharedUsers.length > 0 && (
               <div>
-                <label className="block text-sm font-medium mb-1">Responsible User</label>
+                <label className="block text-base font-medium mb-1">Responsible User</label>
                 <select
                   value={newTodo.responsible_user_id}
                   onChange={(e) => setNewTodo({ ...newTodo, responsible_user_id: e.target.value })}
-                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  className="w-2/3 h-12 text-base border border-yellow-400/30 rounded-md px-4 py-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
                 >
                   <option value="">Assign to yourself</option>
                   {sharedUsers.map((user) => (
@@ -463,9 +527,6 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                     </option>
                   ))}
                 </select>
-                <p className="text-sm text-gray-600 mt-1">
-                  If assigned to someone else, this task will appear in their private calendar and not in your private todo list.
-                </p>
               </div>
             )}
             <div className="flex space-x-3">
@@ -480,16 +541,18 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
               <button
                 type="button"
                 onClick={() => setShowAddForm(false)}
-                className="bg-yellow-400/20 text-gold px-4 py-2 rounded-lg hover:bg-yellow-400/30"
+                className="bg-white/10 border border-green-400 text-green-400 px-4 py-2 rounded-lg hover:opacity-90"
               >
                 Cancel
               </button>
             </div>
           </form>
+          </div>
         </div>
-      )}
-
-      <div className="space-y-4">
+      ) : (
+        // Main content when form is not open
+        <>
+          <div className="space-y-4">
         {todos?.reduce((groups: { [key: string]: TodoWithUser[] }, todo) => {
           const claimKey = todo.case_number || 'No Claim'
           if (!groups[claimKey]) {
@@ -613,7 +676,9 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
             No todos yet. Create your first todo to get started!
           </div>
         )}
-      </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

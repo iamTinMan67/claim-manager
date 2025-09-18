@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
-import { Download, FileText, Calendar, Users, CheckSquare } from 'lucide-react'
+import { supabase } from '@/integrations/supabase/client'
+import { Download, FileText, Calendar, Users, CheckSquare, Home, ChevronLeft } from 'lucide-react'
+import { useNavigation } from '@/contexts/NavigationContext'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import JSZip from 'jszip'
@@ -9,9 +10,13 @@ import JSZip from 'jszip'
 interface ExportFeaturesProps {
   selectedClaim: string | null
   claimColor?: string
+  isGuest?: boolean
+  showGuestContent?: boolean
+  isGuestFrozen?: boolean
 }
 
 const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeaturesProps) => {
+  const { navigateBack, navigateTo } = useNavigation()
   const [exportType, setExportType] = useState<'evidence' | 'todos' | 'calendar'>('evidence')
   const [isExporting, setIsExporting] = useState(false)
   const [isDownloadingZip, setIsDownloadingZip] = useState(false)
@@ -379,22 +384,36 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
   return (
     <div className="space-y-6">
       {selectedClaim && (
-        <div className="border-l-4 rounded-lg p-4" style={{ 
-          borderLeftColor: claimColor,
-          backgroundColor: `${claimColor}10`
-        }}>
-          <p style={{ color: claimColor }}>
+        <div className="border-l-4 rounded-lg p-4 border-yellow-400/60">
+          <p className="text-gold">
             Exporting data for selected claim: <strong>{selectedClaim}</strong>
           </p>
         </div>
       )}
-      <div>
-        <h2 className="text-2xl font-bold mb-2">Export Features</h2>
-        <p className="text-gray-600">
-          Export your legal data in various formats for backup or sharing.
-          {selectedClaim ? ' Currently showing data for the selected claim only.' : ' Showing all data.'}
-        </p>
+      <div className="flex justify-between items-center">
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={navigateBack}
+            className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span>Back</span>
+          </button>
+          <button
+            onClick={() => navigateTo('claims')}
+            className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
+          >
+            <Home className="w-4 h-4" />
+            <span>Home</span>
+          </button>
+        </div>
+        <h2 className="text-2xl font-bold mb-2 text-center flex-1">Export Features</h2>
+        <div />
       </div>
+      <p className="text-gray-600">
+        Export your legal data in various formats for backup or sharing.
+        {selectedClaim ? ' Currently showing data for the selected claim only.' : ' Showing all data.'}
+      </p>
 
       <div className="card-enhanced p-6 rounded-lg shadow border">
         <h3 className="text-lg font-semibold mb-4">Export Options</h3>
@@ -492,8 +511,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
               <button
                 onClick={() => handleExport('pdf')}
                 disabled={isExporting || getDataCount() === 0}
-                className="text-white px-6 py-3 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                style={{ backgroundColor: claimColor }}
+                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
               >
                 <Download className="w-4 h-4" />
                 <span>{isExporting ? 'Generating PDF...' : 'Export as PDF'}</span>
@@ -503,7 +521,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
                 <button
                   onClick={downloadDocumentsZip}
                   disabled={isDownloadingZip || !evidence || evidence.length === 0}
-                  className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  className="bg-green-600 text-white px-6 py-3 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                 >
                   <Download className="w-4 h-4" />
                   <span>{isDownloadingZip ? 'Creating ZIP...' : 'Download Documents ZIP'}</span>
@@ -513,7 +531,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
           </div>
 
           {getDataCount() === 0 && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="card-smudge p-4">
               <p className="text-yellow-800 text-sm">
                 No data available for the selected export type. Add some data first to enable exports.
               </p>
@@ -530,7 +548,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         </div>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="card-smudge p-4">
         <h4 className="font-medium text-blue-900 mb-2">Export Information</h4>
         <ul className="text-sm text-blue-800 space-y-1">
           <li>• CSV exports are ideal for importing into spreadsheet applications</li>
