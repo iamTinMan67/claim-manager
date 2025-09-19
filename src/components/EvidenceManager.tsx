@@ -44,24 +44,114 @@ const EvidenceManager = ({
 
   const queryClient = useQueryClient()
 
-  // Get evidence data from evidence table (use original richer records)
+  // One-time cleanup: delete evidence rows without a case_number (user directive)
+  useEffect(() => {
+    const runCleanup = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        // Delete only current user's rogue rows to satisfy RLS
+        // 1) case_number IS NULL
+        await supabase
+          .from('evidence')
+          .delete()
+          .is('case_number', null)
+          .eq('user_id', user.id)
+        // 2) case_number = ''
+        await supabase
+          .from('evidence')
+          .delete()
+          .eq('case_number', '')
+          .eq('user_id', user.id)
+      } catch (err) {
+        // Silent fail to avoid blocking UI
+        console.warn('Evidence cleanup skipped:', err)
+      }
+    }
+    runCleanup()
+  }, [])
+
+  // Get evidence data from evidence table (support both legacy case_number and new evidence_claims link)
   const { data: evidenceData, isLoading, error } = useQuery({
     queryKey: ['evidence', selectedClaim],
     queryFn: async () => {
-      let query = supabase
+      // If no claim selected, load all for user ordering purposes
+      if (!selectedClaim) {
+        const { data, error } = await supabase
         .from('evidence')
         .select('*')
-
-      if (selectedClaim) {
-        query = query.eq('case_number', selectedClaim)
-      }
-
-      const { data, error } = await query
         .order('display_order', { ascending: false, nullsFirst: true })
-        .order('created_at', { ascending: true })
-
+          .order('created_at', { ascending: false })
       if (error) throw error
       return data as Evidence[]
+    }
+
+      // Fetch linked evidence ids via evidence_claims for the selected claim
+      const { data: linkRows, error: linkErr } = await supabase
+        .from('evidence_claims')
+        .select('evidence_id')
+        .eq('claim_id', selectedClaim)
+      if (linkErr) throw linkErr
+      const linkedIds = (linkRows || []).map(r => r.evidence_id).filter(Boolean)
+
+      // Fetch evidence by linked ids
+      const byLinkPromise = linkedIds.length
+        ? supabase.from('evidence').select('*').in('id', linkedIds)
+        : Promise.resolve({ data: [] as any[], error: null } as any)
+
+      // Fetch legacy evidence by case_number for backward compatibility
+      const byLegacyPromise = supabase
+        .from('evidence')
+        .select('*')
+        .eq('case_number', selectedClaim)
+
+      const [byLink, byLegacy] = await Promise.all([byLinkPromise, byLegacyPromise])
+      if (byLink.error) throw byLink.error
+      if (byLegacy.error) throw byLegacy.error
+
+      // Merge and de-duplicate by id, then normalize fields to reduce "mess"
+      const mergedMap = new Map<string, Evidence>()
+      ;[...(byLink.data || []), ...(byLegacy.data || [])].forEach((raw: any) => {
+        if (!raw || !raw.id) return
+        // Normalize
+        const cleaned: Evidence = {
+          ...raw,
+          file_name: typeof raw.file_name === 'string' ? raw.file_name.trim() : raw.file_name,
+          file_url: typeof raw.file_url === 'string' ? raw.file_url.trim() : raw.file_url,
+          method: typeof raw.method === 'string' ? raw.method.trim() : raw.method,
+          url_link: typeof raw.url_link === 'string' ? raw.url_link.trim() : raw.url_link,
+          book_of_deeds_ref: typeof raw.book_of_deeds_ref === 'string' ? raw.book_of_deeds_ref.trim() : raw.book_of_deeds_ref,
+          date_submitted: raw.date_submitted === '' ? null : raw.date_submitted,
+          number_of_pages: raw.number_of_pages != null && !isNaN(Number(raw.number_of_pages)) ? Number(raw.number_of_pages) : null,
+        }
+
+        // Derive exhibit_number from exhibit_id like "Exhibit 12" if missing
+        if ((cleaned as any).exhibit_number == null && typeof cleaned.exhibit_id === 'string') {
+          const match = cleaned.exhibit_id.match(/(\d+)/)
+          if (match) (cleaned as any).exhibit_number = parseInt(match[1], 10)
+        }
+
+        mergedMap.set(cleaned.id as any, cleaned)
+      })
+      let merged = Array.from(mergedMap.values())
+
+      // Optional: filter out rows with no meaningful identifier (neither file_name nor file_url)
+      merged = merged.filter((e: any) => (e.file_name && e.file_name.length) || (e.file_url && e.file_url.length))
+
+      // Enforce user rule: only keep items with a case_number matching the selected claim
+      merged = merged.filter((e: any) => e.case_number && e.case_number === selectedClaim)
+
+      // Sort: first by display_order desc (nulls last), then created_at desc
+      merged.sort((a, b) => {
+        const ao = a.display_order ?? -Infinity
+        const bo = b.display_order ?? -Infinity
+        if (ao !== bo) return bo - ao
+        const at = new Date(a.created_at).getTime()
+        const bt = new Date(b.created_at).getTime()
+        return bt - at
+      })
+
+      return merged
     }
   })
 
@@ -70,10 +160,10 @@ const EvidenceManager = ({
       // Update each item individually to avoid RLS issues
       for (const update of updates) {
         const { error } = await supabase
-          .from('evidence')
+        .from('evidence')
           .update({ display_order: update.display_order })
           .eq('id', update.id)
-        if (error) throw error
+      if (error) throw error
       }
     },
     onSuccess: () => {
@@ -237,7 +327,7 @@ const EvidenceManager = ({
           isOwner={true} 
         />
       )}
-
+      
 
       {editingEvidence && (
         <div className="card-enhanced p-6 border-l-4" style={{ borderLeftColor: claimColor }}>
@@ -317,15 +407,7 @@ const EvidenceManager = ({
                 />
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Description</label>
-              <textarea
-                value={editingEvidence.description || ''}
-                onChange={(e) => setEditingEvidence({ ...editingEvidence, description: e.target.value })}
-                className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
-                rows={3}
-              />
-            </div>
+            {/* Description removed per requirements */}
             <div>
               <label className="block text-sm font-medium mb-1">CLC Ref#</label>
               <input
@@ -373,14 +455,21 @@ const EvidenceManager = ({
             )}
             {isInteractive && (!isGuest || (isGuest && !isGuestFrozen)) && (
               <button
-                onClick={() => setShowAddModal(true)}
+                onClick={() => {
+                  if (!selectedClaim) {
+                    alert('Please select a claim before adding evidence. The Case Number is required.')
+                    return
+                  }
+                  setShowAddModal(true)
+                }}
+                disabled={!selectedClaim}
                 className="bg-white/10 border border-green-400 text-green-400 px-3 py-2 rounded-lg flex items-center space-x-2 hover:opacity-90"
               >
                 <Plus className="w-4 h-4" />
                 <span>{isGuest ? 'Submit' : 'Add'}</span>
               </button>
             )}
-          </div>
+        </div>
         </div>
         <div className={`${isStatic ? 'max-h-[75vh] overflow-y-auto overflow-x-hidden' : ''} ${!isStatic ? 'overflow-x-auto' : ''}`} style={{ scrollbarGutter: isStatic ? 'stable both-edges' as any : undefined }}>
             <table className={`min-w-full ${isStatic ? 'table-fixed' : 'table-auto'} divide-y divide-yellow-400/20`}>
@@ -403,9 +492,6 @@ const EvidenceManager = ({
                 </th>
                 <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-20' : ''}`}>
                   Exhibit #
-                </th>
-                <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-32' : ''}`}>
-                  Description
                 </th>
                 <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-24' : ''}`}>
                   Actions
@@ -455,20 +541,17 @@ const EvidenceManager = ({
                     <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-500`}>
                       {item.exhibit_number || '-'}
                     </td>
-                    <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} text-sm text-gray-500 ${isStatic ? 'max-w-xs' : 'max-w-xs'} truncate`}>
-                      {item.description || '-'}
-                    </td>
                     <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm font-medium`}>
                       <div className="flex space-x-2">
                         {item.file_url && (
                           <>
-                            <button
+                          <button
                               onClick={() => window.open(item.file_url as string, '_blank')}
-                              className="text-blue-600 hover:text-blue-900"
-                              title="View file"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
+                            className="text-blue-600 hover:text-blue-900"
+                            title="View file"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
@@ -498,7 +581,7 @@ const EvidenceManager = ({
                     </tr>
                     {expandedEvidence === item.id && editingEvidence && (
                       <tr>
-                        <td colSpan={7} className="px-6 py-4 bg-yellow-400/10 border-t">
+                        <td colSpan={6} className="px-6 py-4 bg-yellow-400/10 border-t">
                           <div className="card-enhanced p-6 border-l-4" style={{ borderLeftColor: claimColor }}>
                             <div className="flex justify-between items-center mb-4">
                               <h4 className="text-lg font-semibold">Edit Evidence</h4>
@@ -645,7 +728,7 @@ const EvidenceManager = ({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
                     No evidence found. Add some evidence to get started!
                   </td>
                 </tr>
@@ -678,6 +761,7 @@ const EvidenceManager = ({
             try {
               const { data: { user } } = await supabase.auth.getUser()
               if (!user) throw new Error('Not authenticated')
+              if (!selectedClaim) throw new Error('A Case Number (claim) is required for evidence')
 
               // Get the current maximum display_order for this claim
               let query = supabase
@@ -700,7 +784,7 @@ const EvidenceManager = ({
               const cleanData = {
                 ...evidence,
                 user_id: user.id,
-                case_number: selectedClaim || null,
+                case_number: selectedClaim,
                 display_order: newDisplayOrder,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()

@@ -490,7 +490,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
   }
 
   return (
-    <div className="space-y-4">
+    <div>
 
       {/* Collaboration Section */}
       {showCollaboration && selectedClaim && (
@@ -753,12 +753,30 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
 
       {/* Claims Grid - Only show when no claim is selected */}
       {!selectedClaim && (
-        <div className="space-y-6">
+        <div>
           {/* Header */}
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-gold mb-2">Shared Claims</h1>
-            <p className="text-gray-300">Manage your shared claims and guest access</p>
-                </div>
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => {
+                  try {
+                    window.dispatchEvent(new CustomEvent('tabChange', { detail: 'claims' }))
+                  } catch {}
+                  navigateTo('claims')
+                }}
+                className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2 hover:opacity-90"
+              >
+                <Home className="w-4 h-4" />
+                <span>Home</span>
+              </button>
+            </div>
+            <div className="text-center flex-1">
+              <h2 className="text-2xl font-bold text-gold">Shared Claims</h2>
+            </div>
+            <div className="flex items-center space-x-2">
+              {/* Removed Share Claim button */}
+            </div>
+          </div>
           
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {/* Claims I Own (Host) - Filter out any that also appear as guest claims */}
@@ -917,72 +935,67 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
 
       {/* Claim Details View - Show when claim is selected */}
       {selectedClaim && (
-        <div className="min-h-screen bg-gray-50">
-          <div className="container mx-auto p-4">
-            <div className="bg-white shadow-md rounded-lg p-6 max-w-7xl mx-auto">
-              <div className="space-y-6">
-                {/* Header with navigation */}
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => {
-                        try {
-                          if (typeof window !== 'undefined') {
-                            const url = new URL(window.location.href)
-                            url.searchParams.delete('claim')
-                            window.history.pushState({}, '', url.toString())
-                          }
-                          window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null, claimColor: '#3B82F6' } }))
-                        } catch {}
-                      }}
-                      className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                      <span>Back</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        try {
-                          window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null, claimColor: '#3B82F6' } }))
-                          window.dispatchEvent(new CustomEvent('tabChange', { detail: 'claims' }))
-                        } catch {}
-                        navigateTo('claims')
-                      }}
-                      className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
-                    >
-                      <Home className="w-4 h-4" />
-                      <span>Home</span>
-                    </button>
-                  </div>
-                  <h2 className="text-2xl font-bold text-gold text-center flex-1">Claim Details</h2>
-                  <div className="flex items-center">
-                    <button
-                      onClick={() => setShowCollaboration(!showCollaboration)}
-                      className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
-                    >
-                      <Users className="w-4 h-4" />
-                      <span>{showCollaboration ? 'Hide' : 'Show'} Collaboration</span>
-                    </button>
-                  </div>
-                </div>
-                
-                {/* Evidence Management with stable layout */}
-                <div className="space-y-4">
-                  <EvidenceManager 
-                    selectedClaim={selectedClaim} 
-                    claimColor={claimColor} 
-                    amendMode={amendMode}
-                    isGuest={isGuest}
-                    currentUserId={currentUserId}
-                    isGuestFrozen={guestStatus?.is_frozen || false}
-                    onEditClaim={() => {}}
-                    onDeleteClaim={() => {}}
-                    onSetAmendMode={setAmendMode}
-                    hidePendingReview={showCollaboration}
-                  />
-                </div>
-              </div>
+        <div className="space-y-6">
+          {/* Header with navigation */}
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => {
+                  try {
+                    if (typeof window !== 'undefined') {
+                      const url = new URL(window.location.href)
+                      url.searchParams.delete('claim')
+                      window.history.pushState({}, '', url.toString())
+                    }
+                    window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null, claimColor: '#3B82F6' } }))
+                  } catch {}
+                }}
+                className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>Back</span>
+              </button>
+              <button
+                onClick={() => {
+                  try {
+                    window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null, claimColor: '#3B82F6' } }))
+                    window.dispatchEvent(new CustomEvent('tabChange', { detail: 'claims' }))
+                  } catch {}
+                  navigateTo('claims')
+                }}
+                className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
+              >
+                <Home className="w-4 h-4" />
+                <span>Home</span>
+              </button>
             </div>
+            <h2 className="text-2xl font-bold text-gold text-center flex-1">Claim Details</h2>
+            <div className="flex items-center">
+              <button
+                onClick={() => setShowCollaboration(!showCollaboration)}
+                className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
+              >
+                <Users className="w-4 h-4" />
+                <span>{showCollaboration ? 'Hide' : 'Show'} Collaboration</span>
+              </button>
+            </div>
+          </div>
+          
+          {/* Evidence Management with stable layout */}
+          <div className="space-y-4">
+            <EvidenceManager 
+              selectedClaim={selectedClaim} 
+              claimColor={claimColor} 
+              amendMode={amendMode}
+              isGuest={isGuest}
+              currentUserId={currentUserId}
+              isGuestFrozen={guestStatus?.is_frozen || false}
+              onEditClaim={() => {}}
+              onDeleteClaim={() => {}}
+              onSetAmendMode={setAmendMode}
+              hidePendingReview={showCollaboration}
+              isStatic={true}
+            />
           </div>
         </div>
       )}

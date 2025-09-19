@@ -23,7 +23,12 @@ const SubscriptionManager = () => {
           updated_at: new Date().toISOString()
         }, { onConflict: 'user_id' })
         // Clear any previous local selection to avoid gating issues
-        try { window.localStorage.removeItem('guest_pricing_selected') } catch {}
+        try {
+          window.localStorage.removeItem('guest_pricing_selected')
+          // Mark welcome dismissed for this session when selecting Free
+          window.sessionStorage.setItem('welcome_seen_session', '1')
+          window.dispatchEvent(new CustomEvent('welcomePrefsChanged'))
+        } catch {}
         navigateTo('claims')
       })
     } else {
@@ -77,6 +82,11 @@ const SubscriptionManager = () => {
         throw new Error(error.message || 'Failed to create checkout session')
       }
 
+      // Mark welcome dismissed for this session when proceeding to Stripe
+      try {
+        window.sessionStorage.setItem('welcome_seen_session', '1')
+        window.dispatchEvent(new CustomEvent('welcomePrefsChanged'))
+      } catch {}
       // Redirect to Stripe checkout
       window.location.href = data.url
 
@@ -157,8 +167,27 @@ const SubscriptionManager = () => {
           </p>
         </div>
 
-        {/* Donation Selection Note */}
+        {/* Do not show again preference + Donation Selection Note */}
         <div className="text-center">
+          <div className="flex items-center justify-center mb-3">
+            <label className="flex items-center space-x-2 text-sm text-gold-light">
+              <input
+                type="checkbox"
+                onChange={(e) => {
+                  try {
+                    if (e.target.checked) {
+                      window.localStorage.setItem('welcome_never', '1')
+                    } else {
+                      window.localStorage.removeItem('welcome_never')
+                    }
+                    window.dispatchEvent(new CustomEvent('welcomePrefsChanged'))
+                  } catch {}
+                }}
+                className="rounded"
+              />
+              <span>Do not show this welcome again</span>
+            </label>
+          </div>
           <p className="text-gold-light text-sm">
             Click on a donation tier above to support development and unlock collaboration features.
             You can always make additional donations later when you need more guests.

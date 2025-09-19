@@ -214,19 +214,33 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2">
             <button
-              onClick={navigateBack}
+              onClick={() => {
+                try {
+                  if (typeof window !== 'undefined') {
+                    const url = new URL(window.location.href)
+                    url.searchParams.delete('claim')
+                    window.history.pushState({}, '', url.toString())
+                  }
+                  window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null } }))
+                  window.dispatchEvent(new CustomEvent('tabChange', { detail: 'claims' }))
+                  sessionStorage.setItem('welcome_seen_session', '1')
+                } catch {}
+                navigateTo('claims')
+              }}
               className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
             >
               <ChevronLeft className="w-4 h-4" />
               <span>Back</span>
             </button>
-            <button
-              onClick={() => navigateTo('claims')}
-              className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
-            >
-              <Home className="w-4 h-4" />
-              <span>Home</span>
-            </button>
+            {isGuest && (
+              <button
+                onClick={() => { try { sessionStorage.setItem('welcome_seen_session', '1') } catch {}; navigateTo('claims') }}
+                className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
+              >
+                <Home className="w-4 h-4" />
+                <span>Home</span>
+              </button>
+            )}
           </div>
           <h2 className="text-2xl font-bold text-gold text-center flex-1">Claim Details</h2>
           <div />

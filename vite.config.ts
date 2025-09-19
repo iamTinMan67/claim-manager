@@ -7,12 +7,12 @@ import path from "path";
 export default defineConfig(({ mode }) => ({
   server: {
     host: "127.0.0.1",
-    port: 8080,
+    port: 3000,
     strictPort: true,
     hmr: {
       protocol: "ws",
       host: "localhost",
-      clientPort: 8080,
+      clientPort: 3000,
     },
   },
   plugins: [

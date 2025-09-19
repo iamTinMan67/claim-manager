@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { Todo } from '@/types/database'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, startOfWeek, endOfWeek, addDays } from 'date-fns'
-import { Plus, Clock, X, Check, User, AlertCircle, Trash2, Filter, Bell, Home } from 'lucide-react'
+import { Plus, Clock, X, Check, User, AlertCircle, Trash2, Filter, Bell, Home, ArrowLeft } from 'lucide-react'
 import { useNavigation } from '@/contexts/NavigationContext'
 
 interface CalendarEvent {
@@ -61,9 +61,17 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
     end_time: '',
     all_day: false,
     color: claimColor,
-    claim_id: selectedClaim || '',
-    assignee_id: '' as string | undefined
+    claim_id: selectedClaim || ''
   })
+
+  // Update newEvent when selectedClaim or claimColor changes
+  React.useEffect(() => {
+    setNewEvent(prev => ({
+      ...prev,
+      claim_id: selectedClaim || '',
+      color: claimColor
+    }))
+  }, [selectedClaim, claimColor])
 
   const queryClient = useQueryClient()
   const controlsRef = useRef<HTMLDivElement | null>(null)
@@ -126,13 +134,16 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         .gte('start_time', start.toISOString())
         .lte('start_time', end.toISOString())
       
-      if (selectedClaim) {
-        query = query.eq('claim_id', selectedClaim)
+      if (isGuest) {
+        // Shared: filter to selected claim and other users' events
+        if (selectedClaim) {
+          query = query.eq('claim_id', selectedClaim)
+        }
+        query = query.neq('user_id', user.id)
+      } else {
+        // Private: show events I created across all claims
+        query = query.eq('user_id', user.id)
       }
-      
-      // For private vs shared tabs, the parent sets isGuest/showGuestContent.
-      // Private calendar: show only current user's events. Shared calendar: show others'.
-      query = showGuestContent ? query.neq('user_id', user.id) : query.eq('user_id', user.id)
       
       const { data, error } = await query
         .order('start_time', { ascending: true })
@@ -153,11 +164,29 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         .select('shared_with_id, profiles:shared_with_id(email, full_name)')
         .eq('claim_id', selectedClaim)
       if (error) throw error
-      return (data || []).map((row: any) => ({
+      const list = (data || []).map((row: any) => ({
         id: row.shared_with_id as string,
         email: row.profiles?.email as string,
         full_name: row.profiles?.full_name as string | null
       }))
+      // Include host (claim owner) as potential assignee
+      const { data: claimOwner } = await supabase
+        .from('claims')
+        .select('user_id')
+        .eq('case_number', selectedClaim)
+        .maybeSingle()
+      if (claimOwner?.user_id) {
+        const { data: ownerProfile } = await supabase
+          .from('profiles')
+          .select('id, email, full_name')
+          .eq('id', claimOwner.user_id)
+          .maybeSingle()
+        if (ownerProfile) {
+          const exists = list.some((u: any) => u.id === ownerProfile.id)
+          if (!exists) list.unshift(ownerProfile as any)
+        }
+      }
+      return list
     }
   })
 
@@ -177,17 +206,21 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         .from('todos')
         .select(`
           *,
-          profiles(email)
+          profiles:profiles!todos_user_id_profiles_fkey(email),
+          responsible_user:profiles!todos_responsible_user_fk(id, email, full_name)
         `)
         .gte('due_date', todayString)
         .eq('completed', false)
       
-      if (selectedClaim) {
-        query = query.eq('case_number', selectedClaim)
+      if (isGuest || showGuestContent) {
+        // Shared: scope to selected claim
+        if (selectedClaim) {
+          query = query.eq('case_number', selectedClaim)
+        }
+      } else {
+        // Private: show my tasks or tasks assigned to me across all claims
+        query = query.or(`user_id.eq.${user.id},responsible_user_id.eq.${user.id}`)
       }
-      
-      // Show todos created by the current user
-      query = query.eq('user_id', user.id)
       
       const { data, error } = await query
         .order('due_date', { ascending: true })
@@ -244,8 +277,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         .insert([{ 
           ...event, 
           user_id: user.id, 
-          claim_id: event.claim_id || null, 
-          responsible_user_id: event.assignee_id || user.id 
+          claim_id: event.claim_id || null
         }])
         .select()
         .single()
@@ -265,6 +297,10 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         color: claimColor,
         claim_id: selectedClaim || ''
       })
+    },
+    onError: (err: any) => {
+      console.error('Add event failed:', err)
+      alert(`Failed to add event: ${err?.message || 'Unknown error'}`)
     }
   })
 
@@ -326,12 +362,14 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newEvent.title.trim() || !newEvent.start_time) return
+    if (!newEvent.title.trim()) return
+    const nowStr = format(new Date(), "yyyy-MM-dd'T'HH:mm")
     
     // Ensure end_time is set to start_time if empty
     const eventToSubmit = {
       ...newEvent,
-      end_time: newEvent.end_time || newEvent.start_time
+      start_time: newEvent.start_time || nowStr,
+      end_time: newEvent.end_time || newEvent.start_time || nowStr
     }
     
     addEventMutation.mutate(eventToSubmit)
@@ -363,62 +401,77 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
 
   return (
     <div className="space-y-6">
-      {/* Claim banner removed to match private calendar view */}
-      <div className="flex justify-between items-center" ref={controlsRef}>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => {
-              try {
-                window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null } }))
-              } catch {}
-              navigateTo('claims')
-            }}
-            className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
-          >
-            <Home className="w-4 h-4" />
-            <span>Home</span>
-          </button>
-          {(!isGuest) || (isGuest && !isGuestFrozen) ? (
+      {/* Sticky Navigation Controls */}
+      <div className="sticky top-0 z-20 backdrop-blur-sm border-b border-yellow-400/20 p-4 -mx-4 mb-6">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center space-x-2">
             <button
               onClick={() => {
-                const now = new Date()
-                const nowStr = format(now, "yyyy-MM-dd'T'HH:mm")
-                setNewEvent(prev => ({
-                  ...prev,
-                  start_time: nowStr,
-                  end_time: nowStr,
-                  claim_id: selectedClaim || '',
-                  color: selectedClaim ? claimColor : prev.color,
-                  assignee_id: currentUser?.id
-                }))
-                setShowAddForm(true)
+                sessionStorage.setItem('welcome_seen_session', '1')
+                navigateBack()
               }}
-              className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg hover:opacity-90 flex items-center space-x-2"
+              className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2 hover:opacity-90"
             >
-              <Plus className="w-4 h-4" />
-              <span>Add</span>
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back</span>
             </button>
-          ) : null}
-        </div>
-        <div className="flex-1 flex items-center justify-center space-x-4">
-          <button
-            onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
-            className="px-3 py-1 border rounded hover:bg-yellow-400/20 text-gold"
-          >
-            Previous
-          </button>
-          <h3 className="text-lg font-semibold">
-            {format(currentDate, 'MMMM yyyy')}
-          </h3>
-          <button
-            onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}
-            className="px-3 py-1 border rounded hover:bg-yellow-400/20 text-gold"
-          >
-            Next
-          </button>
+            <button
+              onClick={() => {
+                sessionStorage.setItem('welcome_seen_session', '1')
+                navigateTo(isGuest ? 'shared' : 'claims')
+              }}
+              className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2 hover:opacity-90"
+            >
+              <Home className="w-4 h-4" />
+              <span>Home</span>
+            </button>
+            {(!isGuest) || (isGuest && !isGuestFrozen) ? (
+              <button
+                onClick={() => {
+                  const now = new Date()
+                  const nowStr = format(now, "yyyy-MM-dd'T'HH:mm")
+                  setNewEvent(prev => ({
+                    ...prev,
+                    start_time: nowStr,
+                    end_time: nowStr,
+                    claim_id: selectedClaim || '',
+                    color: selectedClaim ? claimColor : prev.color,
+                    assignee_id: currentUser?.id
+                  }))
+                  setShowAddForm(true)
+                }}
+                className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg hover:opacity-90 flex items-center space-x-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add New</span>
+              </button>
+            ) : null}
+          </div>
+          
+          {/* Calendar Navigation Controls - True Center */}
+          <div className="flex-1 flex justify-center">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
+                className="px-3 py-1 border rounded hover:bg-yellow-400/20 text-gold"
+              >
+                Previous
+              </button>
+              <h3 className="text-lg font-semibold">
+                {format(currentDate, 'MMMM yyyy')}
+              </h3>
+              <button
+                onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}
+                className="px-3 py-1 border rounded hover:bg-yellow-400/20 text-gold"
+              >
+                Next
+              </button>
             </div>
-        <div className="flex items-center space-x-4 justify-end">
-          {/* Guest badges and title hidden on shared calendar per request */}
+          </div>
+          
+          <div className="flex items-center space-x-3 justify-end">
+            {/* Empty space for balance */}
+          </div>
         </div>
       </div>
 
@@ -556,7 +609,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                 disabled={addEventMutation.isPending}
                     className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg hover:opacity-90 disabled:opacity-50"
               >
-                {addEventMutation.isPending ? 'Adding...' : 'Add'}
+                {addEventMutation.isPending ? 'Saving...' : 'Save'}
               </button>
             </div>
               </div>
@@ -567,6 +620,8 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
           </div>
         </div>
       )}
+
+
 
       {/* Daily View with To-Do List and Calendar - Hide when form is open */}
       {!showAddForm && (

@@ -7,6 +7,7 @@ import { Calendar, FileText, Users, CheckSquare, Download, Moon, Sun, X } from '
 import { toast } from '@/hooks/use-toast'
 import SubscriptionManager from './SubscriptionManager'
 import { useTheme } from 'next-themes'
+import { useQuery } from '@tanstack/react-query'
 
 interface AuthComponentProps {
   children?: React.ReactNode
@@ -48,6 +49,24 @@ export default function AuthComponent({
   const [accountMessage, setAccountMessage] = useState<string | null>(null)
   const [isSubscribed, setIsSubscribed] = useState<boolean>(false)
   const [subReady, setSubReady] = useState<boolean>(false)
+  const [welcomeNever, setWelcomeNever] = useState<boolean>(false)
+  const [welcomeSeenThisSession, setWelcomeSeenThisSession] = useState<boolean>(false)
+
+  // Fetch selected claim details for navbar display
+  const { data: selectedClaimData } = useQuery({
+    queryKey: ['selected-claim-details', selectedClaim],
+    queryFn: async () => {
+      if (!selectedClaim) return null
+      const { data, error } = await supabase
+        .from('claims')
+        .select('case_number, title, court')
+        .eq('case_number', selectedClaim)
+        .single()
+      if (error) throw error
+      return data
+    },
+    enabled: Boolean(selectedClaim)
+  })
 
   // Navigation items
   const navItems = activeTab === 'shared'
@@ -55,11 +74,12 @@ export default function AuthComponent({
         { id: 'todos-shared', label: 'Shared To-Do Lists', icon: CheckSquare, requiresClaim: true },
         { id: 'calendar-shared', label: 'Shared Calendar', icon: Calendar, requiresClaim: true },
         ...(selectedClaim ? [{ id: 'export', label: 'Export', icon: Download, requiresClaim: true }] : [] as any),
+        { id: 'shared', label: 'Shared Claims', icon: Users },
       ]
     : [
-        { id: 'todos-private', label: 'To-Do Lists', icon: CheckSquare },
-        { id: 'calendar-private', label: 'Calendar', icon: Calendar },
-        { id: 'export', label: 'Export', icon: Download, requiresClaim: true },
+        { id: 'todos-private', label: 'To-Do Lists', icon: CheckSquare, requiresClaim: true },
+        { id: 'calendar-private', label: 'Calendar', icon: Calendar, requiresClaim: true },
+        ...(selectedClaim ? [{ id: 'export', label: 'Export', icon: Download, requiresClaim: true }] : [] as any),
         { id: 'shared', label: 'Shared Claims', icon: Users },
       ]
 
@@ -90,6 +110,24 @@ export default function AuthComponent({
       }
     }
 
+    // Load welcome preferences early
+    try {
+      const never = localStorage.getItem('welcome_never') === '1'
+      setWelcomeNever(never)
+    } catch {}
+    try {
+      const seen = sessionStorage.getItem('welcome_seen_session') === '1'
+      setWelcomeSeenThisSession(seen)
+    } catch {}
+
+    // Listen for welcome acknowledgments triggered elsewhere
+    const onPrefs = () => {
+      try {
+        setWelcomeNever(localStorage.getItem('welcome_never') === '1')
+      } catch {}
+    }
+    window.addEventListener('welcomePrefsChanged', onPrefs as EventListener)
+
     // Only get session if it's not a password reset flow
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
@@ -118,6 +156,10 @@ export default function AuthComponent({
     } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null)
       onAuthChange(session?.user ?? null)
+      // Reset session welcome flag on logout so next login shows welcome again (unless never)
+      if (event === 'SIGNED_OUT') {
+        try { sessionStorage.removeItem('welcome_seen_session') } catch {}
+      }
       // Refresh subscription state
       if (session?.user?.id) {
         supabase
@@ -126,6 +168,7 @@ export default function AuthComponent({
           .eq('user_id', session.user.id)
           .maybeSingle()
           .then(({ data }) => {
+            console.log('Subscription status check:', data)
             setIsSubscribed(!!data?.subscribed)
             setSubReady(true)
           })
@@ -146,7 +189,10 @@ export default function AuthComponent({
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      subscription.unsubscribe()
+      window.removeEventListener('welcomePrefsChanged', onPrefs as EventListener)
+    }
   }, [onAuthChange])
 
   const handleSignOut = async () => {
@@ -155,32 +201,19 @@ export default function AuthComponent({
   }
 
   const handleNavClick = async (tabId: string) => {
-    // Allow navigating to subscription always
-    if (tabId === 'subscription') {
-      onTabChange?.(tabId)
+    // While welcome is visible, block navigation away from subscription
+    if (!subReady) return
+    if (!welcomeNever && !welcomeSeenThisSession && tabId !== 'subscription') {
       return
     }
-
-    // When on welcome screen, block nav until a backend selection exists
-    if (activeTab === 'subscription') {
-      const { data: { user: current } } = await supabase.auth.getUser()
-      if (!current) {
-        toast({ title: 'Please sign in', description: 'You need to sign in first.' })
-        return
-      }
-      const { data } = await supabase
-        .from('subscribers')
-        .select('subscribed')
-        .eq('user_id', current.id)
-        .maybeSingle()
-      const allowed = !!data?.subscribed
-      if (!allowed) {
-        toast({ title: 'Choose a package', description: 'Select a package on the welcome screen to continue.' })
-        return
-      }
-    }
-
     onTabChange?.(tabId)
+    // If leaving subscription tab, mark welcome as seen for this session
+    try {
+      if (tabId !== 'subscription') {
+        sessionStorage.setItem('welcome_seen_session', '1')
+        setWelcomeSeenThisSession(true)
+      }
+    } catch {}
   }
 
   const openAccountModal = async () => {
@@ -440,12 +473,14 @@ export default function AuthComponent({
     )
   }
 
-  // Only show welcome screen if user is not subscribed AND we're not on subscription page
-  const gating = !subReady ? true : (!isSubscribed && activeTab !== 'subscription')
+  // Always show welcome unless user opted never; if they haven't opted never, show until they leave it once per session
+  const gating = !subReady ? true : (!welcomeNever && activeTab !== 'subscription' && !welcomeSeenThisSession)
+  console.log('Gating check:', { subReady, isSubscribed, activeTab, gating })
 
   if (gating) {
     // Ensure account modal is not shown over welcome screen
     if (showAccountModal) setShowAccountModal(false)
+    // Do not auto-dismiss here; dismissal happens when user navigates away from subscription
     return (
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
         <div className="container mx-auto px-4 py-2">
@@ -458,20 +493,23 @@ export default function AuthComponent({
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <div>
-        {subReady && isSubscribed && (
+        {subReady && !gating && (
           <div className="card-smudge shadow-lg border-b border-yellow-400/20">
             <div className="container mx-auto px-4">
               <div className="flex justify-between items-center">
                 <div className="flex space-x-8">
-                  {/* Hide navbar items on welcome screen until subscribed */}
-                  {!(activeTab === 'subscription' && !isSubscribed) && navItems.map((item) => {
-                    // Hide nav items that require a claim when in shared context and no claim selected
-                    if (activeTab === 'shared' && item.requiresClaim && !selectedClaim) {
+                  {/* Show navbar items only when welcome is not visible */}
+                  {navItems.map((item) => {
+                    // Hide nav items that require a claim when no claim is selected (both private and shared)
+                    if (item.requiresClaim && !selectedClaim) {
                       return null
                     }
-                    // Hide only the current private tab link to reduce clutter
+                    // Hide only the current tab link to reduce clutter
                     if ((activeTab === 'calendar-private' && item.id === 'calendar-private') ||
-                        (activeTab === 'todos-private' && item.id === 'todos-private')) {
+                        (activeTab === 'todos-private' && item.id === 'todos-private') ||
+                        (activeTab === 'calendar-shared' && item.id === 'calendar-shared') ||
+                        (activeTab === 'todos-shared' && item.id === 'todos-shared') ||
+                        (activeTab === 'shared' && item.id === 'shared')) {
                       return null
                     }
                     const Icon = item.icon
@@ -491,6 +529,19 @@ export default function AuthComponent({
                     )
                   })}
                 </div>
+                
+                {/* Selected Claim Information - Center */}
+                {selectedClaim && selectedClaimData && (
+                  <div className="flex-1 flex justify-center">
+                    <div className="text-center">
+                      <div className="text-lg font-semibold text-green-600">
+                        <span className="font-bold">
+                          {selectedClaimData.court || 'Unknown Court'} - {selectedClaimData.title}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center space-x-3">
                   {/* Guest Content Toggle - only show for claim owners when viewing todos/calendar */}
                   {!isGuest && (activeTab === 'todos' || activeTab === 'calendar') && onToggleGuestContent && (
