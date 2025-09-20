@@ -405,15 +405,6 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
             <h2 className="text-2xl font-bold text-gold text-center flex-1">
               {isGuest ? 'Shared Claims' : 'Claims'}
             </h2>
-            {!isGuest && (
-              <button
-                onClick={() => setShowAddForm(true)}
-                className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Claim</span>
-              </button>
-            )}
           </div>
         </>
       )}
@@ -535,19 +526,26 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
       )}
 
       {/* Claims Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {!showAddForm && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {claims?.map((claim) => (
           <div
             key={claim.case_number}
-            className="card-enhanced p-6 cursor-pointer hover:shadow-lg transition-shadow border-l-4"
-            style={{ borderLeftColor: claim.color || '#3B82F6' }}
+            className="card-enhanced p-4 cursor-pointer hover:shadow-lg transition-shadow"
+            style={{ 
+              width: 'calc(100% - 35px)'
+            }}
             onClick={() => handleClaimSelect(claim)}
           >
-            <div className="flex justify-between items-start mb-4">
-              <div 
-                className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: claim.color || '#3B82F6' }}
-              />
+            <div className="flex justify-between items-start mb-3">
+              <div className="flex items-center space-x-2">
+                <div 
+                  className="w-4 h-4 rounded-full"
+                  style={{ backgroundColor: claim.color || '#3B82F6' }}
+                />
+                <h3 className="text-lg font-semibold">{claim.title}</h3>
+                <span className="text-sm text-gray-600">- {claim.case_number}</span>
+              </div>
               <div className="flex items-center space-x-2">
                 {!isGuest && (
                   <>
@@ -556,31 +554,31 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                         e.stopPropagation()
                         setEditingClaim(claim)
                       }}
-                      className="text-green-600 hover:text-green-800 p-1"
+                      className="p-1 rounded hover:bg-yellow-100 transition-colors"
+                      title="Edit"
                     >
-                      <Edit className="w-4 h-4" />
+                      <Edit className="w-4 h-4 text-yellow-500" />
                     </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
                         deleteClaimMutation.mutate(claim.case_number)
                       }}
-                      className="text-green-600 hover:text-green-800 p-1"
+                      className="p-1 rounded hover:bg-red-100 transition-colors"
+                      title="Delete"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-4 h-4 text-red-500" />
                     </button>
                   </>
                 )}
               </div>
             </div>
             
-            <h3 className="text-lg font-semibold mb-2">{claim.title}</h3>
-            <p className="text-sm text-gray-600 mb-2">Case: {claim.case_number}</p>
             {claim.court && (
               <p className="text-sm text-gray-600 mb-2">Court: {claim.court}</p>
             )}
             
-            <div className="flex justify-between items-center mt-4">
+            <div className="flex justify-between items-center mt-3">
               <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                 claim.status === 'Active' 
                   ? 'bg-green-100 text-green-800' 
@@ -594,9 +592,32 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
             </div>
           </div>
         ))}
-      </div>
+        
+        {/* Add New Claim Card */}
+        {!isGuest && (
+          <div
+            className="card-enhanced p-4 cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-dashed border-gray-300 hover:border-gray-400"
+            style={{ width: 'calc(100% - 115px)' }}
+            onClick={() => setShowAddForm(true)}
+          >
+            <div className="flex justify-between items-start mb-3">
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 rounded-full bg-gray-300" />
+                <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400">Add New Claim</h3>
+              </div>
+            </div>
+            <div className="flex justify-start mb-2 ml-16">
+              <Plus className="w-7 h-7 text-green-500" />
+            </div>
+            <div className="text-sm text-gray-500 dark:text-gray-500">
+              Click to create a new claim
+            </div>
+          </div>
+        )}
+        </div>
+      )}
       
-      {(!claims || claims.length === 0) && (
+      {!showAddForm && (!claims || claims.length === 0) && (
         <div className="card-enhanced p-8 text-center">
           <div className="text-gold-light">No claims found. Create your first claim to get started!</div>
         </div>

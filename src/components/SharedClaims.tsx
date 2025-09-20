@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import PaymentModal from './PaymentModal'
 import CollaborationHub from './CollaborationHub'
-import { Users, Mail, Eye, Edit, Trash2, Plus, DollarSign, CreditCard, CheckCircle, Clock, AlertCircle, X, UserPlus, UserMinus, Crown, FileText, Home, ChevronLeft } from 'lucide-react'
+import { Users, Mail, Eye, Edit, Trash2, Plus, DollarSign, CreditCard, CheckCircle, Clock, AlertCircle, X, UserPlus, UserMinus, Crown, FileText, Home, ChevronLeft, User, UserCheck, MoreVertical, VolumeX, Settings } from 'lucide-react'
 import { useNavigation } from '@/contexts/NavigationContext'
 import EvidenceManager from './EvidenceManager'
 
@@ -25,10 +25,16 @@ interface ClaimShare {
   claims: {
     title: string
     case_number: string
+    color?: string
+    user_id: string
   }
-  profiles: {
+  owner_profile?: {
     email: string
-    full_name?: string
+    nickname?: string
+  }
+  shared_with_profile?: {
+    email: string
+    nickname?: string
   }
 }
 
@@ -48,6 +54,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [showCollaboration, setShowCollaboration] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [paymentData, setPaymentData] = useState<{
     amount: number
     claimId: string
@@ -77,6 +84,49 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
   })
 
   const queryClient = useQueryClient()
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openDropdown) {
+        setOpenDropdown(null)
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [openDropdown])
+
+  // Guest privilege management mutations
+  const muteGuestMutation = useMutation({
+    mutationFn: async ({ shareId, isMuted }: { shareId: string, isMuted: boolean }) => {
+      const { error } = await supabase
+        .from('claim_shares')
+        .update({ is_muted: isMuted })
+        .eq('id', shareId)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shared-claims'] })
+      queryClient.invalidateQueries({ queryKey: ['guest-claims'] })
+    }
+  })
+
+  const deleteGuestMutation = useMutation({
+    mutationFn: async (shareId: string) => {
+      const { error } = await supabase
+        .from('claim_shares')
+        .delete()
+        .eq('id', shareId)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shared-claims'] })
+      queryClient.invalidateQueries({ queryKey: ['guest-claims'] })
+    }
+  })
 
   // Check if current user is a guest and if they're frozen
   const { data: guestStatus } = useQuery({
@@ -109,19 +159,25 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
     queryKey: ['shared-claims'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser()
+      console.log('SharedClaims: Current user:', user)
       if (!user) return []
 
       const { data, error } = await supabase
         .from('claim_shares')
         .select(`
           *,
-          claims!inner(title, case_number, color, user_id),
-          profiles!claim_shares_shared_with_id_fkey(email, full_name)
+          claims!inner(title, case_number, color, user_id, court),
+          owner_profile:profiles!owner_id(email, nickname),
+          shared_with_profile:profiles!shared_with_id(email, nickname)
         `)
         .eq('owner_id', user.id) // Only show claims I own
         .order('created_at', { ascending: false })
       
-      if (error) throw error
+      if (error) {
+        console.log('SharedClaims: Error fetching shared claims:', error)
+        throw error
+      }
+      console.log('SharedClaims: Shared claims data:', data)
       return data as ClaimShare[]
     }
   })
@@ -131,24 +187,27 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
     queryKey: ['guest-claims'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser()
+      console.log('SharedClaims: Current user for guest claims:', user)
       if (!user) return []
 
       const { data, error } = await supabase
         .from('claim_shares')
         .select(`
           *,
-          claims!inner(title, case_number, color, user_id),
-          owner_profile:profiles!owner_id(email, full_name)
+          claims!inner(title, case_number, color, user_id, court),
+          owner_profile:profiles!owner_id(email, nickname),
+          shared_with_profile:profiles!shared_with_id(email, nickname)
         `)
         .eq('shared_with_id', user.id)
         .neq('owner_id', user.id) // Exclude claims where user is the owner
         .order('created_at', { ascending: false })
       
-      if (error) throw error
-      return data as (ClaimShare & { 
-        claims: { title: string; case_number: string; color?: string }
-        owner_profile: { email: string; full_name?: string }
-      })[]
+      if (error) {
+        console.log('SharedClaims: Error fetching guest claims:', error)
+        throw error
+      }
+      console.log('SharedClaims: Guest claims data:', data)
+      return data as ClaimShare[]
     }
   })
 
@@ -778,14 +837,14 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
             </div>
           </div>
           
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
           {/* Claims I Own (Host) - Filter out any that also appear as guest claims */}
           {sharedClaims?.filter(share => 
             !guestClaims?.some(guest => guest.claims.case_number === share.claims.case_number)
           ).map((share) => (
             <div
               key={share.id}
-              className="card-enhanced p-6 cursor-pointer hover:shadow-lg transition-shadow border-l-4"
+              className="card-enhanced p-5 cursor-pointer hover:shadow-lg transition-shadow border-l-4"
               style={{ borderLeftColor: share.claims.color || '#3B82F6' }}
               onClick={() => {
                 if (typeof window !== 'undefined') {
@@ -801,70 +860,120 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                 }))
               }}
             >
+              {/* Header with title and action buttons */}
               <div className="flex justify-between items-start mb-4">
-                <div 
-                  className="w-4 h-4 rounded-full"
-                  style={{ backgroundColor: share.claims.color || '#3B82F6' }}
-                />
+                <div className="flex items-center space-x-3">
+                  <div 
+                    className="w-5 h-5 rounded-full"
+                    style={{ backgroundColor: share.claims.color || '#3B82F6' }}
+                  />
+                  <div>
+                    <h3 className="text-base font-semibold dark:text-white">{`${share.claims.court} - ${share.claims.title}`}</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">Case: {share.claims.case_number}</p>
+                  </div>
+                </div>
                 <div className="flex items-center space-x-2">
-                  <Crown className="w-[18px] h-[18px] text-purple-600" title="You own this claim" />
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setOpenDropdown(openDropdown === share.id ? null : share.id)
+                      }}
+                      className="p-2 rounded hover:bg-yellow-100 transition-colors"
+                      title="Edit Guest Privileges"
+                    >
+                      <Edit className="w-4 h-4 text-yellow-500" />
+                    </button>
+                    
+                    {openDropdown === share.id && (
+                      <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                        <div className="py-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setOpenDropdown(null)
+                              // Modify permissions - placeholder for now
+                              console.log('Modify permissions for', share.id)
+                            }}
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          >
+                            <Settings className="w-4 h-4 mr-3" />
+                            Modify Permissions
+                          </button>
+                          
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setOpenDropdown(null)
+                              muteGuestMutation.mutate({ 
+                                shareId: share.id, 
+                                isMuted: !share.is_muted 
+                              })
+                            }}
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          >
+                            <VolumeX className="w-4 h-4 mr-3" />
+                            {share.is_muted ? 'Unmute Guest' : 'Mute Guest'}
+                          </button>
+                          
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setOpenDropdown(null)
+                              if (window.confirm('Are you sure you want to remove this guest?')) {
+                                deleteGuestMutation.mutate(share.id)
+                              }
+                            }}
+                            className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          >
+                            <Trash2 className="w-4 h-4 mr-3" />
+                            Remove Guest
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-              
-              {/* Active icon + Case number + Title inline */}
+
+              {/* Guest Information */}
+              <div className="p-4 mb-4">
                 <div className="flex items-center space-x-2 mb-2">
-                {share.permission === 'edit' ? (
-                  <Edit className="w-4 h-4" style={{ color: '#fbbf24' }} />
-                ) : (
-                  <Eye className="w-4 h-4" style={{ color: '#fbbf24' }} />
-                )}
-                <span className="text-sm font-medium dark:text-white">{share.claims.case_number}</span>
-                <span className="text-lg font-semibold dark:text-white">- {share.claims.title}</span>
+                  <Crown className="w-4 h-4 text-purple-600" />
+                  <span className="font-medium text-gray-700 dark:text-gray-300">Guest:</span>
+                  <span className="text-gray-600 dark:text-gray-400">{share.shared_with_profile?.nickname || share.shared_with_profile?.email || share.shared_with_id}</span>
                 </div>
-              <p className="text-gray-600 dark:text-gray-300 mb-4">Host: {share.profiles.email}</p>
-              
-              <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                <div className="flex items-center space-x-2">
-                    <Mail className="w-4 h-4" />
-                  <span>Shared with: {share.profiles.email}</span>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-1">
+                      {share.permission === 'edit' ? (
+                        <Edit className="w-4 h-4 text-yellow-600" />
+                      ) : (
+                        <Eye className="w-4 h-4 text-blue-600" />
+                      )}
+                      <span className="text-sm font-medium capitalize">{share.permission} Access</span>
+                    </div>
                   </div>
-                <div className="flex items-center space-x-2">
-                    {share.permission === 'edit' ? (
-                      <Edit className="w-4 h-4" style={{ color: '#fbbf24' }} />
-                    ) : (
-                      <Eye className="w-4 h-4" style={{ color: '#fbbf24' }} />
-                    )}
-                    <span className="capitalize">{share.permission} Access</span>
-                  </div>
-                <div className="flex items-center space-x-2">
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      share.can_view_evidence 
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                      : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                    }`}>
-                      {share.can_view_evidence ? 'Can View Evidence' : 'No Evidence Access'}
-                    </span>
-                  </div>
-                  </div>
-              
-                {share.donation_required && (
-                <div className="mt-4 p-2 card-smudge rounded text-sm">
-                  <div className="flex items-center space-x-2">
-                    <DollarSign className="w-4 h-4 text-green-600" />
-                    <span className="text-yellow-800 dark:text-yellow-200">
-                      {share.donation_amount === 0 ? 'First Guest - FREE' : `Payment: £${share.donation_amount}`}
-                    </span>
-                  </div>
+                  
+                  {share.donation_required && (
+                    <div className="flex items-center space-x-1 text-sm">
+                      <DollarSign className="w-4 h-4 text-green-600" />
+                      <span className="text-yellow-800 dark:text-yellow-200 font-medium">
+                        {share.donation_amount === 0 ? 'FREE' : `£${share.donation_amount}`}
+                      </span>
+                    </div>
+                  )}
                 </div>
-                          )}
-                        </div>
+              </div>
+            </div>
           ))}
 
           {/* Claims I'm a Guest On */}
           {guestClaims?.map((guestClaim) => (
             <div
               key={guestClaim.id}
-              className="card-enhanced p-6 cursor-pointer hover:shadow-lg transition-shadow border-l-4"
+              className="card-enhanced p-5 cursor-pointer hover:shadow-lg transition-shadow border-l-4"
               style={{ borderLeftColor: guestClaim.claims.color || '#3B82F6' }}
               onClick={() => {
                 if (typeof window !== 'undefined') {
@@ -880,52 +989,56 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                 }))
               }}
             >
+              {/* Header with title and action buttons */}
               <div className="flex justify-between items-start mb-4">
-                <div 
-                  className="w-4 h-4 rounded-full"
-                  style={{ backgroundColor: guestClaim.claims.color || '#3B82F6' }}
-                />
+                <div className="flex items-center space-x-3">
+                  <div 
+                    className="w-5 h-5 rounded-full"
+                    style={{ backgroundColor: guestClaim.claims.color || '#3B82F6' }}
+                  />
+                  <div>
+                    <h3 className="text-base font-semibold dark:text-white">{`${guestClaim.claims.court} - ${guestClaim.claims.title}`}</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">Case: {guestClaim.claims.case_number}</p>
+                  </div>
+                </div>
                 <div className="flex items-center space-x-2">
-                  <UserPlus className="w-[18px] h-[18px] text-green-600" title="You're a guest on this claim" />
-                        </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (window.confirm('Are you sure you want to leave this claim?')) {
+                        // Leave claim functionality - placeholder for now
+                      }
+                    }}
+                    className="p-2 rounded hover:bg-red-100 transition-colors"
+                    title="Leave Claim"
+                  >
+                    <X className="w-4 h-4 text-red-500" />
+                  </button>
+                </div>
               </div>
 
-              {/* Active icon + Case number + Title inline */}
-              <div className="flex items-center space-x-2 mb-2">
-                {guestClaim.permission === 'edit' ? (
-                  <Edit className="w-4 h-4" style={{ color: '#fbbf24' }} />
-                ) : (
-                  <Eye className="w-4 h-4" style={{ color: '#fbbf24' }} />
-                )}
-                <span className="text-sm font-medium dark:text-white">{guestClaim.claims.case_number}</span>
-                <span className="text-lg font-semibold dark:text-white">- {guestClaim.claims.title}</span>
-                        </div>
-              <p className="text-gray-600 dark:text-gray-300 mb-4">Hosted by: {guestClaim.owner_profile.email}</p>
-              
-              <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                <div className="flex items-center space-x-2">
-                  <Mail className="w-4 h-4" />
-                  <span>Hosted by: {guestClaim.owner_profile.email}</span>
+              {/* Host Information */}
+              <div className="p-4 mb-4">
+                <div className="flex items-center space-x-2 mb-2">
+                  <UserPlus className="w-4 h-4 text-green-600" />
+                  <span className="font-medium text-gray-700 dark:text-gray-300">Host:</span>
+                  <span className="text-gray-600 dark:text-gray-400">{guestClaim.owner_profile?.nickname || guestClaim.owner_profile?.email || guestClaim.owner_id}</span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  {guestClaim.permission === 'edit' ? (
-                    <Edit className="w-4 h-4" style={{ color: '#fbbf24' }} />
-                  ) : (
-                    <Eye className="w-4 h-4" style={{ color: '#fbbf24' }} />
-                  )}
-                  <span className="capitalize">{guestClaim.permission} Access</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <span className={`px-2 py-1 rounded text-xs ${
-                    guestClaim.can_view_evidence 
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                      : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                  }`}>
-                    {guestClaim.can_view_evidence ? 'Can View Evidence' : 'No Evidence Access'}
-                    </span>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-1">
+                      {guestClaim.permission === 'edit' ? (
+                        <Edit className="w-4 h-4 text-yellow-600" />
+                      ) : (
+                        <Eye className="w-4 h-4 text-blue-600" />
+                      )}
+                      <span className="text-sm font-medium capitalize">{guestClaim.permission} Access</span>
+                    </div>
                   </div>
                 </div>
               </div>
+            </div>
           ))}
           </div>
                         </div>

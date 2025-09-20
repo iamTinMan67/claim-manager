@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { DollarSign, HelpCircle, CreditCard } from 'lucide-react'
+import { DollarSign, HelpCircle, CreditCard, X } from 'lucide-react'
 import { useNavigation } from '@/contexts/NavigationContext'
 import { supabase } from '@/integrations/supabase/client'
 
@@ -9,6 +9,17 @@ const SubscriptionManager = () => {
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
+
+  const handleClose = () => {
+    console.log('X button clicked - closing welcome screen')
+    // Mark welcome as seen and navigate to claims
+    try {
+      window.sessionStorage.setItem('welcome_seen_session', '1')
+      window.dispatchEvent(new CustomEvent('welcomePrefsChanged'))
+    } catch {}
+    console.log('Navigating to claims')
+    navigateTo('claims')
+  }
 
   const handleDonationSelection = (donationType: string) => {
     if (donationType === 'free') {
@@ -101,7 +112,14 @@ const SubscriptionManager = () => {
     <>
       <div className="space-y-8">
         {/* Welcome Section */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 relative">
+          <button
+            onClick={handleClose}
+            className="absolute top-0 right-0 p-2 text-gold hover:text-yellow-300 transition-colors"
+            title="Close welcome screen"
+          >
+            <X className="w-6 h-6" />
+          </button>
           <h1 className="text-3xl font-bold text-gold mb-4">Welcome to Claim Manager</h1>
           <p className="text-gold-light text-lg">
             Choose your collaboration package to start sharing claims with guests

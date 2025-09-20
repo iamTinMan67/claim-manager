@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
 import type { User } from '@supabase/supabase-js'
-import { Calendar, FileText, Users, CheckSquare, Download, Moon, Sun, X } from 'lucide-react'
+import { Calendar, FileText, Users, CheckSquare, Download, Moon, Sun, X, Home } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import SubscriptionManager from './SubscriptionManager'
 import { useTheme } from 'next-themes'
@@ -74,6 +74,7 @@ export default function AuthComponent({
         { id: 'todos-shared', label: 'Shared To-Do Lists', icon: CheckSquare, requiresClaim: true },
         { id: 'calendar-shared', label: 'Shared Calendar', icon: Calendar, requiresClaim: true },
         ...(selectedClaim ? [{ id: 'export', label: 'Export', icon: Download, requiresClaim: true }] : [] as any),
+        { id: 'claims', label: 'Private Claims', icon: Home },
         { id: 'shared', label: 'Shared Claims', icon: Users },
       ]
     : [
@@ -201,13 +202,16 @@ export default function AuthComponent({
   }
 
   const handleNavClick = async (tabId: string) => {
-    // While welcome is visible, block navigation away from subscription
+    // Allow all navigation since welcome screen is disabled
     if (!subReady) return
-    if (!welcomeNever && !welcomeSeenThisSession && tabId !== 'subscription') {
-      return
-    }
+    console.log('AuthComponent handleNavClick:', {
+      tabId,
+      currentTab: activeTab,
+      selectedClaim,
+      isInSharedContext: activeTab === 'shared'
+    })
     onTabChange?.(tabId)
-    // If leaving subscription tab, mark welcome as seen for this session
+    // Mark welcome as seen for this session when navigating away from subscription
     try {
       if (tabId !== 'subscription') {
         sessionStorage.setItem('welcome_seen_session', '1')
@@ -217,8 +221,8 @@ export default function AuthComponent({
   }
 
   const openAccountModal = async () => {
-    // Prevent opening while not subscribed or on welcome screen
-    if (!isSubscribed || activeTab === 'subscription') return
+    // Prevent opening only on welcome screen
+    if (activeTab === 'subscription') return
     setAccountMessage(null)
     setShowAccountModal(true)
     try {
@@ -473,9 +477,9 @@ export default function AuthComponent({
     )
   }
 
-  // Always show welcome unless user opted never; if they haven't opted never, show until they leave it once per session
-  const gating = !subReady ? true : (!welcomeNever && activeTab !== 'subscription' && !welcomeSeenThisSession)
-  console.log('Gating check:', { subReady, isSubscribed, activeTab, gating })
+  // DISABLED: Welcome screen is disabled to fix authentication issues
+  const gating = false
+  console.log('Gating check:', { subReady, isSubscribed, activeTab, gating: false })
 
   if (gating) {
     // Ensure account modal is not shown over welcome screen
@@ -509,7 +513,8 @@ export default function AuthComponent({
                         (activeTab === 'todos-private' && item.id === 'todos-private') ||
                         (activeTab === 'calendar-shared' && item.id === 'calendar-shared') ||
                         (activeTab === 'todos-shared' && item.id === 'todos-shared') ||
-                        (activeTab === 'shared' && item.id === 'shared')) {
+                        (activeTab === 'shared' && item.id === 'shared') ||
+                        (activeTab === 'claims' && item.id === 'claims')) {
                       return null
                     }
                     const Icon = item.icon
@@ -531,17 +536,21 @@ export default function AuthComponent({
                 </div>
                 
                 {/* Selected Claim Information - Center */}
-                {selectedClaim && selectedClaimData && (
-                  <div className="flex-1 flex justify-center">
-                    <div className="text-center">
+                <div className="flex-1 flex justify-center">
+                  <div className="text-center">
+                    {selectedClaim && selectedClaimData ? (
                       <div className="text-lg font-semibold text-green-600">
                         <span className="font-bold">
                           {selectedClaimData.court || 'Unknown Court'} - {selectedClaimData.title}
                         </span>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="text-3xl font-bold text-green-600">
+                        <span>Claim Manager</span>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
                 <div className="flex items-center space-x-3">
                   {/* Guest Content Toggle - only show for claim owners when viewing todos/calendar */}
                   {!isGuest && (activeTab === 'todos' || activeTab === 'calendar') && onToggleGuestContent && (
@@ -575,15 +584,13 @@ export default function AuthComponent({
                       <Moon className="w-5 h-5" />
                     )}
                   </button>
-                  {!(activeTab === 'subscription' && !isSubscribed) && (
-                    <button
-                      onClick={openAccountModal}
-                      className="text-sm bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded hover:bg-green-400/10"
-                      title={user?.email ? `Account: ${user.email}` : 'Account'}
-                    >
-                      <Users className="w-4 h-4" />
-                    </button>
-                  )}
+                  <button
+                    onClick={openAccountModal}
+                    className="text-sm bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded hover:bg-green-400/10"
+                    title={user?.email ? `Account: ${user.email}` : 'Account'}
+                  >
+                    <Users className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             </div>

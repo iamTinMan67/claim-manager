@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { Todo } from '@/types/database'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, startOfWeek, endOfWeek, addDays } from 'date-fns'
-import { Plus, Clock, X, Check, User, AlertCircle, Trash2, Filter, Bell, Home, ArrowLeft } from 'lucide-react'
+import { Plus, Clock, X, Check, User, AlertCircle, Trash2, Filter, Bell, Home, ArrowLeft, Edit } from 'lucide-react'
 import { useNavigation } from '@/contexts/NavigationContext'
 
 interface CalendarEvent {
@@ -20,9 +20,7 @@ interface CalendarEvent {
 }
 
 interface CalendarEventWithUser extends CalendarEvent {
-  profiles?: {
-    email: string
-  }
+  // Profile data removed to fix 400 errors
   assignee?: {
     email: string
   }
@@ -37,13 +35,13 @@ interface CalendarProps {
 }
 
 interface TodoWithUser extends Todo {
-  profiles?: {
+  creator_profile?: {
     email: string
+    nickname?: string
   }
-  responsible_user?: {
-    id: string
+  assignee_profile?: {
     email: string
-    full_name?: string
+    nickname?: string
   }
 }
 
@@ -149,6 +147,12 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         .order('start_time', { ascending: true })
       
       if (error) throw error
+      console.log('Calendar: Events query result', {
+        selectedClaim: selectedClaim || null,
+        showGuestContent,
+        resultCount: (data || []).length,
+        events: data || []
+      })
       return data as CalendarEventWithUser[]
     }
   })
@@ -166,8 +170,8 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       if (error) throw error
       const list = (data || []).map((row: any) => ({
         id: row.shared_with_id as string,
-        email: row.profiles?.email as string,
-        full_name: row.profiles?.full_name as string | null
+        email: row.shared_with_id as string,
+        full_name: row.shared_with_id as string
       }))
       // Include host (claim owner) as potential assignee
       const { data: claimOwner } = await supabase
@@ -206,8 +210,8 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         .from('todos')
         .select(`
           *,
-          profiles:profiles!todos_user_id_profiles_fkey(email),
-          responsible_user:profiles!todos_responsible_user_fk(id, email, full_name)
+          creator_profile:profiles!user_id(email, nickname),
+          assignee_profile:profiles!responsible_user_id(email, nickname)
         `)
         .gte('due_date', todayString)
         .eq('completed', false)
@@ -235,6 +239,11 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         })
         throw error
       }
+      console.log('Calendar: Today todos query result', {
+        selectedClaim: selectedClaim || null,
+        resultCount: (data || []).length,
+        todos: data || []
+      })
       return data as TodoWithUser[]
     }
   })
@@ -286,7 +295,13 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       return data
     },
     onSuccess: () => {
+      // Invalidate all calendar and todo queries for cross-view synchronization
       queryClient.invalidateQueries({ queryKey: ['calendar-events'] })
+      queryClient.invalidateQueries({ queryKey: ['calendar-events', selectedClaim] })
+      queryClient.invalidateQueries({ queryKey: ['todos'] })
+      queryClient.invalidateQueries({ queryKey: ['todos', selectedClaim] })
+      queryClient.invalidateQueries({ queryKey: ['today-todos'] })
+      queryClient.invalidateQueries({ queryKey: ['today-todos-calendar'] })
       setShowAddForm(false)
       setNewEvent({
         title: '',
@@ -314,7 +329,13 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       if (error) throw error
     },
     onSuccess: () => {
+      // Invalidate all calendar and todo queries for cross-view synchronization
       queryClient.invalidateQueries({ queryKey: ['calendar-events'] })
+      queryClient.invalidateQueries({ queryKey: ['calendar-events', selectedClaim] })
+      queryClient.invalidateQueries({ queryKey: ['todos'] })
+      queryClient.invalidateQueries({ queryKey: ['todos', selectedClaim] })
+      queryClient.invalidateQueries({ queryKey: ['today-todos'] })
+      queryClient.invalidateQueries({ queryKey: ['today-todos-calendar'] })
     }
   })
 
@@ -335,6 +356,9 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['today-todos-calendar'] })
+      queryClient.invalidateQueries({ queryKey: ['todos'] })
+      queryClient.invalidateQueries({ queryKey: ['todos', selectedClaim] })
+      queryClient.invalidateQueries({ queryKey: ['today-todos'] })
     }
   })
 
@@ -349,6 +373,9 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['today-todos-calendar'] })
+      queryClient.invalidateQueries({ queryKey: ['todos'] })
+      queryClient.invalidateQueries({ queryKey: ['todos', selectedClaim] })
+      queryClient.invalidateQueries({ queryKey: ['today-todos'] })
     }
   })
 
@@ -673,40 +700,81 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                           </button>
                           <div className="flex-1">
                             <h4 className="font-medium text-sm">{todo.title}</h4>
-                            <div className="flex flex-col space-y-1 mt-1 text-xs text-gray-600">
-                              <div className="flex items-center space-x-1">
-                                <User className="w-3 h-3" />
-                                <span>By: {todo.profiles?.email || 'Unknown user'}</span>
-                              </div>
-                              {todo.responsible_user && (
-                                <div className="flex items-center space-x-1">
-                                  <User className="w-3 h-3 text-blue-400" />
-                                  <span className="text-blue-600">Assigned to: {todo.responsible_user.full_name || todo.responsible_user.email}</span>
-                                </div>
-                              )}
-                              <div className="flex items-center space-x-1">
+                            <div className="flex flex-col space-y-2 mt-1 text-xs text-gray-600">
+                              
+                              {/* Row 1: Due date and status */}
+                              <div className="flex items-center space-x-2">
                                 <Clock className="w-3 h-3" />
                                 <span>{format(dueDate, 'MMM d, h:mm a')}</span>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <span className={`px-2 py-1 rounded-full text-xs ${getPriorityColor(todo.priority)}`}>
-                                  {todo.priority}
-                                </span>
                                 {isOverdue && <span className="text-red-600 font-medium">OVERDUE</span>}
                                 {isToday && <span className="text-yellow-600 font-medium">DUE TODAY</span>}
                                 {todo.alarm_enabled && (
                                   <AlertCircle className="w-3 h-3" style={{ color: claimColor }} />
                                 )}
                               </div>
+                              
+                              {/* Row 2: User assignments - more space */}
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-8">
+                                  <div className="flex items-center space-x-2">
+                                    <User className="w-3 h-3" />
+                                    <span>By: {todo.creator_profile?.nickname || todo.creator_profile?.email || todo.user_id?.slice(0, 8)}...</span>
+                                  </div>
+                                  {todo.responsible_user_id && (
+                                    <div className="flex items-center space-x-2">
+                                      <User className="w-3 h-3 text-blue-400" />
+                                      <span className="text-blue-600">Assigned to: {todo.assignee_profile?.nickname || todo.assignee_profile?.email || todo.responsible_user_id?.slice(0, 8)}...</span>
+                                    </div>
+                                  )}
+                                </div>
+                                {/* Alarm indicator - last position (right side) */}
+                                {todo.alarm_enabled && (
+                                  <div className="flex items-center space-x-1">
+                                    <AlertCircle className="w-3 h-3" style={{ color: claimColor }} />
+                                    <span className="text-gray-700">Alarm set</span>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Row 3: Edit button and Priority - below user info */}
+                              <div className="flex items-center justify-end space-x-2">
+                                <button
+                                  onClick={() => {
+                                    // Edit functionality - placeholder for now
+                                    console.log('Edit todo:', todo.id)
+                                  }}
+                                  className="text-blue-600 hover:text-blue-800 p-1 flex items-center space-x-1"
+                                  title="Edit todo"
+                                >
+                                  <Edit className="w-3 h-3" />
+                                  <span className="text-xs">Edit</span>
+                                </button>
+                                <span className={`px-2 py-1 rounded-full text-xs ${getPriorityColor(todo.priority)}`}>
+                                  {todo.priority}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>
-                        <button
-                          onClick={() => deleteTodoMutation.mutate(todo.id)}
-                          className="text-red-500 hover:text-red-700 p-1"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
+                        <div className="flex flex-col items-end space-y-1">
+                          <button
+                            onClick={() => {
+                              // Edit functionality - placeholder for now
+                              console.log('Edit todo:', todo.id)
+                            }}
+                            className="text-blue-600 hover:text-blue-800 p-1 flex items-center space-x-1 mr-8"
+                            title="Edit todo"
+                          >
+                            <Edit className="w-3 h-3" />
+                            <span className="text-xs">Edit</span>
+                          </button>
+                          <button
+                            onClick={() => deleteTodoMutation.mutate(todo.id)}
+                            className="text-red-500 hover:text-red-700 p-1"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )
@@ -767,11 +835,9 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                           style={{ backgroundColor: bg }}
                         >
                           <div>{event.title}</div>
-                          {event.profiles?.email && (
-                            <div className="text-xs opacity-75">
-                              by {event.profiles.email.split('@')[0]}
-                            </div>
-                          )}
+                          <div className="text-xs opacity-75">
+                            by {event.user_id?.slice(0, 8)}...
+                          </div>
                           <button
                             onClick={(e) => {
                               e.stopPropagation()

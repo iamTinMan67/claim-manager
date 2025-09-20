@@ -198,6 +198,13 @@ function LoggedInContent({
     // Check if we're currently viewing shared claims or in shared context
     const isViewingSharedClaims = activeTab === 'shared' || isInSharedContext
     
+    console.log('App renderContent:', {
+      activeTab,
+      isInSharedContext,
+      isViewingSharedClaims,
+      selectedClaim
+    })
+    
     switch (activeTab) {
       case 'claims':
         return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} onClaimColorChange={setSelectedClaimColor} isGuest={currentlyGuest} />
@@ -223,7 +230,7 @@ function LoggedInContent({
         }
         return <ExportFeatures selectedClaim={selectedClaim} claimColor={selectedClaimColor} />
       default:
-        return <SubscriptionManager />
+        return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} onClaimColorChange={setSelectedClaimColor} isGuest={currentlyGuest} />
     }
   }
 

@@ -24,51 +24,26 @@ interface NavigationProviderProps {
 }
 
 export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children }) => {
-  const [currentPage, setCurrentPage] = useState('subscription')
+  const [currentPage, setCurrentPage] = useState('claims')
   const [previousPage, setPreviousPage] = useState<string | null>(null)
-  const [pageHistory, setPageHistory] = useState<string[]>(['subscription'])
+  const [pageHistory, setPageHistory] = useState<string[]>(['claims'])
 
   const navigateTo = useCallback((page: string) => {
+    console.log('NavigationContext: navigateTo called with:', page)
     // Always allow navigating to subscription
     if (page === 'subscription') {
+      console.log('NavigationContext: navigating to subscription')
       setPreviousPage(currentPage)
       setCurrentPage('subscription')
       setPageHistory(prev => [...prev, 'subscription'])
       return
     }
 
-    // Backend-enforced gate: require a selection/subscriber record
-    ;(async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
-          setPreviousPage(currentPage)
-          setCurrentPage('subscription')
-          setPageHistory(prev => [...prev, 'subscription'])
-          return
-        }
-        const { data } = await supabase
-          .from('subscribers')
-          .select('subscribed')
-          .eq('user_id', user.id)
-          .maybeSingle()
-        const allowed = !!data?.subscribed
-        if (!allowed) {
-          setPreviousPage(currentPage)
-          setCurrentPage('subscription')
-          setPageHistory(prev => [...prev, 'subscription'])
-          return
-        }
-
-        setPreviousPage(currentPage)
-        setCurrentPage(page)
-        setPageHistory(prev => [...prev, page])
-      } catch {
-        setPreviousPage(currentPage)
-        setCurrentPage('subscription')
-        setPageHistory(prev => [...prev, 'subscription'])
-      }
-    })()
+    // Allow all navigation since welcome screen is disabled
+    console.log('NavigationContext: allowing navigation to:', page)
+    setPreviousPage(currentPage)
+    setCurrentPage(page)
+    setPageHistory(prev => [...prev, page])
   }, [currentPage])
 
   const navigateBack = useCallback(() => {

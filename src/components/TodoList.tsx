@@ -2,22 +2,18 @@ import React, { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { Todo } from '@/types/database'
-import { Plus, Check, Clock, AlertCircle, Trash2, User, Calendar as CalendarIcon, ChevronLeft, Home, X, ArrowLeft } from 'lucide-react'
+import { Plus, Check, Clock, AlertCircle, Trash2, User, Calendar as CalendarIcon, ChevronLeft, Home, X, ArrowLeft, Edit } from 'lucide-react'
 import { useNavigation } from '@/contexts/NavigationContext'
 import { format } from 'date-fns'
 
 interface TodoWithUser extends Todo {
-  profiles?: {
+  creator_profile?: {
     email: string
+    nickname?: string
   }
-  claims?: {
-    title: string
-    status: string
-  }
-  responsible_user?: {
-    id: string
+  assignee_profile?: {
     email: string
-    full_name?: string
+    nickname?: string
   }
 }
 
@@ -32,6 +28,7 @@ interface TodoListProps {
 const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, showGuestContent = false, isGuestFrozen = false }: TodoListProps) => {
   const { navigateBack, navigateTo } = useNavigation()
   const [showAddForm, setShowAddForm] = useState(false)
+  const [editingTodo, setEditingTodo] = useState<TodoWithUser | null>(null)
   const [currentClaimColor, setCurrentClaimColor] = useState(claimColor)
   const [newTodo, setNewTodo] = useState({
     title: '',
@@ -72,8 +69,8 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         .from('todos')
         .select(`
           *,
-          profiles:profiles!todos_user_id_profiles_fkey(email),
-          responsible_user:profiles!todos_responsible_user_fk(id, email, full_name)
+          creator_profile:profiles!user_id(email, nickname),
+          assignee_profile:profiles!responsible_user_id(email, nickname)
         `)
       
       if (isGuest) {
@@ -92,6 +89,12 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         .order('due_date', { ascending: true })
       
       if (error) throw error
+      console.log('TodoList: Query result', {
+        selectedClaim: selectedClaim || null,
+        showGuestContent,
+        resultCount: (data || []).length,
+        todos: data || []
+      })
       if (showGuestContent) {
         console.log('Shared To-Dos query', {
           selectedClaim: selectedClaim || null,
@@ -165,11 +168,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       
       let query = supabase
         .from('todos')
-        .select(`
-          *,
-          profiles:profiles!todos_user_id_profiles_fkey(email),
-          responsible_user:profiles!todos_responsible_user_fk(id, email, full_name)
-        `)
+        .select('*')
         .gte('due_date', todayString)
         .eq('completed', false)
       
@@ -218,7 +217,11 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       return data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['todos', selectedClaim, showGuestContent] })
+      // Invalidate all todo queries for this claim, regardless of guest/host view
+      queryClient.invalidateQueries({ queryKey: ['todos', selectedClaim] })
+      queryClient.invalidateQueries({ queryKey: ['todos'] })
+      queryClient.invalidateQueries({ queryKey: ['today-todos'] })
+      queryClient.invalidateQueries({ queryKey: ['today-todos-calendar'] })
       setShowAddForm(false)
       setNewTodo({
         title: '',
@@ -250,6 +253,9 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['todos'] })
+      queryClient.invalidateQueries({ queryKey: ['todos', selectedClaim] })
+      queryClient.invalidateQueries({ queryKey: ['today-todos'] })
+      queryClient.invalidateQueries({ queryKey: ['today-todos-calendar'] })
     }
   })
 
@@ -264,6 +270,27 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['todos'] })
+      queryClient.invalidateQueries({ queryKey: ['todos', selectedClaim] })
+      queryClient.invalidateQueries({ queryKey: ['today-todos'] })
+      queryClient.invalidateQueries({ queryKey: ['today-todos-calendar'] })
+    }
+  })
+
+  const updateTodoMutation = useMutation({
+    mutationFn: async (updatedTodo: Partial<Todo> & { id: string }) => {
+      const { error } = await supabase
+        .from('todos')
+        .update(updatedTodo)
+        .eq('id', updatedTodo.id)
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['todos'] })
+      queryClient.invalidateQueries({ queryKey: ['todos', selectedClaim] })
+      queryClient.invalidateQueries({ queryKey: ['today-todos'] })
+      queryClient.invalidateQueries({ queryKey: ['today-todos-calendar'] })
+      setEditingTodo(null)
     }
   })
 
@@ -498,8 +525,8 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
           </form>
           </div>
         </div>
-      ) : (
-        // Main content when form is not open
+      ) : !editingTodo ? (
+        // Main content when form is not open and not editing
         <>
           <div className="space-y-4 w-[44%]">
         {todos?.reduce((groups: { [key: string]: TodoWithUser[] }, todo) => {
@@ -555,14 +582,14 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                         <span className="text-xs text-gray-600">Complete</span>
                       </label>
                       <div className="flex-1">
-                        <div className="flex items-center space-x-3">
+                        <div className="flex items-center">
                           <h3 className={`font-medium ${todo.completed ? 'line-through text-gray-500' : ''}`}>
                             {todo.title}
                           </h3>
-                          <div className="flex items-center space-x-1">
-                            <Clock className="w-4 h-4 text-gray-400" />
-                            <span className="text-gray-700 text-sm">{format(new Date(todo.due_date), 'MMM d, h:mm a')}</span>
-                          </div>
+                        </div>
+                        <div className="flex items-center space-x-1 mt-1">
+                          <Clock className="w-4 h-4 text-gray-400" />
+                          <span className="text-gray-700 text-sm">{format(new Date(todo.due_date), 'MMM d, h:mm a')}</span>
                         </div>
                         {todo.description && (
                           <p className={`text-sm mt-1 ${todo.completed ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -572,6 +599,24 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                       </div>
                     </div>
                     <div className="flex flex-col items-end space-y-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setEditingTodo(todo)
+                        }}
+                        className="text-blue-600 hover:text-blue-800 p-1 flex items-center space-x-1"
+                        disabled={isGuest && (isGuestFrozen || todo.user_id !== currentUser?.id)}
+                        title={
+                          isGuest && isGuestFrozen 
+                            ? 'Access frozen by claim owner'
+                            : isGuest && todo.user_id !== currentUser?.id
+                              ? 'You can only edit your own todos'
+                              : 'Edit todo'
+                        }
+                      >
+                        <Edit className="w-4 h-4" />
+                        <span className="text-sm">Edit</span>
+                      </button>
                       <button
                         onClick={() => deleteTodoMutation.mutate(todo.id)}
                         className="text-red-600 hover:text-red-800 p-1 flex items-center space-x-1"
@@ -587,32 +632,34 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                         <Trash2 className="w-4 h-4" />
                         <span className="text-sm">Delete</span>
                       </button>
+                      {/* Priority value - below edit icon */}
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(todo.priority)}`}>
+                        {todo.priority}
+                      </span>
                     </div>
                   </div>
-                  {/* User information row - aligned with left border */}
-                  <div className="flex items-center justify-between mt-2 text-sm">
-                    <div className="flex items-center space-x-4">
-                      {todo.responsible_user && (
-                        <div className="flex items-center space-x-1">
+
+                  {/* Row 2: User information - more space for names */}
+                  <div className="flex items-center justify-between mt-3 text-sm">
+                    <div className="flex items-center space-x-10">
+                      {todo.responsible_user_id && (
+                        <div className="flex items-center space-x-2">
                           <User className="w-4 h-4 text-blue-400" />
-                          <span className="text-blue-700">Assigned to: {todo.responsible_user.full_name || todo.responsible_user.email}</span>
+                          <span className="text-blue-700">Assigned to: {todo.assignee_profile?.nickname || todo.assignee_profile?.email || todo.responsible_user_id?.slice(0, 8)}...</span>
                         </div>
                       )}
-                      <div className="flex items-center space-x-1">
+                      <div className="flex items-center space-x-2">
                         <User className="w-4 h-4 text-gray-400" />
-                        <span className="text-gray-700">By: {todo.profiles?.email || 'Unknown user'}</span>
+                        <span className="text-gray-700">By: {todo.creator_profile?.nickname || todo.creator_profile?.email || todo.user_id?.slice(0, 8)}...</span>
                       </div>
-                      {todo.alarm_enabled && (
-                        <div className="flex items-center space-x-1">
-                          <AlertCircle className="w-4 h-4" style={{ color: claimColor }} />
-                          <span className="text-gray-700">Alarm set</span>
-                        </div>
-                      )}
                     </div>
-                    {/* Priority value - right side of row 3 */}
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(todo.priority)}`}>
-                      {todo.priority}
-                    </span>
+                    {/* Alarm indicator - last position (right side) */}
+                    {todo.alarm_enabled && (
+                      <div className="flex items-center space-x-1">
+                        <AlertCircle className="w-4 h-4" style={{ color: claimColor }} />
+                        <span className="text-gray-700">Alarm set</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -626,6 +673,140 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         )}
           </div>
         </>
+      ) : null}
+
+      {/* Edit Todo Modal */}
+      {editingTodo && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="card-enhanced p-6 max-w-2xl w-full max-h-[100vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gold">Edit Task</h3>
+              <button
+                onClick={() => setEditingTodo(null)}
+                className="bg-white/10 border border-red-400 text-red-400 px-3 py-1 rounded-lg flex items-center space-x-2"
+              >
+                <X className="w-4 h-4" />
+                <span>Close</span>
+              </button>
+            </div>
+            <form onSubmit={(e) => {
+              e.preventDefault()
+              const formData = new FormData(e.currentTarget)
+              const updatedTodo = {
+                id: editingTodo.id,
+                title: formData.get('title') as string,
+                description: formData.get('description') as string,
+                due_date: formData.get('due_date') as string,
+                priority: formData.get('priority') as 'low' | 'medium' | 'high',
+                alarm_enabled: formData.get('alarm_enabled') === 'on',
+                alarm_time: formData.get('alarm_time') as string,
+                responsible_user_id: formData.get('responsible_user_id') as string
+              }
+              updateTodoMutation.mutate(updatedTodo)
+            }} className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-base font-medium mb-1">Title *</label>
+                  <input
+                    type="text"
+                    name="title"
+                    defaultValue={editingTodo.title}
+                    className="w-full h-8 text-base border border-yellow-400/30 rounded-md px-4 py-2 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 text-left"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-base font-medium mb-1">Due Date *</label>
+                  <input
+                    type="datetime-local"
+                    name="due_date"
+                    defaultValue={editingTodo.due_date ? new Date(editingTodo.due_date).toISOString().slice(0, 16) : ''}
+                    className="w-full h-8 text-base border border-yellow-400/30 rounded-md px-4 py-2 bg-white/10 text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 text-left"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-base font-medium mb-1">Description</label>
+                  <textarea
+                    name="description"
+                    defaultValue={editingTodo.description || ''}
+                    className="w-full text-base border border-yellow-400/30 rounded-md px-4 py-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 text-left"
+                    rows={2}
+                  />
+                </div>
+                <div>
+                  <label className="block text-base font-medium mb-1">Priority</label>
+                  <select
+                    name="priority"
+                    defaultValue={editingTodo.priority}
+                    className="w-[30%] h-8 text-base border border-yellow-400/30 rounded-md px-4 py-2 bg-white/10 text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 text-left"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex items-center space-x-4">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    name="alarm_enabled"
+                    defaultChecked={editingTodo.alarm_enabled}
+                    className="w-4 h-4 rounded border-gray-300"
+                  />
+                  <span className="text-yellow-300">Enable Alarm</span>
+                </label>
+                {editingTodo.alarm_enabled && (
+                  <input
+                    type="datetime-local"
+                    name="alarm_time"
+                    defaultValue={editingTodo.alarm_time ? new Date(editingTodo.alarm_time).toISOString().slice(0, 16) : ''}
+                    className="h-8 text-base border border-yellow-400/30 rounded-md px-4 py-2 bg-white/10 text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 text-left"
+                  />
+                )}
+              </div>
+              <div>
+                <label className="block text-base font-medium mb-1">Assigned To</label>
+                <select
+                  name="responsible_user_id"
+                  defaultValue={editingTodo.responsible_user_id || ''}
+                  className="w-[30%] h-8 text-base border border-yellow-400/30 rounded-md px-4 py-2 bg-white/10 text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 text-left"
+                >
+                  <option value="">Assign to yourself</option>
+                  {showGuestContent && sharedUsers && sharedUsers.length > 0 ? (
+                    sharedUsers.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.full_name || user.email} {user.id === editingTodo.user_id ? '(You)' : ''}
+                      </option>
+                    ))
+                  ) : (
+                    <option value={editingTodo.user_id || ''}>
+                      {editingTodo.creator_profile?.nickname || editingTodo.creator_profile?.email || 'You'}
+                    </option>
+                  )}
+                </select>
+              </div>
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setEditingTodo(null)}
+                  className="flex-1 bg-white/10 border border-red-400 text-red-400 px-6 py-3 rounded-lg hover:bg-white/20 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-white/10 border border-green-400 text-green-400 px-6 py-3 rounded-lg hover:bg-white/20 transition-colors"
+                >
+                  Update Task
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   )
