@@ -132,6 +132,11 @@ const EvidenceManager = ({
       const mergedMap = new Map<string, Evidence>()
       ;[...(byLink.data || []), ...(byLegacy.data || [])].forEach((raw: any) => {
         if (!raw || !raw.id) return
+        console.log('EvidenceManager: Processing raw evidence:', {
+          id: raw.id,
+          file_name: raw.file_name,
+          title: raw.title
+        })
         // Normalize
         const cleaned: Evidence = {
           ...raw,
@@ -144,18 +149,32 @@ const EvidenceManager = ({
           number_of_pages: raw.number_of_pages != null && !isNaN(Number(raw.number_of_pages)) ? Number(raw.number_of_pages) : null,
         }
 
-        // Derive exhibit_number from exhibit_id like "Exhibit 12" if missing
-        if ((cleaned as any).exhibit_number == null && typeof cleaned.exhibit_id === 'string') {
-          const match = cleaned.exhibit_id.match(/(\d+)/)
-          if (match) (cleaned as any).exhibit_number = parseInt(match[1], 10)
+        // Set exhibit_number based on display_order if not already set
+        if ((cleaned as any).exhibit_number == null) {
+          (cleaned as any).exhibit_number = cleaned.display_order || 1
         }
 
         mergedMap.set(cleaned.id as any, cleaned)
       })
       let merged = Array.from(mergedMap.values())
 
+      // Debug: Log evidence before filtering
+      console.log('EvidenceManager: Before filtering:', merged.length, 'items')
+      merged.forEach((e, i) => {
+        console.log(`Evidence ${i}:`, {
+          id: e.id,
+          file_name: e.file_name,
+          file_url: e.file_url,
+          title: e.title,
+          has_file_name: !!(e.file_name && e.file_name.length),
+          has_file_url: !!(e.file_url && e.file_url.length)
+        })
+      })
+      
       // Optional: filter out rows with no meaningful identifier (neither file_name nor file_url)
       merged = merged.filter((e: any) => (e.file_name && e.file_name.length) || (e.file_url && e.file_url.length))
+      
+      console.log('EvidenceManager: After filtering:', merged.length, 'items')
 
       // No need to filter by case_number since evidence is already linked via evidence_claims table
 
@@ -195,6 +214,8 @@ const EvidenceManager = ({
 
   const updateEvidenceMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string, data: Partial<Evidence> }) => {
+      console.log('EvidenceManager: Updating evidence with data:', data)
+      console.log('EvidenceManager: Original filename:', data.file_name)
 
       // Clean the data before submission
       const cleanData = {
@@ -202,6 +223,8 @@ const EvidenceManager = ({
         number_of_pages: data.number_of_pages ? parseInt(String(data.number_of_pages)) : null,
         date_submitted: data.date_submitted || null
       }
+      
+      console.log('EvidenceManager: Clean data filename:', cleanData.file_name)
 
       const { data: result, error } = await supabase
         .from('evidence')
@@ -211,6 +234,7 @@ const EvidenceManager = ({
         .single()
 
       if (error) throw error
+      console.log('EvidenceManager: Database returned filename:', result?.file_name)
       return result
     },
     onSuccess: () => {
@@ -355,22 +379,67 @@ const EvidenceManager = ({
           <form onSubmit={handleUpdate} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Evidence Name</label>
+                <label className="block text-sm font-medium mb-1">Title</label>
                 <input
                   type="text"
-                  value={editingEvidence.name || editingEvidence.file_name || ''}
-                  onChange={(e) => setEditingEvidence({ ...editingEvidence, name: e.target.value, file_name: e.target.value })}
+                  value={editingEvidence.title || ''}
+                  onChange={(e) => setEditingEvidence({ ...editingEvidence, title: e.target.value })}
                   className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  placeholder="Enter evidence title"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">File URL</label>
+                <label className="block text-sm font-medium mb-1">File Name</label>
                 <input
-                  type="url"
-                  value={editingEvidence.file_url || ''}
-                  onChange={(e) => setEditingEvidence({ ...editingEvidence, file_url: e.target.value })}
+                  type="text"
+                  value={editingEvidence.file_name || ''}
+                  onChange={(e) => setEditingEvidence({ ...editingEvidence, file_name: e.target.value })}
                   className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  placeholder="Enter file name"
                 />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Replace File</label>
+                <div className="relative">
+                  <input
+                    type="file"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (!file || !editingEvidence) return
+                      
+                      // Generate title from filename (force title case regardless of original case)
+                      const fileName = file.name;
+                      const nameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
+                      const titleCase = nameWithoutExt
+                        .toLowerCase() // Force to lowercase first
+                        .split(' ')
+                        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                        .join(' ');
+                      
+                      // Upload new file using storage bucket
+                      const fileExt = file.name.split('.').pop()
+                      const filePath = `${editingEvidence.user_id || 'user'}/${Date.now()}.${fileExt}`
+                      const { data: up, error: upErr } = await supabase.storage.from('evidence-files').upload(filePath, file)
+                      if (upErr) {
+                        console.error('Upload error:', upErr)
+                        return
+                      }
+                      const { data: { publicUrl } } = supabase.storage.from('evidence-files').getPublicUrl(filePath)
+                      
+                      // Update evidence with new file and auto-generated title
+                      setEditingEvidence({ 
+                        ...editingEvidence, 
+                        file_url: publicUrl, 
+                        file_name: file.name, // Preserve original case
+                        title: titleCase
+                      })
+                    }}
+                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold file:bg-white/10 file:text-gold file:border-0 file:mr-4 file:py-1 file:px-2 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  />
+                  <Upload className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-yellow-400 pointer-events-none" />
+                </div>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">
@@ -567,7 +636,7 @@ const EvidenceManager = ({
                       )}
                     </td>
                     <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-900`}>
-                      {item.file_name || item.title || item.name || '-'}
+                      {item.title || item.file_name || item.name || '-'}
                     </td>
                     <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-500`}>
                       {item.method || '-'}
@@ -602,20 +671,21 @@ const EvidenceManager = ({
                             >
                               <Download className="w-4 h-4" />
                             </button>
+                            {!isGuest && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  deleteEvidenceMutation.mutate(item.id)
+                                }}
+                                className="text-red-600 hover:text-red-900"
+                                title="Delete evidence"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </>
                         )}
-                        {amendMode && !isGuest && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              deleteEvidenceMutation.mutate(item.id)
-                            }}
-                            className="text-red-600 hover:text-red-900"
-                            title="Delete evidence"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
+                        {/* Removed duplicate delete button - now handled above */}
                       </div>
                     </td>
                     </tr>
@@ -638,43 +708,65 @@ const EvidenceManager = ({
                             <form onSubmit={handleUpdate} className="space-y-4">
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                  <label className="block text-sm font-medium mb-1">Evidence Name</label>
+                                  <label className="block text-sm font-medium mb-1">Title</label>
                                   <input
                                     type="text"
-                                    value={editingEvidence.name || editingEvidence.file_name || ''}
-                                    onChange={(e) => setEditingEvidence({ ...editingEvidence, name: e.target.value, file_name: e.target.value })}
+                                    value={editingEvidence.title || ''}
+                                    onChange={(e) => setEditingEvidence({ ...editingEvidence, title: e.target.value })}
                                     className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                                    placeholder="Enter evidence title"
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-medium mb-1">File URL</label>
+                                  <label className="block text-sm font-medium mb-1">File Name</label>
                                   <input
-                                    type="url"
-                                    value={editingEvidence.file_url || ''}
-                                    onChange={(e) => setEditingEvidence({ ...editingEvidence, file_url: e.target.value })}
+                                    type="text"
+                                    value={editingEvidence.file_name || ''}
+                                    onChange={(e) => setEditingEvidence({ ...editingEvidence, file_name: e.target.value })}
                                     className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                                    placeholder="Enter file name"
                                   />
                                 </div>
                                 <div className="col-span-2">
                                   <label className="block text-sm font-medium mb-1">Replace File</label>
-                                  <input
-                                    type="file"
-                                    onChange={async (e) => {
-                                      const file = e.target.files?.[0]
-                                      if (!file || !editingEvidence) return
-                                      // Upload new file using storage bucket
-                                      const fileExt = file.name.split('.').pop()
-                                      const filePath = `${editingEvidence.user_id || 'user'}/${Date.now()}.${fileExt}`
-                                      const { data: up, error: upErr } = await supabase.storage.from('evidence-files').upload(filePath, file)
-                                      if (upErr) {
-                                        console.error('Upload error:', upErr)
-                                        return
-                                      }
-                                      const { data: { publicUrl } } = supabase.storage.from('evidence-files').getPublicUrl(filePath)
-                                      setEditingEvidence({ ...editingEvidence, file_url: publicUrl, file_name: file.name })
-                                    }}
-                                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold file:bg-white/10 file:text-gold file:border-0 file:mr-4 file:py-1 file:px-2"
-                                  />
+                                  <div className="relative">
+                                    <input
+                                      type="file"
+                                      onChange={async (e) => {
+                                        const file = e.target.files?.[0]
+                                        if (!file || !editingEvidence) return
+                                        
+                                        // Generate title from filename (force title case regardless of original case)
+                                        const fileName = file.name;
+                                        const nameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
+                                        const titleCase = nameWithoutExt
+                                          .toLowerCase() // Force to lowercase first
+                                          .split(' ')
+                                          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                          .join(' ');
+                                        
+                                        // Upload new file using storage bucket
+                                        const fileExt = file.name.split('.').pop()
+                                        const filePath = `${editingEvidence.user_id || 'user'}/${Date.now()}.${fileExt}`
+                                        const { data: up, error: upErr } = await supabase.storage.from('evidence-files').upload(filePath, file)
+                                        if (upErr) {
+                                          console.error('Upload error:', upErr)
+                                          return
+                                        }
+                                        const { data: { publicUrl } } = supabase.storage.from('evidence-files').getPublicUrl(filePath)
+                                        
+                                        // Update evidence with new file and auto-generated title
+                                        setEditingEvidence({ 
+                                          ...editingEvidence, 
+                                          file_url: publicUrl, 
+                                          file_name: file.name, // Preserve original case
+                                          title: titleCase
+                                        })
+                                      }}
+                                      className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold file:bg-white/10 file:text-gold file:border-0 file:mr-4 file:py-1 file:px-2 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                                    />
+                                    <Upload className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-yellow-400 pointer-events-none" />
+                                  </div>
                                 </div>
                               </div>
                               <div className="grid grid-cols-3 gap-4">
@@ -827,13 +919,20 @@ const EvidenceManager = ({
                 updated_at: new Date().toISOString()
               }
 
+              console.log('EvidenceManager: Inserting evidence with data:', cleanData)
+              console.log('EvidenceManager: User ID:', user.id)
+              console.log('EvidenceManager: Auth UID check:', await supabase.auth.getUser())
+
               const { data: insertedEvidence, error } = await supabase
                 .from('evidence')
                 .insert([cleanData])
                 .select()
                 .single()
 
-              if (error) throw error
+              if (error) {
+                console.error('EvidenceManager: Insert error:', error)
+                throw error
+              }
 
               // Link evidence to claim via evidence_claims table
               const claimId = await getClaimIdFromCaseNumber(selectedClaim)

@@ -105,7 +105,7 @@ const Shared = () => {
                 ) : (
                   <div className="text-center py-8">
                     <p className="text-muted-foreground">
-                      Select a claim from the filter above to access collaboration tools
+                      Choose a Claim from the filter above to access collaboration tools
                     </p>
                   </div>
                 )}

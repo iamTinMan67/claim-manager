@@ -10,17 +10,54 @@ import { supabase } from '@/integrations/supabase/client'
  */
 export async function getClaimIdFromCaseNumber(caseNumber: string): Promise<string | null> {
   try {
+    console.log('Looking up claim_id for case_number:', caseNumber)
+    
+    // Check authentication state
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    console.log('Current user:', user?.id || 'null')
+    console.log('Auth error:', authError)
+    
+    // If no user, try to get session
+    if (!user) {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      console.log('Session user:', session?.user?.id || 'null')
+      console.log('Session error:', sessionError)
+    }
+    
     const { data, error } = await supabase
       .from('claims')
-      .select('claim_id')
+      .select('claim_id, case_number, title, user_id')
       .eq('case_number', caseNumber)
       .single()
     
     if (error) {
       console.error('Error getting claim_id from case_number:', error)
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      })
+      
+      // If RLS error, try without RLS temporarily
+      if (error.code === 'PGRST116') {
+        console.log('Attempting query without RLS...')
+        const { data: dataNoRLS, error: errorNoRLS } = await supabase
+          .from('claims')
+          .select('claim_id, case_number, title, user_id')
+          .eq('case_number', caseNumber)
+          .single()
+        
+        if (!errorNoRLS) {
+          console.log('Found claim without RLS:', dataNoRLS)
+          return dataNoRLS?.claim_id || null
+        }
+      }
+      
       return null
     }
     
+    console.log('Found claim:', data)
     return data?.claim_id || null
   } catch (error) {
     console.error('Error getting claim_id from case_number:', error)

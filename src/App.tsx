@@ -13,6 +13,7 @@ import ClaimsTable from './components/ClaimsTable'
 import EvidenceManager from './components/EvidenceManager'
 import TodoList from './components/TodoList'
 import Calendar from './components/Calendar'
+import Events from './pages/Events'
 import SharedClaims from './components/SharedClaims'
 import CollaborationHub from './components/CollaborationHub'
 import ExportFeatures from './components/ExportFeatures'
@@ -229,17 +230,12 @@ function LoggedInContent({
         return <SubscriptionManager />
       case 'privileges':
         return <PrivilegesStatus />
-      case 'todos-private':
-        // If viewing shared claims, show shared version of todos
-        return <TodoList selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={false} showGuestContent={false} isGuestFrozen={false} />
-      case 'todos-shared':
-        return <TodoList selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={true} showGuestContent={true} isGuestFrozen={false} />
-      case 'calendar-private':
-        // Private calendar at top-level: not tied to a specific claim. Entries must be assigned explicitly.
-        return <Calendar selectedClaim={null} claimColor={selectedClaimColor} isGuest={false} showGuestContent={false} isGuestFrozen={false} />
-      case 'calendar-shared':
-        // Only show shared calendar when explicitly in shared context
-        return <Calendar selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={true} showGuestContent={true} isGuestFrozen={false} />
+      case 'events-private':
+        // Private events (todos and calendar) - not tied to a specific claim
+        return <Events selectedClaim={null} isGuest={false} isGuestFrozen={false} currentUserId={user?.id} />
+      case 'events-shared':
+        // Shared events (todos and calendar) - tied to selected claim
+        return <Events selectedClaim={selectedClaim} isGuest={true} isGuestFrozen={false} currentUserId={user?.id} />
       case 'shared':
         return <SharedClaims selectedClaim={selectedClaim} claimColor={selectedClaimColor} currentUserId={user?.id} isGuest={currentlyGuest} />
       case 'export':

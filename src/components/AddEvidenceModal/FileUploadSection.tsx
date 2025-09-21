@@ -42,7 +42,8 @@ export const FileUploadSection = forwardRef<HTMLInputElement, Props>(({ selected
         accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.mp4,.mov,.avi,.mkv,.mp3,.wav,.flac,.aac,.ogg"
         onChange={handleFileChange}
         disabled={disabled}
-        className="h-8 text-base w-full border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 file:bg-white/10 file:text-yellow-300 file:border-0 file:mr-4 file:py-1 file:px-2 file:rounded file:text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 text-center"
+        className="h-8 text-base w-full border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 file:bg-white/10 file:text-yellow-300 file:border-0 file:mr-4 file:py-1 file:px-2 file:rounded file:text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 text-center pt-1 pb-2"
+        style={{ width: 'calc(100% + 15px)' }}
       />
       {/* Hidden help text - shown on hover */}
       <div className="relative group">

@@ -449,7 +449,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-h-[75vh]">
       
       
       <div className="flex justify-between items-center">
@@ -494,7 +494,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       {showAddForm && (!isGuest || (showGuestContent && !isGuestFrozen)) ? (
         // Form overlay - hide main content
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="p-6 rounded-[16px] shadow max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          <div className="p-6 rounded-[16px] shadow max-w-2xl w-full max-h-[95vh] overflow-y-auto"
             style={{ backgroundColor: 'rgba(30, 58, 138, 0.9)', border: '2px solid #fbbf24' }}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Add New Todo</h3>
@@ -637,7 +637,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                 ) : (
                   <div
                     className="w-8 h-8 rounded border"
-                    title="Select a claim to set color"
+                    title="Choose a Claim to set color"
                     style={{
                       backgroundImage:
                         'repeating-linear-gradient(45deg, rgba(239,68,68,0.85) 0 10px, transparent 10px 20px)',

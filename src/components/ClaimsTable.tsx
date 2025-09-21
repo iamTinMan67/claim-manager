@@ -758,35 +758,14 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
       {!showAddForm && claims && claims.length > 0 && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {claims.map((claim, index) => (
-          <React.Fragment key={claim.case_number}>
-            {/* Add New Claim Card as second item */}
-            {index === 1 && !isGuest && (
-              <div
-                className="card-enhanced p-4 cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-dashed border-gray-300 hover:border-gray-400"
-                onClick={() => setShowAddForm(true)}
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 rounded-full bg-gray-300" />
-                    <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400">Add New Claim</h3>
-                  </div>
-                </div>
-                <div className="flex justify-start mb-2 ml-16">
-                  <Plus className="w-7 h-7 text-green-500" />
-                </div>
-                <div className="text-sm text-gray-500 dark:text-gray-500">
-                  Click to create a new claim
-                </div>
-              </div>
-            )}
-            {/* Regular Claim Card */}
-            <div
-              className="card-enhanced p-4 cursor-pointer hover:shadow-lg transition-shadow"
-              style={{ 
-                width: 'calc(100% - 35px)'
-              }}
-              onClick={() => handleClaimSelect(claim)}
-            >
+          <div
+            key={claim.case_number}
+            className="card-enhanced p-4 cursor-pointer hover:shadow-lg transition-shadow"
+            style={{ 
+              width: 'calc(100% - 35px)'
+            }}
+            onClick={() => handleClaimSelect(claim)}
+          >
             <div className="flex justify-between items-start mb-3">
               <div className="flex items-center space-x-2">
                 <div 
@@ -841,8 +820,28 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
               </span>
             </div>
           </div>
-          </React.Fragment>
         ))}
+        {/* Add New Claim Card - Always at the end */}
+        {!isGuest && (
+          <div
+            className="card-enhanced p-4 cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-dashed border-gray-300 hover:border-gray-400 flex flex-col items-center justify-center text-center"
+            onClick={() => setShowAddForm(true)}
+            style={{ 
+              width: 'calc(80% - 28px)'
+            }}
+          >
+            <div className="flex items-center space-x-2 mb-3">
+              <div className="w-4 h-4 rounded-full bg-gray-300" />
+              <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400">Add New Claim</h3>
+            </div>
+            <div className="flex justify-center mb-2">
+              <Plus className="w-12 h-12 text-green-500" />
+            </div>
+            <div className="text-sm text-gray-500 dark:text-gray-500">
+              Click to create a new claim
+            </div>
+          </div>
+        )}
         </div>
       )}
     </div>

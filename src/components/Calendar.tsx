@@ -462,7 +462,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-h-[75vh]">
       {/* Sticky Navigation Controls */}
       <div className="sticky top-0 z-20 backdrop-blur-sm border-b border-yellow-400/20 p-4 -mx-4 mb-6">
         <div className="flex justify-between items-center">
@@ -540,13 +540,14 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       {showAddForm && (
         // Form overlay - hide main content
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="p-6 rounded-[16px] shadow max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          <div className="p-6 rounded-[16px] shadow max-w-2xl w-full max-h-[95vh] overflow-y-auto"
             style={{ backgroundColor: 'rgba(30, 58, 138, 0.9)', border: '2px solid #fbbf24' }}>
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold">Add New Event</h3>
             <button
               onClick={() => setShowAddForm(false)}
                 className="bg-white/10 border border-red-400 text-red-400 px-2 py-1 rounded hover:opacity-90"
+                style={{ transform: 'translateX(-45px)' }}
             >
               <X className="w-5 h-5" />
             </button>
@@ -600,7 +601,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                 </select>
             </div>
               <div style={{ marginLeft: 35 }}>
-                <label className="block text-base font-medium mb-1 whitespace-nowrap" style={{ width: colorFieldWidth, textAlign: 'center' }}>{newEvent.claim_id ? 'Colour Code' : 'No Claim'}</label>
+                <label className="block text-base font-medium mb-1 whitespace-nowrap" style={{ width: colorFieldWidth, textAlign: 'center', marginLeft: '-10px' }}>{newEvent.claim_id ? 'Colour Code' : 'No Claim'}</label>
                 {newEvent.claim_id ? (
               <input
                     type="color"
@@ -614,13 +615,13 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                   <div
                     className="h-[27px] border rounded-md"
                     style={{ width: colorFieldWidth, backgroundImage: 'repeating-linear-gradient(45deg, rgba(239,68,68,0.85) 0 10px, transparent 10px 20px)', backgroundColor: 'rgba(239,68,68,0.15)', borderColor: 'rgba(239,68,68,0.7)' }}
-                    title="Select a claim to set color"
+                    title="Choose a Claim to set color"
                   />
                 )}
               </div>
             </div>
-            {/* Second row: Start Time (col 1), End Time (col 2), All day (col 3) */}
-            <div className="w-1/2 grid items-end" style={{ display: 'grid', gridTemplateColumns: `${timeFieldWidth}px ${timeFieldWidth}px 120px`, columnGap: '1rem' }}>
+            {/* Second row: Start Time (col 1), End Time (col 2), All day (col 3), Save button (col 4) */}
+            <div className="w-1/2 grid items-end" style={{ display: 'grid', gridTemplateColumns: `${timeFieldWidth}px ${timeFieldWidth}px 120px 60px`, columnGap: '1rem' }}>
               <div>
                 <label className="block text-base font-medium mb-1">Start Time</label>
                 <input
@@ -654,9 +655,18 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
               />
             </div>
               </div>
+              <div className="flex items-end justify-end">
+              <button
+                type="submit"
+                disabled={addEventMutation.isPending}
+                    className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg hover:opacity-90 disabled:opacity-50"
+              >
+                {addEventMutation.isPending ? 'Saving...' : 'Save'}
+              </button>
             </div>
-            <div className="w-1/2 grid grid-cols-2 items-end">
-              {showGuestContent && (
+            </div>
+            {showGuestContent && (
+            <div className="w-1/2 grid grid-cols-1 items-end">
             <div>
                   <label className="block text-base font-medium mb-1">Assignee</label>
               <select
@@ -673,19 +683,8 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                 ))}
               </select>
             </div>
-              )}
-              <div className="flex w-full items-end justify-end mr-2">
-                <div className="flex space-x-3 ml-4" style={{ marginRight: -50 }}>
-              <button
-                type="submit"
-                disabled={addEventMutation.isPending}
-                    className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg hover:opacity-90 disabled:opacity-50"
-              >
-                {addEventMutation.isPending ? 'Saving...' : 'Save'}
-              </button>
             </div>
-              </div>
-            </div>
+            )}
             
             
           </form>

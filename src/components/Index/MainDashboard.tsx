@@ -122,7 +122,7 @@ export const MainDashboard = ({
             {/* Instructions when no claim selected */}
             {!selectedClaimId && (
               <div className="text-center text-gray-500 mt-20">
-                <h3 className="text-lg font-medium mb-2">Select a claim to manage evidence</h3>
+                <h3 className="text-lg font-medium mb-2">Choose a Claim to manage evidence</h3>
                 <p>Choose a claim from the list above to view and manage its evidence.</p>
               </div>
             )}

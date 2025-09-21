@@ -132,7 +132,7 @@ export const AddCalendarEventModal = ({ isOpen, onClose, onAdd, selectedDate, cl
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Calendar Event</DialogTitle>
         </DialogHeader>
@@ -205,7 +205,7 @@ export const AddCalendarEventModal = ({ isOpen, onClose, onAdd, selectedDate, cl
               <Label>Link to Claim (Optional)</Label>
               <Select value={selectedClaimId} onValueChange={setSelectedClaimId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a claim" />
+                  <SelectValue placeholder="Choose a Claim" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">No claim</SelectItem>

@@ -11,7 +11,7 @@ export const useEvidenceUpload = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
 
   const sanitizeFileName = (name: string): string => {
-    const trimmed = name.trim().toLowerCase();
+    const trimmed = name.trim().toLowerCase(); // Convert to lowercase for storage
     const replaced = trimmed.replace(/[^a-z0-9._-]+/g, '-');
     return replaced.replace(/-+/g, '-');
   };
@@ -49,7 +49,7 @@ export const useEvidenceUpload = () => {
       .getPublicUrl(filePath);
 
     setUploadProgress(100);
-    return { fileUrl: publicUrl, fileName: safeName };
+    return { fileUrl: publicUrl, fileName: file.name }; // Store original filename case
   };
 
   const submitEvidence = async (

@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
 import type { User } from '@supabase/supabase-js'
-import { Calendar, FileText, Users, CheckSquare, Download, Moon, Sun, X, Home, Crown } from 'lucide-react'
+import { Calendar, FileText, Users, CheckSquare, Download, Moon, Sun, X, Home, Crown, CalendarDays } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import SubscriptionManager from './SubscriptionManager'
 import PrivilegesStatus from './PrivilegesStatus'
@@ -72,16 +72,14 @@ export default function AuthComponent({
   // Navigation items
   const navItems = activeTab === 'shared'
     ? [
-        { id: 'todos-shared', label: 'Shared To-Do Lists', icon: CheckSquare, requiresClaim: true },
-        { id: 'calendar-shared', label: 'Shared Calendar', icon: Calendar, requiresClaim: true },
+        { id: 'events-shared', label: 'Events', icon: CalendarDays, requiresClaim: true },
         ...(selectedClaim ? [{ id: 'export', label: 'Export', icon: Download, requiresClaim: true }] : [] as any),
         // { id: 'privileges', label: 'Privileges', icon: Crown }, // Hidden for now
         { id: 'claims', label: 'Private Claims', icon: Home },
         { id: 'shared', label: 'Shared Claims', icon: Users },
       ]
     : [
-        { id: 'todos-private', label: 'To-Do Lists', icon: CheckSquare, requiresClaim: true },
-        { id: 'calendar-private', label: 'Calendar', icon: Calendar, requiresClaim: true },
+        { id: 'events-private', label: 'Events', icon: CalendarDays, requiresClaim: true },
         ...(selectedClaim ? [{ id: 'export', label: 'Export', icon: Download, requiresClaim: true }] : [] as any),
         // { id: 'privileges', label: 'Privileges', icon: Crown }, // Hidden for now
         { id: 'shared', label: 'Shared Claims', icon: Users },

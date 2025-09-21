@@ -52,7 +52,7 @@ export const UnlinkedEvidenceModal = ({ unlinkedEvidence, claims, onClose, onLin
           <label className="text-sm font-medium">Link to Claim:</label>
           <Select value={selectedClaimId} onValueChange={setSelectedClaimId}>
             <SelectTrigger className="w-64">
-              <SelectValue placeholder="Select a claim" />
+              <SelectValue placeholder="Choose a Claim" />
             </SelectTrigger>
             <SelectContent>
               {claims.map(claim => (
