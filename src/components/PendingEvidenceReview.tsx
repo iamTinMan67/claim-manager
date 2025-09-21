@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { PendingEvidence, Claim } from '@/types/database'
 import { CheckCircle, XCircle, Clock, FileText, ExternalLink, Calendar, Eye } from 'lucide-react'
+import { getClaimIdFromCaseNumber } from '@/utils/claimUtils'
 
 interface PendingEvidenceReviewProps {
   selectedClaim?: string
@@ -26,10 +27,13 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
     queryFn: async () => {
       if (!selectedClaim) return []
       
+      const claimId = await getClaimIdFromCaseNumber(selectedClaim)
+      if (!claimId) return []
+      
       const { data, error } = await supabase
         .from('pending_evidence')
         .select('*')
-        .eq('claim_id', selectedClaim)
+        .eq('claim_id', claimId)
         .eq('status', 'pending')
         .order('submitted_at', { ascending: false })
 
@@ -221,7 +225,12 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
               <button
                 onClick={() => handleApprove(evidence)}
                 disabled={approveMutation.isPending}
-                className="btn-gold px-4 py-2 rounded-lg flex items-center space-x-2 disabled:opacity-50"
+                className="px-4 py-2 rounded-lg flex items-center space-x-2 disabled:opacity-50"
+                style={{ 
+                  backgroundColor: 'rgba(30, 58, 138, 0.3)',
+                  border: '2px solid #10b981',
+                  color: '#10b981'
+                }}
               >
                 <CheckCircle className="w-4 h-4" />
                 <span>Approve</span>
@@ -275,7 +284,12 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
                   claimIds: selectedClaimIds 
                 })}
                 disabled={approveMutation.isPending || selectedClaimIds.length === 0}
-                className="btn-gold px-4 py-2 rounded-lg disabled:opacity-50"
+                className="px-4 py-2 rounded-lg disabled:opacity-50"
+                style={{ 
+                  backgroundColor: 'rgba(30, 58, 138, 0.3)',
+                  border: '2px solid #10b981',
+                  color: '#10b981'
+                }}
               >
                 {approveMutation.isPending ? 'Approving...' : 'Approve'}
               </button>

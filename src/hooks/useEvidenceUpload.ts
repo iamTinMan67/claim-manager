@@ -54,6 +54,7 @@ export const useEvidenceUpload = () => {
 
   const submitEvidence = async (
     formData: {
+      title: string;
       exhibitRef: string;
       numberOfPages: string;
       dateSubmitted: string;
@@ -91,6 +92,7 @@ export const useEvidenceUpload = () => {
       const exhibitId = formData.exhibitRef;
       
       const evidenceData = {
+        title: formData.title || "Untitled Evidence",
         exhibit_id: exhibitId,
         file_name: fileName,
         file_url: fileUrl,

@@ -116,7 +116,7 @@ const AccessControl = ({
       if (!user) return null
 
       const [claimsResult, guestsResult, evidenceResult] = await Promise.all([
-        supabase.from('claims').select('case_number', { count: 'exact' }).eq('user_id', user.id),
+        supabase.from('claims').select('claim_id', { count: 'exact' }).eq('user_id', user.id),
         supabase.from('claim_shares').select('id', { count: 'exact' }).eq('owner_id', user.id),
         supabase.from('evidence').select('id', { count: 'exact' }).eq('user_id', user.id)
       ])

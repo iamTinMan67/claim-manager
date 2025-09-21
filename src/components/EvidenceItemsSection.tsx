@@ -43,13 +43,13 @@ export const EvidenceItemsSection = ({
         <div className="space-x-2">
           <button
             onClick={() => setShowLinkEvidence(true)}
-            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors text-sm"
+            className="bg-blue-900/30 border-2 border-green-500 text-green-500 px-4 py-2 rounded-md hover:bg-blue-800/50 hover:border-green-400 hover:text-green-400 transition-colors text-sm"
           >
             Link Existing Evidence
           </button>
           <button
             onClick={() => setShowAddEvidence(true)}
-            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors text-sm"
+            className="bg-blue-900/30 border-2 border-green-500 text-green-500 px-4 py-2 rounded-md hover:bg-blue-800/50 hover:border-green-400 hover:text-green-400 transition-colors text-sm"
           >
             Add New Evidence
           </button>

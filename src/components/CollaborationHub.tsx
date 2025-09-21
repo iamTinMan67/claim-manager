@@ -11,6 +11,7 @@ import {
   Paperclip,
   Trash2
 } from 'lucide-react'
+import { getClaimIdFromCaseNumber } from '@/utils/claimUtils'
 
 interface CollaborationHubProps {
   selectedClaim: string | null
@@ -65,10 +66,13 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
     queryFn: async () => {
       if (!selectedClaim) return []
       
+      const claimId = await getClaimIdFromCaseNumber(selectedClaim)
+      if (!claimId) return []
+      
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
-        .eq('claim_id', selectedClaim)
+        .eq('claim_id', claimId)
         .order('created_at', { ascending: true })
       
       if (error) throw error
@@ -330,10 +334,13 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
                       if (claim.user_id !== user.id) throw new Error('Only the claim owner can clear chat messages')
                       
                       // Get all messages for this claim first
+                      const claimId = await getClaimIdFromCaseNumber(selectedClaim)
+                      if (!claimId) throw new Error('Could not find claim')
+                      
                       const { data: messages, error: fetchError } = await supabase
                         .from('chat_messages')
                         .select('id')
-                        .eq('claim_id', selectedClaim)
+                        .eq('claim_id', claimId)
                       
                       if (fetchError) throw fetchError
                       

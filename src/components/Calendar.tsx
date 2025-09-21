@@ -5,6 +5,7 @@ import { Todo } from '@/types/database'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, startOfWeek, endOfWeek, addDays } from 'date-fns'
 import { Plus, Clock, X, Check, User, AlertCircle, Trash2, Filter, Bell, Home, ArrowLeft, Edit } from 'lucide-react'
 import { useNavigation } from '@/contexts/NavigationContext'
+import { getClaimIdFromCaseNumber } from '@/utils/claimUtils'
 
 interface CalendarEvent {
   id: string
@@ -61,6 +62,18 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
     color: claimColor,
     claim_id: selectedClaim || ''
   })
+  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({})
+
+  // Clear error when user starts typing
+  const clearError = (field: string) => {
+    if (formErrors[field]) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev }
+        delete newErrors[field]
+        return newErrors
+      })
+    }
+  }
 
   // Update newEvent when selectedClaim or claimColor changes
   React.useEffect(() => {
@@ -135,7 +148,10 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       if (isGuest) {
         // Shared: filter to selected claim and other users' events
         if (selectedClaim) {
-          query = query.eq('claim_id', selectedClaim)
+          const claimId = await getClaimIdFromCaseNumber(selectedClaim)
+          if (claimId) {
+            query = query.eq('claim_id', claimId)
+          }
         }
         query = query.neq('user_id', user.id)
       } else {
@@ -163,10 +179,13 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
     enabled: Boolean(selectedClaim),
     queryFn: async () => {
       if (!selectedClaim) return [] as { id: string, email: string, full_name?: string | null }[]
+      const claimId = await getClaimIdFromCaseNumber(selectedClaim)
+      if (!claimId) return []
+      
       const { data, error } = await supabase
         .from('claim_shares')
         .select('shared_with_id, profiles:shared_with_id(email, full_name)')
-        .eq('claim_id', selectedClaim)
+        .eq('claim_id', claimId)
       if (error) throw error
       const list = (data || []).map((row: any) => ({
         id: row.shared_with_id as string,
@@ -389,7 +408,23 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newEvent.title.trim()) return
+    
+    // Clear previous errors
+    setFormErrors({})
+    
+    // Validate required fields
+    const errors: {[key: string]: string} = {}
+    
+    if (!newEvent.title.trim()) {
+      errors.title = 'Event Title is required'
+    }
+    
+    // If there are validation errors, set them and return
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors)
+      return
+    }
+    
     const nowStr = format(new Date(), "yyyy-MM-dd'T'HH:mm")
     
     // Ensure end_time is set to start_time if empty
@@ -519,16 +554,26 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid items-end gap-4" style={{ display: 'grid', gridTemplateColumns: `${timeFieldWidth}px ${timeFieldWidth}px ${colorFieldWidth}px` }}>
             <div>
-                <label className="block text-base font-medium mb-1">Title</label>
+                <label className="block text-base font-medium mb-1">Title *</label>
               <input
                 type="text"
                 value={newEvent.title}
-                onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                onChange={(e) => {
+                  setNewEvent({ ...newEvent, title: e.target.value })
+                  clearError('title')
+                }}
                 placeholder="Enter event title"
-                className="h-[27px] mr-2 border border-yellow-400/30 rounded-md px-2 bg-white/10 text-yellow-300 placeholder-yellow-300/70 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                className={`h-[27px] mr-2 border rounded-md px-2 bg-white/10 text-yellow-300 placeholder-yellow-300/70 text-sm focus:outline-none focus:ring-2 ${
+                  formErrors.title
+                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                    : 'border-yellow-400/30 focus:border-yellow-400 focus:ring-yellow-400/20'
+                }`}
                 style={{ width: timeFieldWidth }}
                 required
               />
+              {formErrors.title && (
+                <p className="text-red-400 text-sm mt-1">{formErrors.title}</p>
+              )}
             </div>
             <div>
                 <label className="block text-base font-medium mb-1">Associated Claim</label>

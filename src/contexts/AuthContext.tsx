@@ -40,8 +40,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (!mounted) return;
 
-        setSession(session);
-        setUser(session?.user ?? null);
+        // Only update state if we have a valid session or if signing out
+        if (session?.user || event === 'SIGNED_OUT') {
+          setSession(session);
+          setUser(session?.user ?? null);
+        }
         
         // Handle specific auth events
         if (event === 'SIGNED_OUT') {
@@ -136,12 +139,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('Signing up user:', email);
     
     try {
-      // Clean up any existing state before signing up
-      cleanupAuthState();
-
       const redirectUrl = `${window.location.origin}/`;
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -154,11 +154,102 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error('Sign up error:', error);
-      } else {
-        console.log('Sign up successful');
+        // Handle specific error cases
+        if (error.message.includes('User already registered')) {
+          return { 
+            error: { 
+              message: 'This email is already registered. Please try signing in instead.' 
+            } 
+          };
+        }
+        return { error };
       }
 
-      return { error };
+      // If signup was successful, wait a moment for the user to be fully authenticated
+      // then create profile and subscriber records
+      if (data.user) {
+        console.log('Sign up successful, waiting for authentication to complete...');
+        
+        // Wait for the auth state to be fully updated and verify user exists
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        console.log('Creating profile and subscriber records...');
+        
+        try {
+          // First, verify the user exists in auth.users
+          const { data: userData, error: userError } = await supabase.auth.getUser();
+          
+          if (userError || !userData.user) {
+            console.error('User not found in auth.users:', userError);
+            throw new Error('User authentication failed');
+          }
+          
+          console.log('User verified in auth.users:', userData.user.id);
+          
+          // Create profile record - only include required fields
+          const profileData = {
+            id: userData.user.id,
+            email: email,
+            nickname: nickname || 'User'
+          };
+          
+          console.log('Attempting to create profile with data:', profileData);
+          
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert(profileData);
+
+          if (profileError) {
+            console.error('Profile creation error:', profileError);
+            console.error('Profile error details:', {
+              message: profileError.message,
+              details: profileError.details,
+              hint: profileError.hint,
+              code: profileError.code
+            });
+            // Don't fail signup if profile creation fails
+          } else {
+            console.log('Profile created successfully');
+          }
+
+          // Create subscriber record with Free tier
+          const { error: subscriberError } = await supabase
+            .from('subscribers')
+            .insert({
+              email: email,
+              subscription_tier: 'Free',
+              subscription_status: 'active',
+              subscribed: true,
+              exclusive_privileges: false,
+              admin_tier: 'user',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+
+          if (subscriberError) {
+            console.error('Subscriber creation error:', subscriberError);
+            console.error('Subscriber error details:', {
+              message: subscriberError.message,
+              details: subscriberError.details,
+              hint: subscriberError.hint,
+              code: subscriberError.code
+            });
+            // Don't fail signup if subscriber creation fails
+          } else {
+            console.log('Subscriber record created successfully');
+          }
+
+          console.log('Profile and subscriber records created successfully');
+          
+          // The auth state listener will automatically handle the user state update
+          // No need to manually refresh or update the user state here
+        } catch (dbError) {
+          console.error('Database error during profile creation:', dbError);
+          // Don't fail signup if database operations fail
+        }
+      }
+
+      return { error: null };
     } catch (error) {
       console.error('Sign up failed:', error);
       return { error };

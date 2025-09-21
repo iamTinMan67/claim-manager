@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Add Claim</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.52.1/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+    <h1>Test Add Claim</h1>
+    <button onclick="testAddClaim()">Test Add Claim</button>
+    <div id="result"></div>
+
+    <script>
+        const supabaseUrl = 'https://vwrgnlpajtwifbgyiutk.supabase.co'
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3cmdubHBhanR3aWZiZ3lpdXRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgzNDI1NzMsImV4cCI6MjA2MzkxODU3M30.gFv5gbOMyVPArjySwnaQmHDHhM0L47kOX4sjjREbIZc'
+
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey)
+
+        async function testAddClaim() {
+            const resultDiv = document.getElementById('result')
+            resultDiv.innerHTML = 'Testing...'
+
+            try {
+                // Test 1: Check if we can query claims table
+                console.log('Testing claims query...')
+                const { data: testData, error: testError } = await supabase
+                    .from('claims')
+                    .select('*')
+                    .limit(1)
+
+                if (testError) {
+                    resultDiv.innerHTML = `Query test failed: ${JSON.stringify(testError)}`
+                    return
+                }
+
+                console.log('Query test successful:', testData)
+
+                // Test 2: Try to add a claim
+                const testClaim = {
+                    case_number: 'TEST-' + Date.now(),
+                    title: 'Test Claim',
+                    court: 'Test Court',
+                    plaintiff_name: 'Test Plaintiff',
+                    defendant_name: 'Test Defendant',
+                    description: 'Test Description',
+                    status: 'Active',
+                    user_id: 'test-user-id' // This will fail without auth, but we can see the error
+                }
+
+                const { data, error } = await supabase
+                    .from('claims')
+                    .insert([testClaim])
+                    .select()
+                    .single()
+
+                if (error) {
+                    resultDiv.innerHTML = `Insert failed: ${JSON.stringify(error)}`
+                } else {
+                    resultDiv.innerHTML = `Insert successful: ${JSON.stringify(data)}`
+                }
+
+            } catch (err) {
+                resultDiv.innerHTML = `Test failed: ${err.message}`
+                console.error(err)
+            }
+        }
+    </script>
+</body>
+</html>

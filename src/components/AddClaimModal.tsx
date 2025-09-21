@@ -23,13 +23,48 @@ export const AddClaimModal = ({ onClose, onAdd }: Props) => {
     description: "",
     status: "Active"
   });
+  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
+
+  const clearError = (field: string) => {
+    if (formErrors[field]) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!claim.title || !claim.case_number || !claim.description) {
+    
+    // Clear previous errors
+    setFormErrors({});
+    
+    // Validate required fields
+    const errors: {[key: string]: string} = {};
+    
+    if (!claim.title.trim()) {
+      errors.title = 'Claim Title is required';
+    }
+    
+    if (!claim.case_number.trim()) {
+      errors.case_number = 'Case Number is required';
+    }
+    
+    // If there are validation errors, set them and return
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
       return;
     }
-    onAdd(claim);
+    
+    // Ensure description is not null/undefined, use empty string if not provided
+    const claimData = {
+      ...claim,
+      description: claim.description || ''
+    };
+    
+    onAdd(claimData);
   };
 
   return (
@@ -41,13 +76,20 @@ export const AddClaimModal = ({ onClose, onAdd }: Props) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="title">Claim Title</Label>
+              <Label htmlFor="title">Claim Title *</Label>
               <Input
                 id="title"
                 value={claim.title}
-                onChange={(e) => setClaim({ ...claim, title: e.target.value })}
+                onChange={(e) => {
+                  setClaim({ ...claim, title: e.target.value });
+                  clearError('title');
+                }}
                 placeholder="e.g., Property Damage Claim"
+                className={formErrors.title ? 'border-red-500 focus:border-red-500' : ''}
               />
+              {formErrors.title && (
+                <p className="text-red-500 text-sm">{formErrors.title}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -70,13 +112,21 @@ export const AddClaimModal = ({ onClose, onAdd }: Props) => {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="case_number">Case Number</Label>
+              <Label htmlFor="case_number">Case Number *</Label>
               <Input
                 id="case_number"
                 value={claim.case_number}
-                onChange={(e) => setClaim({ ...claim, case_number: e.target.value })}
+                onChange={(e) => {
+                  setClaim({ ...claim, case_number: e.target.value });
+                  clearError('case_number');
+                }}
                 placeholder="e.g., CV-2024-001"
+                className={formErrors.case_number ? 'border-red-500 focus:border-red-500' : ''}
+                required
               />
+              {formErrors.case_number && (
+                <p className="text-red-500 text-sm mt-1">{formErrors.case_number}</p>
+              )}
             </div>
 
             <div className="space-y-2">

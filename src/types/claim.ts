@@ -1,11 +1,14 @@
 export interface Claim {
-  case_number: string; // Primary key
+  claim_id: string; // Internal UUID primary key
+  case_number: string; // Human-readable identifier
   title: string;
   court: string | null;
   plaintiff_name: string | null;
   defendant_name: string | null;
   description: string | null;
   status: 'Active' | 'Pending' | 'Closed';
+  color?: string | null;
+  user_id: string;
   created_at: string;
   updated_at: string;
 }

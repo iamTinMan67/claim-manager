@@ -1,5 +1,6 @@
 export interface Claim {
-  case_number: string
+  claim_id: string // Internal UUID primary key
+  case_number: string // Human-readable identifier
   user_id: string
   title: string
   court?: string

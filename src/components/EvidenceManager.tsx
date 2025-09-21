@@ -2,10 +2,12 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { Evidence } from '@/types/database'
-import { Plus, Edit, Trash2, Upload, Download, Eye, X, Save, Settings, FileText, Calendar, Hash, GripVertical } from 'lucide-react'
+import { Plus, Edit, Trash2, Upload, Download, Eye, X, Save, Settings, FileText, Calendar, Hash, GripVertical, Link } from 'lucide-react'
 import PendingEvidenceReview from './PendingEvidenceReview'
 import { AddEvidenceModal } from './AddEvidenceModal'
+import { LinkEvidenceModal } from './LinkEvidenceModal'
 import { toast } from '@/hooks/use-toast'
+import { getClaimIdFromCaseNumber } from '@/utils/claimUtils'
 
 interface EvidenceManagerProps {
   selectedClaim: string | null
@@ -36,6 +38,7 @@ const EvidenceManager = ({
 }: EvidenceManagerProps) => {
   const isInteractive = !isStatic && !isGuest
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showLinkModal, setShowLinkModal] = useState(false)
   const [editingEvidence, setEditingEvidence] = useState<Evidence | null>(null)
   const [expandedEvidence, setExpandedEvidence] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -75,22 +78,38 @@ const EvidenceManager = ({
   const { data: evidenceData, isLoading, error } = useQuery({
     queryKey: ['evidence', selectedClaim],
     queryFn: async () => {
+      console.log('EvidenceManager: Loading evidence for selectedClaim:', selectedClaim)
+      
       // If no claim selected, load all for user ordering purposes
       if (!selectedClaim) {
+        console.log('EvidenceManager: No claim selected, loading all evidence')
         const { data, error } = await supabase
         .from('evidence')
         .select('*')
         .order('display_order', { ascending: false, nullsFirst: true })
           .order('created_at', { ascending: false })
       if (error) throw error
+      console.log('EvidenceManager: Loaded all evidence:', data?.length || 0, 'items')
       return data as Evidence[]
     }
+
+      // First, get the claim_id from the case_number
+      console.log('EvidenceManager: Getting claim_id for case_number:', selectedClaim)
+      const claimId = await getClaimIdFromCaseNumber(selectedClaim)
+      
+      if (!claimId) {
+        console.error('EvidenceManager: Could not find claim_id for case_number:', selectedClaim)
+        // If we can't find the claim, just return empty array
+        return []
+      }
+      
+      console.log('EvidenceManager: Found claim_id:', claimId)
 
       // Fetch linked evidence ids via evidence_claims for the selected claim
       const { data: linkRows, error: linkErr } = await supabase
         .from('evidence_claims')
         .select('evidence_id')
-        .eq('claim_id', selectedClaim)
+        .eq('claim_id', claimId)
       if (linkErr) throw linkErr
       const linkedIds = (linkRows || []).map(r => r.evidence_id).filter(Boolean)
 
@@ -99,15 +118,15 @@ const EvidenceManager = ({
         ? supabase.from('evidence').select('*').in('id', linkedIds)
         : Promise.resolve({ data: [] as any[], error: null } as any)
 
-      // Fetch legacy evidence by case_number for backward compatibility
-      const byLegacyPromise = supabase
-        .from('evidence')
-        .select('*')
-        .eq('case_number', selectedClaim)
+      // No legacy case_number query needed - evidence is only linked via evidence_claims table
+      const byLegacyPromise = Promise.resolve({ data: [] as any[], error: null } as any)
 
       const [byLink, byLegacy] = await Promise.all([byLinkPromise, byLegacyPromise])
       if (byLink.error) throw byLink.error
       if (byLegacy.error) throw byLegacy.error
+
+      console.log('EvidenceManager: byLink data:', byLink.data?.length || 0, 'items')
+      console.log('EvidenceManager: byLegacy data:', byLegacy.data?.length || 0, 'items')
 
       // Merge and de-duplicate by id, then normalize fields to reduce "mess"
       const mergedMap = new Map<string, Evidence>()
@@ -138,8 +157,7 @@ const EvidenceManager = ({
       // Optional: filter out rows with no meaningful identifier (neither file_name nor file_url)
       merged = merged.filter((e: any) => (e.file_name && e.file_name.length) || (e.file_url && e.file_url.length))
 
-      // Enforce user rule: only keep items with a case_number matching the selected claim
-      merged = merged.filter((e: any) => e.case_number && e.case_number === selectedClaim)
+      // No need to filter by case_number since evidence is already linked via evidence_claims table
 
       // Sort: first by display_order desc (nulls last), then created_at desc
       merged.sort((a, b) => {
@@ -151,6 +169,8 @@ const EvidenceManager = ({
         return bt - at
       })
 
+      console.log('EvidenceManager: Final merged evidence result:', merged.length, 'items')
+      console.log('EvidenceManager: Evidence items:', merged)
       return merged
     }
   })
@@ -421,8 +441,12 @@ const EvidenceManager = ({
               <button
                 type="submit"
                 disabled={updateEvidenceMutation.isPending}
-                className="btn-gold px-4 py-2 rounded-lg disabled:opacity-50"
-                style={{ backgroundColor: claimColor }}
+                className="px-4 py-2 rounded-lg disabled:opacity-50"
+                style={{ 
+                  backgroundColor: 'rgba(30, 58, 138, 0.3)',
+                  border: '2px solid #10b981',
+                  color: '#10b981'
+                }}
               >
                 {updateEvidenceMutation.isPending ? 'Updating...' : 'Update Evidence'}
               </button>
@@ -444,6 +468,22 @@ const EvidenceManager = ({
         <div className="px-6 py-4 border-b border-yellow-400/20 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gold">Evidence List</h3>
           <div className="flex items-center gap-2">
+            {isInteractive && (!isGuest || (isGuest && !isGuestFrozen)) && (
+              <button
+                onClick={() => {
+                  if (!selectedClaim) {
+                    alert('Please select a claim before linking evidence. The Case Number is required.')
+                    return
+                  }
+                  setShowLinkModal(true)
+                }}
+                disabled={!selectedClaim}
+                className="bg-white/10 border border-yellow-400 text-yellow-400 px-3 py-2 rounded-lg flex items-center space-x-2 hover:opacity-90"
+              >
+                <Link className="w-4 h-4" />
+                <span>Link</span>
+              </button>
+            )}
             {onSetAmendMode && isInteractive && (
               <button
                 onClick={() => onSetAmendMode(!amendMode)}
@@ -703,8 +743,12 @@ const EvidenceManager = ({
                                 <button
                                   type="submit"
                                   disabled={updateEvidenceMutation.isPending}
-                                  className="btn-gold px-4 py-2 rounded-lg disabled:opacity-50"
-                                  style={{ backgroundColor: claimColor }}
+                                  className="px-4 py-2 rounded-lg disabled:opacity-50"
+                                  style={{ 
+                                    backgroundColor: 'rgba(30, 58, 138, 0.3)',
+                                    border: '2px solid #10b981',
+                                    color: '#10b981'
+                                  }}
                                 >
                                   {updateEvidenceMutation.isPending ? 'Updating...' : 'Update Evidence'}
                                 </button>
@@ -763,20 +807,14 @@ const EvidenceManager = ({
               if (!user) throw new Error('Not authenticated')
               if (!selectedClaim) throw new Error('A Case Number (claim) is required for evidence')
 
-              // Get the current maximum display_order for this claim
-              let query = supabase
+              // Get the current maximum display_order for this user
+              const { data: maxOrderData } = await supabase
                 .from('evidence')
                 .select('display_order')
                 .eq('user_id', user.id)
                 .not('display_order', 'is', null)
                 .order('display_order', { ascending: false })
                 .limit(1)
-              
-              if (selectedClaim) {
-                query = query.eq('case_number', selectedClaim)
-              }
-              
-              const { data: maxOrderData } = await query
               const maxDisplayOrder = maxOrderData?.[0]?.display_order || 0
               const newDisplayOrder = maxDisplayOrder + 1
 
@@ -784,17 +822,31 @@ const EvidenceManager = ({
               const cleanData = {
                 ...evidence,
                 user_id: user.id,
-                case_number: selectedClaim,
                 display_order: newDisplayOrder,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
               }
 
-              const { error } = await supabase
+              const { data: insertedEvidence, error } = await supabase
                 .from('evidence')
                 .insert([cleanData])
+                .select()
+                .single()
 
               if (error) throw error
+
+              // Link evidence to claim via evidence_claims table
+              const claimId = await getClaimIdFromCaseNumber(selectedClaim)
+              if (claimId) {
+                const { error: linkError } = await supabase
+                  .from('evidence_claims')
+                  .insert([{ evidence_id: insertedEvidence.id, claim_id: claimId }])
+
+                if (linkError) {
+                  console.error('Error linking evidence to claim:', linkError)
+                  // Don't throw here, evidence was created successfully
+                }
+              }
 
               // Close modal and refresh
               setShowAddModal(false)
@@ -815,6 +867,46 @@ const EvidenceManager = ({
           }}
           isGuest={isGuest}
           isGuestFrozen={isGuestFrozen}
+        />
+      )}
+
+      {/* Link Evidence Modal */}
+      {showLinkModal && selectedClaim && (
+        <LinkEvidenceModal
+          claim={{ case_number: selectedClaim } as any}
+          availableEvidence={[]} // TODO: Fetch available evidence from other claims
+          onClose={() => setShowLinkModal(false)}
+          onLink={async (evidenceId, claimId) => {
+            try {
+              // Get the claim_id for the selected claim
+              const claimIdUuid = await getClaimIdFromCaseNumber(claimId)
+              if (!claimIdUuid) {
+                throw new Error('Could not find claim')
+              }
+
+              // Link evidence to claim via evidence_claims table
+              const { error } = await supabase
+                .from('evidence_claims')
+                .insert([{ evidence_id: evidenceId, claim_id: claimIdUuid }])
+
+              if (error) throw error
+
+              // Refresh evidence data
+              queryClient.invalidateQueries({ queryKey: ['evidence', selectedClaim] })
+              
+              toast({
+                title: "Success",
+                description: "Evidence linked successfully",
+              })
+            } catch (error) {
+              console.error('Error linking evidence:', error)
+              toast({
+                title: "Error",
+                description: `Failed to link evidence: ${error.message || 'Unknown error'}`,
+                variant: "destructive",
+              })
+            }
+          }}
         />
       )}
     </div>

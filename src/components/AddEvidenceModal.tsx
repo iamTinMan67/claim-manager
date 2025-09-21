@@ -20,6 +20,7 @@ interface Props {
 
 export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFrozen = false, open = true, selectedClaim = null, initialExhibitRef }: Props) => {
   
+  const [title, setTitle] = useState(""); // Title field for evidence
   const [exhibitRef, setExhibitRef] = useState(""); // This will be auto-generated
   const [numberOfPages, setNumberOfPages] = useState("1");
   const [dateSubmitted, setDateSubmitted] = useState(() => {
@@ -53,9 +54,7 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
           .from('evidence')
           .select('exhibit_id, exhibit_number')
           .limit(2000);
-        if (selectedClaim) {
-          query = query.eq('case_number', selectedClaim);
-        }
+        // No need to filter by case_number since evidence table doesn't have this column
         const { data, error } = await query;
         if (error) throw error;
         let maxNum = 0;
@@ -97,13 +96,18 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
     console.log('File selected:', selectedFile?.name);
   }, [selectedFile]);
 
-  // Auto-set method to "Online" when a file is selected
+  // Auto-set method to "Online" and populate title from filename when a file is selected
   useEffect(() => {
-    if (selectedFile && method !== 'Online') {
+    if (selectedFile) {
       console.log('File selected, changing method to Online');
       setMethod('Online');
+      
+      // Auto-populate title from filename (remove extension)
+      const fileName = selectedFile.name;
+      const nameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
+      setTitle(nameWithoutExt);
     }
-  }, [selectedFile, method]);
+  }, [selectedFile]);
 
   const resetForm = () => {
     // Generate next exhibit reference by incrementing current number
@@ -111,6 +115,7 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
     const nextNum = currentMatch ? parseInt(currentMatch[1], 10) + 1 : 1;
     setExhibitRef(`Exhibit ${nextNum}`);
     
+    setTitle(""); // Reset title field
     setNumberOfPages("");
     // Keep the last selected date instead of resetting it
     // setDateSubmitted(""); // Removed this line
@@ -134,6 +139,7 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
     const normalizedRef = bookOfDeedsRef === PLACEHOLDER_REF ? "" : bookOfDeedsRef;
     await submitEvidence(
       {
+        title,
         exhibitRef,
         numberOfPages,
         dateSubmitted,
@@ -182,10 +188,10 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
           </div>
         )}
         <form onSubmit={handleSubmit} className="space-y-6 p-6" style={{ opacity: isGuest && isGuestFrozen ? 0.5 : 1 }}>
-          {/* Row 1: File Upload (4/6), Pages (1/6), Method (1/6) */}
+          {/* Row 1: File Upload (2/6), Title (2/6), Pages (1/6), Method (1/6) */}
           <div className="grid grid-cols-6 gap-6 items-start">
-            {/* File Upload - moved to the first position */}
-            <div className="space-y-3 col-span-4">
+            {/* File Upload */}
+            <div className="space-y-3 col-span-2">
               <FileUploadSection
                 ref={fileInputRef}
                 selectedFile={selectedFile}
@@ -195,6 +201,20 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
                 disabled={isGuest && isGuestFrozen}
               />
             </div>
+            
+            {/* Title field */}
+            <div className="space-y-2 col-span-2">
+              <label htmlFor="title" className="text-base font-medium">Title</label>
+              <input
+                id="title"
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                disabled={isGuest && isGuestFrozen}
+                placeholder="Evidence title"
+                className="h-8 text-base w-full px-3 py-2 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+              />
+            </div>
             <div className="space-y-2 col-span-1">
               <label htmlFor="number-of-pages" className="text-base font-medium">Pages</label>
               <input
@@ -202,9 +222,9 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
                 type="number"
                 value={numberOfPages}
                 onChange={(e) => setNumberOfPages(e.target.value)}
-                disabled={uploading || (isGuest && isGuestFrozen)}
+                disabled={isGuest && isGuestFrozen}
                 min="1"
-                className="h-12 text-base w-full px-4 py-3 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                className="h-8 text-base w-full px-3 py-2 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
               />
             </div>
             
@@ -214,8 +234,8 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
                 id="method"
                 value={method}
                 onChange={(e) => setMethod(e.target.value)}
-                disabled={uploading || (isGuest && isGuestFrozen)}
-                className="h-12 text-base w-full px-4 py-3 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                disabled={isGuest && isGuestFrozen}
+                className="h-8 text-base w-full px-3 py-2 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
               >
                 <option value="Post">Post</option>
                 <option value="Email">Email</option>
@@ -236,8 +256,8 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
                 type="date"
                 value={dateSubmitted}
                 onChange={(e) => setDateSubmitted(e.target.value)}
-                disabled={uploading || (isGuest && isGuestFrozen)}
-                className="h-12 text-base w-full px-4 py-3 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                disabled={isGuest && isGuestFrozen}
+                className="h-8 text-base w-full px-3 py-2 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
               />
             </div>
             <EvidenceFormFields
@@ -255,17 +275,16 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
           {/* Row 3: Description label, then textarea + actions aligned to textarea edges */}
           <div className="grid grid-cols-3 gap-6">
             <div className="col-span-3">
-              <label htmlFor="description" className="text-base font-medium">Description *</label>
+              <label htmlFor="description" className="text-base font-medium">Description</label>
             </div>
-            <div className="col-span-3 grid grid-cols-3 gap-6 items-stretch">
+            <div className="col-span-3 grid grid-cols-5 gap-6 items-stretch">
               <div className="col-span-2">
                 <textarea
                   id="description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Enter evidence description"
-                  disabled={uploading || (isGuest && isGuestFrozen)}
-                  required
+                  disabled={isGuest && isGuestFrozen}
                   rows={2}
                   className="text-base w-full px-4 py-3 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 h-full"
                 />

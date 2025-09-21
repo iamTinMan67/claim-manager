@@ -38,7 +38,7 @@ export const AlarmNotification = ({ todo, onComplete, onSnooze, onDismiss }: Pro
           <div className="flex flex-col gap-2">
             <Button 
               onClick={onComplete}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+              className="flex items-center gap-2 bg-blue-900/30 border-2 border-green-500 text-green-500 hover:bg-blue-800/50 hover:border-green-400 hover:text-green-400"
             >
               <CheckCircle className="h-4 w-4" />
               Mark Complete

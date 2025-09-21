@@ -4,9 +4,11 @@ import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-quer
 import { ThemeProvider } from 'next-themes'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
-import { AuthProvider } from '@/contexts/AuthContext'
+import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { NavigationProvider, useNavigation } from '@/contexts/NavigationContext'
+import { getClaimIdFromCaseNumber } from '@/utils/claimUtils'
 import AuthComponent from './components/AuthComponent'
+import Auth from './pages/Auth'
 import ClaimsTable from './components/ClaimsTable'
 import EvidenceManager from './components/EvidenceManager'
 import TodoList from './components/TodoList'
@@ -18,6 +20,7 @@ import SubscriptionManager from './components/SubscriptionManager'
 import PrivilegesStatus from './components/PrivilegesStatus'
 import { Crown } from 'lucide-react'
 import AccessControl from './components/AccessControl'
+import { Toaster } from '@/components/ui/toaster'
 
 const queryClient = new QueryClient()
 
@@ -28,6 +31,7 @@ function App() {
         <AuthProvider>
           <NavigationProvider>
             <AppContent />
+            <Toaster />
           </NavigationProvider>
         </AuthProvider>
       </QueryClientProvider>
@@ -36,7 +40,7 @@ function App() {
 }
 
 function AppContent() {
-  const [user, setUser] = useState<User | null>(null)
+  const { user, loading } = useAuth()
   const { currentPage, navigateTo } = useNavigation()
   const [selectedClaim, setSelectedClaim] = useState<string | null>(null)
   const [selectedClaimColor, setSelectedClaimColor] = useState<string>('#3B82F6')
@@ -56,13 +60,19 @@ function AppContent() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
 
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">
+      <div className="text-gold">Loading...</div>
+    </div>
+  }
+
   if (!user) {
-    return <AuthComponent onAuthChange={setUser} />
+    return <Auth />
   }
 
   return (
     <AuthComponent 
-      onAuthChange={setUser}
+      onAuthChange={() => {}} // No longer needed since we're using AuthContext
       activeTab={currentPage}
       onTabChange={navigateTo}
       selectedClaim={selectedClaim}
@@ -160,10 +170,13 @@ function LoggedInContent({
     queryFn: async () => {
       if (!selectedClaim || !user?.id) return false
       
+      const claimId = await getClaimIdFromCaseNumber(selectedClaim)
+      if (!claimId) return false
+      
       const { data, error } = await supabase
         .from('claim_shares')
         .select('id')
-        .eq('claim_id', selectedClaim)
+        .eq('claim_id', claimId)
         .eq('shared_with_id', user.id)
         .maybeSingle()
       
@@ -179,10 +192,13 @@ function LoggedInContent({
     queryFn: async () => {
       if (!selectedClaim || !user?.id) return null
       
+      const claimId = await getClaimIdFromCaseNumber(selectedClaim)
+      if (!claimId) return null
+      
       const { data, error } = await supabase
         .from('claim_shares')
         .select('is_frozen, is_muted')
-        .eq('claim_id', selectedClaim)
+        .eq('claim_id', claimId)
         .eq('shared_with_id', user.id)
         .maybeSingle()
       

@@ -51,7 +51,7 @@ export const EditableClaimInfo = ({ claim, onUpdate }: Props) => {
             <Button
               size="sm"
               onClick={handleSave}
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-blue-900/30 border-2 border-green-500 text-green-500 hover:bg-blue-800/50 hover:border-green-400 hover:text-green-400"
             >
               <Save className="w-4 h-4 mr-2" />
               Save

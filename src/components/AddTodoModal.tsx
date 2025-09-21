@@ -29,11 +29,38 @@ export const AddTodoModal = ({ onClose, onAdd, defaultDate }: Props) => {
   const [alarmDate, setAlarmDate] = useState<Date | undefined>(defaultDate || new Date());
   const [alarmTime, setAlarmTime] = useState("08:30");
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
+
+  const clearError = (field: string) => {
+    if (formErrors[field]) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!title.trim() || !date) {
+    // Clear previous errors
+    setFormErrors({});
+    
+    // Validate required fields
+    const errors: {[key: string]: string} = {};
+    
+    if (!title.trim()) {
+      errors.title = 'Title is required';
+    }
+    
+    if (!date) {
+      errors.date = 'Date is required';
+    }
+    
+    // If there are validation errors, set them and return
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
       return;
     }
 
@@ -74,10 +101,17 @@ export const AddTodoModal = ({ onClose, onAdd, defaultDate }: Props) => {
               <Input
                 id="title"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  clearError('title');
+                }}
                 placeholder="Enter task title"
+                className={formErrors.title ? 'border-red-500 focus:border-red-500' : ''}
                 required
               />
+              {formErrors.title && (
+                <p className="text-red-500 text-sm mt-1">{formErrors.title}</p>
+              )}
             </div>
 
             <div>
@@ -99,8 +133,10 @@ export const AddTodoModal = ({ onClose, onAdd, defaultDate }: Props) => {
                     variant="outline"
                     className={cn(
                       "w-full justify-start text-left font-normal",
-                      !date && "text-muted-foreground"
+                      !date && "text-muted-foreground",
+                      formErrors.date && "border-red-500"
                     )}
+                    onClick={() => clearError('date')}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {date ? format(date, "PPP") : "Pick a date"}
@@ -116,6 +152,9 @@ export const AddTodoModal = ({ onClose, onAdd, defaultDate }: Props) => {
                   />
                 </PopoverContent>
               </Popover>
+              {formErrors.date && (
+                <p className="text-red-500 text-sm mt-1">{formErrors.date}</p>
+              )}
             </div>
 
             <div>

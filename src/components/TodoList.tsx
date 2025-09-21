@@ -5,6 +5,7 @@ import { Todo } from '@/types/database'
 import { Plus, Check, Clock, AlertCircle, Trash2, User, Calendar as CalendarIcon, ChevronLeft, Home, X, ArrowLeft, Edit } from 'lucide-react'
 import { useNavigation } from '@/contexts/NavigationContext'
 import { format } from 'date-fns'
+import { getClaimIdFromCaseNumber } from '@/utils/claimUtils'
 
 interface TodoWithUser extends Todo {
   creator_profile?: {
@@ -40,8 +41,48 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
     case_number: selectedClaim || '',
     responsible_user_id: ''
   })
+  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({})
 
   const queryClient = useQueryClient()
+
+  // Auto-complete functionality - load saved form data
+  const loadFormData = () => {
+    const savedData = localStorage.getItem('todoFormData')
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData)
+        setNewTodo(prev => ({ ...prev, ...parsed, case_number: selectedClaim || prev.case_number }))
+      } catch (error) {
+        console.error('Error loading form data:', error)
+      }
+    }
+  }
+
+  // Save form data to localStorage
+  const saveFormData = (data: typeof newTodo) => {
+    const dataToSave = {
+      title: data.title,
+      description: data.description,
+      priority: data.priority
+    }
+    localStorage.setItem('todoFormData', JSON.stringify(dataToSave))
+  }
+
+  // Load form data when component mounts
+  React.useEffect(() => {
+    loadFormData()
+  }, [])
+
+  // Clear error when user starts typing
+  const clearError = (field: string) => {
+    if (formErrors[field]) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev }
+        delete newErrors[field]
+        return newErrors
+      })
+    }
+  }
 
   // Get current user for permission checks
   const { data: currentUser } = useQuery({
@@ -154,10 +195,16 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         }
         
         // Get guests
+        const claimId = await getClaimIdFromCaseNumber(selectedClaim)
+        if (!claimId) {
+          console.error('Could not find claim_id for case_number:', selectedClaim)
+          return []
+        }
+        
         const { data: guestsData, error: guestsError } = await supabase
           .from('claim_shares')
           .select('shared_with_id')
-          .eq('claim_id', selectedClaim)
+          .eq('claim_id', claimId)
         
         if (guestsError) {
           console.error('Guests query error:', guestsError)
@@ -348,8 +395,31 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newTodo.title.trim() || !newTodo.due_date) return
+    
+    // Clear previous errors
+    setFormErrors({})
+    
+    // Validate required fields
+    const errors: {[key: string]: string} = {}
+    
+    if (!newTodo.title.trim()) {
+      errors.title = 'Title is required'
+    }
+    
+    if (!newTodo.due_date) {
+      errors.due_date = 'Due Date is required'
+    }
+    
+    // If there are validation errors, set them and return
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors)
+      return
+    }
+    
     addTodoMutation.mutate(newTodo)
+    
+    // Save form data for auto-complete
+    saveFormData(newTodo)
   }
 
   // Update color when claim changes
@@ -442,16 +512,32 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
               <input
                 type="text"
                 value={newTodo.title}
-                onChange={(e) => setNewTodo({ ...newTodo, title: e.target.value })}
-                className="w-full h-12 text-base border border-yellow-400/30 rounded-md px-4 py-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                onChange={(e) => {
+                  const updated = { ...newTodo, title: e.target.value }
+                  setNewTodo(updated)
+                  clearError('title')
+                  saveFormData(updated)
+                }}
+                className={`w-full h-12 text-base border rounded-md px-4 py-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 ${
+                  formErrors.title
+                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                    : 'border-yellow-400/30 focus:border-yellow-400 focus:ring-yellow-400/20'
+                }`}
                 required
               />
+              {formErrors.title && (
+                <p className="text-red-400 text-sm mt-1">{formErrors.title}</p>
+              )}
             </div>
             <div>
               <label className="block text-base font-medium mb-1">Description</label>
               <textarea
                 value={newTodo.description}
-                onChange={(e) => setNewTodo({ ...newTodo, description: e.target.value })}
+                onChange={(e) => {
+                  const updated = { ...newTodo, description: e.target.value }
+                  setNewTodo(updated)
+                  saveFormData(updated)
+                }}
                 className="w-full text-base border border-yellow-400/30 rounded-md px-4 py-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
                 rows={3}
               />
@@ -462,16 +548,30 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                 <input
                   type="datetime-local"
                   value={newTodo.due_date}
-                  onChange={(e) => setNewTodo({ ...newTodo, due_date: e.target.value })}
-                  className="w-full h-12 text-base border border-yellow-400/30 rounded-md px-4 py-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                  onChange={(e) => {
+                    setNewTodo({ ...newTodo, due_date: e.target.value })
+                    clearError('due_date')
+                  }}
+                  className={`w-full h-12 text-base border rounded-md px-4 py-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 ${
+                    formErrors.due_date
+                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                      : 'border-yellow-400/30 focus:border-yellow-400 focus:ring-yellow-400/20'
+                  }`}
                   required
                 />
+                {formErrors.due_date && (
+                  <p className="text-red-400 text-sm mt-1">{formErrors.due_date}</p>
+                )}
               </div>
               <div>
                 <label className="block text-base font-medium mb-1">Priority</label>
                 <select
                   value={newTodo.priority}
-                  onChange={(e) => setNewTodo({ ...newTodo, priority: e.target.value as 'low' | 'medium' | 'high' })}
+                  onChange={(e) => {
+                    const updated = { ...newTodo, priority: e.target.value as 'low' | 'medium' | 'high' }
+                    setNewTodo(updated)
+                    saveFormData(updated)
+                  }}
                   className="w-full h-12 text-base border border-yellow-400/30 rounded-md px-4 py-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
                 >
                   <option value="low">Low</option>

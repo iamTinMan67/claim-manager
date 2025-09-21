@@ -9,6 +9,7 @@ import SubscriptionManager from './SubscriptionManager'
 import PrivilegesStatus from './PrivilegesStatus'
 import { useTheme } from 'next-themes'
 import { useQuery } from '@tanstack/react-query'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface AuthComponentProps {
   children?: React.ReactNode
@@ -31,8 +32,7 @@ export default function AuthComponent({
   showGuestContent = false,
   onToggleGuestContent
 }: AuthComponentProps) {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { user, loading } = useAuth()
   const [authError, setAuthError] = useState<string | null>(null)
   const [isPasswordReset, setIsPasswordReset] = useState(false)
   const [password, setPassword] = useState('')
@@ -75,7 +75,7 @@ export default function AuthComponent({
         { id: 'todos-shared', label: 'Shared To-Do Lists', icon: CheckSquare, requiresClaim: true },
         { id: 'calendar-shared', label: 'Shared Calendar', icon: Calendar, requiresClaim: true },
         ...(selectedClaim ? [{ id: 'export', label: 'Export', icon: Download, requiresClaim: true }] : [] as any),
-        { id: 'privileges', label: 'Privileges', icon: Crown },
+        // { id: 'privileges', label: 'Privileges', icon: Crown }, // Hidden for now
         { id: 'claims', label: 'Private Claims', icon: Home },
         { id: 'shared', label: 'Shared Claims', icon: Users },
       ]
@@ -83,7 +83,7 @@ export default function AuthComponent({
         { id: 'todos-private', label: 'To-Do Lists', icon: CheckSquare, requiresClaim: true },
         { id: 'calendar-private', label: 'Calendar', icon: Calendar, requiresClaim: true },
         ...(selectedClaim ? [{ id: 'export', label: 'Export', icon: Download, requiresClaim: true }] : [] as any),
-        { id: 'privileges', label: 'Privileges', icon: Crown },
+        // { id: 'privileges', label: 'Privileges', icon: Crown }, // Hidden for now
         { id: 'shared', label: 'Shared Claims', icon: Users },
       ]
 
@@ -132,69 +132,23 @@ export default function AuthComponent({
     }
     window.addEventListener('welcomePrefsChanged', onPrefs as EventListener)
 
-    // Only get session if it's not a password reset flow
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      onAuthChange(session?.user ?? null)
-      setLoading(false)
-      // Load subscription state
-      if (session?.user?.id) {
-        supabase
-          .from('subscribers')
-          .select('subscribed')
-          .eq('user_id', session.user.id)
-          .maybeSingle()
-          .then(({ data }) => {
-            setIsSubscribed(!!data?.subscribed)
-            setSubReady(true)
-          })
-      } else {
-        setIsSubscribed(false)
-        setSubReady(true)
-      }
-    })
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null)
-      onAuthChange(session?.user ?? null)
-      // Reset session welcome flag on logout so next login shows welcome again (unless never)
-      if (event === 'SIGNED_OUT') {
-        try { sessionStorage.removeItem('welcome_seen_session') } catch {}
-      }
-      // Refresh subscription state
-      if (session?.user?.id) {
-        supabase
-          .from('subscribers')
-          .select('subscribed')
-          .eq('user_id', session.user.id)
-          .maybeSingle()
-          .then(({ data }) => {
-            console.log('Subscription status check:', data)
-            setIsSubscribed(!!data?.subscribed)
-            setSubReady(true)
-          })
-      } else {
-        setIsSubscribed(false)
-        setSubReady(true)
-      }
-      
-      // Handle auth errors
-      if (event === 'SIGNED_IN') {
-        setAuthError(null)
-      } else if (event === 'SIGNED_OUT') {
-        setAuthError(null)
-      } else if (event === 'SIGN_IN_ERROR') {
-        setAuthError('Invalid email or password. Please check your credentials or sign up if you don\'t have an account.')
-      } else if (event === 'SIGN_UP_ERROR') {
-        setAuthError('Failed to create account. Please try again.')
-      }
-    })
+    // Load subscription state when user changes
+    if (user?.id) {
+      supabase
+        .from('subscribers')
+        .select('subscribed')
+        .eq('user_id', user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          setIsSubscribed(!!data?.subscribed)
+          setSubReady(true)
+        })
+    } else {
+      setIsSubscribed(false)
+      setSubReady(true)
+    }
 
     return () => {
-      subscription.unsubscribe()
       window.removeEventListener('welcomePrefsChanged', onPrefs as EventListener)
     }
   }, [onAuthChange])
@@ -365,7 +319,7 @@ export default function AuthComponent({
           <div className="min-h-screen bg-gray-100 flex items-center justify-center">
             <div className="max-w-md w-full card-enhanced rounded-lg shadow-md p-6">
               <div className="text-center">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-900/30 mb-4">
                   <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
@@ -376,7 +330,12 @@ export default function AuthComponent({
                 </p>
                 <button
                   onClick={() => window.location.href = window.location.origin}
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
+                  className="w-full py-2 px-4 rounded"
+                  style={{
+                    backgroundColor: 'rgba(30, 58, 138, 0.3)',
+                    border: '2px solid #10b981',
+                    color: '#10b981'
+                  }}
                 >
                   Go to Login
                 </button>
@@ -431,7 +390,12 @@ export default function AuthComponent({
               <button
                 type="submit"
                 disabled={resetLoading}
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: 'rgba(30, 58, 138, 0.3)',
+                  border: '2px solid #10b981',
+                  color: '#10b981'
+                }}
               >
                 {resetLoading ? 'Updating Password...' : 'Update Password'}
               </button>
@@ -440,7 +404,7 @@ export default function AuthComponent({
             <div className="mt-4 text-center">
               <button
                 onClick={() => window.location.href = window.location.origin}
-                className="text-blue-600 hover:text-blue-800 text-sm"
+                className="text-yellow-400 hover:text-yellow-300 text-sm"
               >
                 Back to Login
               </button>
@@ -452,15 +416,15 @@ export default function AuthComponent({
 
     // Regular login form
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="max-w-md w-full card-enhanced rounded-lg shadow-md p-6">
-          <h1 className="text-2xl font-bold text-center mb-6">Sign In</h1>
+          <h1 className="text-2xl font-bold text-center mb-6 text-gold">Sign In</h1>
           {authError && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            <div className="mb-4 p-3 bg-red-900/30 border border-red-400 text-red-300 rounded">
               {authError}
             </div>
           )}
-          <div className="mb-4 p-3 bg-blue-100 border border-blue-400 text-blue-700 rounded text-sm">
+          <div className="mb-4 p-3 bg-blue-900/30 border border-blue-400 text-blue-300 rounded text-sm">
             <div className="mb-2">
               <strong>New user?</strong> Create an account by entering your email and password, then click "Sign up" instead of "Sign in".
             </div>
@@ -590,7 +554,7 @@ export default function AuthComponent({
                   </button>
                   <button
                     onClick={openAccountModal}
-                    className="text-sm bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded hover:bg-green-400/10"
+                    className="text-sm bg-blue-900/30 border border-green-400 text-green-400 px-3 py-1 rounded hover:bg-blue-800/50"
                     title={user?.email ? `Account: ${user.email}` : 'Account'}
                   >
                     <Users className="w-4 h-4" />

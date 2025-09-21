@@ -6,6 +6,7 @@ import { useNavigation } from '@/contexts/NavigationContext'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import JSZip from 'jszip'
+import { getClaimIdFromCaseNumber } from '@/utils/claimUtils'
 
 interface ExportFeaturesProps {
   selectedClaim: string | null
@@ -76,7 +77,10 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         .select('*')
       
       if (selectedClaim) {
-        query = query.eq('claim_id', selectedClaim)
+        const claimId = await getClaimIdFromCaseNumber(selectedClaim)
+        if (claimId) {
+          query = query.eq('claim_id', claimId)
+        }
       }
       
       const { data, error } = await query
@@ -502,7 +506,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
               <button
                 onClick={() => handleExport('csv')}
                 disabled={isExporting || getDataCount() === 0}
-                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                className="bg-blue-900/30 border-2 border-green-500 text-green-500 px-6 py-3 rounded-lg hover:bg-blue-800/50 hover:border-green-400 hover:text-green-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
               >
                 <Download className="w-4 h-4" />
                 <span>Export as CSV</span>
@@ -511,7 +515,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
               <button
                 onClick={() => handleExport('pdf')}
                 disabled={isExporting || getDataCount() === 0}
-                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                className="bg-blue-900/30 border-2 border-green-500 text-green-500 px-6 py-3 rounded-lg hover:bg-blue-800/50 hover:border-green-400 hover:text-green-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
               >
                 <Download className="w-4 h-4" />
                 <span>{isExporting ? 'Generating PDF...' : 'Export as PDF'}</span>
@@ -521,7 +525,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
                 <button
                   onClick={downloadDocumentsZip}
                   disabled={isDownloadingZip || !evidence || evidence.length === 0}
-                  className="bg-green-600 text-white px-6 py-3 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  className="bg-blue-900/30 border-2 border-green-500 text-green-500 px-6 py-3 rounded-lg hover:bg-blue-800/50 hover:border-green-400 hover:text-green-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                 >
                   <Download className="w-4 h-4" />
                   <span>{isDownloadingZip ? 'Creating ZIP...' : 'Download Documents ZIP'}</span>

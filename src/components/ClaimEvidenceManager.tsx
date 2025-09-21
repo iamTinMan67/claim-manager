@@ -188,7 +188,7 @@ export const ClaimEvidenceManager = ({
                 {isUnlinkedMode && selectedEvidence.length > 0 && (
                   <Button
                     onClick={() => setShowBulkLinkModal(true)}
-                    className="bg-green-600 text-white hover:bg-green-700"
+                    className="bg-blue-900/30 border-2 border-green-500 text-green-500 hover:bg-blue-800/50 hover:border-green-400 hover:text-green-400"
                     size="sm"
                   >
                     Bulk Link to Claims ({selectedEvidence.length})
@@ -198,14 +198,14 @@ export const ClaimEvidenceManager = ({
                   <>
                     <Button
                       onClick={() => setShowLinkEvidence(true)}
-                      className="bg-green-600 text-white hover:bg-green-700"
+                      className="bg-blue-900/30 border-2 border-green-500 text-green-500 hover:bg-blue-800/50 hover:border-green-400 hover:text-green-400"
                       size="sm"
                     >
                       Link Existing Evidence
                     </Button>
                     <Button
                       onClick={() => setShowAddEvidence(true)}
-                      className="bg-green-600 text-white hover:bg-green-700"
+                      className="bg-blue-900/30 border-2 border-green-500 text-green-500 hover:bg-blue-800/50 hover:border-green-400 hover:text-green-400"
                       size="sm"
                     >
                       Add New Evidence

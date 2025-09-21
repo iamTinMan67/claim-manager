@@ -19,12 +19,23 @@ interface Props {
 }
 
 export const AddCalendarEventModal = ({ isOpen, onClose, onAdd, selectedDate, claims }: Props) => {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const [title, setTitle] = useState('Test Modal Event');
+  const [description, setDescription] = useState('Test modal event description');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [allDay, setAllDay] = useState(false);
   const [selectedClaimId, setSelectedClaimId] = useState<string>('');
+  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
+
+  const clearError = (field: string) => {
+    if (formErrors[field]) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
 
   const resetForm = () => {
     setTitle('');
@@ -38,7 +49,21 @@ export const AddCalendarEventModal = ({ isOpen, onClose, onAdd, selectedDate, cl
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!title.trim()) return;
+    // Clear previous errors
+    setFormErrors({});
+    
+    // Validate required fields
+    const errors: {[key: string]: string} = {};
+    
+    if (!title.trim()) {
+      errors.title = 'Event Title is required';
+    }
+    
+    // If there are validation errors, set them and return
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
 
     let eventStartTime: Date;
     let eventEndTime: Date;
@@ -113,14 +138,21 @@ export const AddCalendarEventModal = ({ isOpen, onClose, onAdd, selectedDate, cl
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="title">Event Title</Label>
+            <Label htmlFor="title">Event Title *</Label>
             <Input
               id="title"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                clearError('title');
+              }}
               placeholder="Enter event title"
+              className={formErrors.title ? 'border-red-500 focus:border-red-500' : ''}
               required
             />
+            {formErrors.title && (
+              <p className="text-red-500 text-sm mt-1">{formErrors.title}</p>
+            )}
           </div>
 
           <div>

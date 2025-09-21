@@ -186,13 +186,13 @@ export const InHouseCalendar = ({ selectedClaimId, claims = [], evidence = [] }:
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => navigateMonth('prev')}
-                    className="btn-gold px-3 py-1 rounded"
+                    className="px-3 py-1 rounded bg-blue-900/30 border-2 border-green-500 text-green-500"
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => navigateMonth('next')}
-                    className="btn-gold px-3 py-1 rounded"
+                    className="px-3 py-1 rounded bg-blue-900/30 border-2 border-green-500 text-green-500"
                   >
                     <ChevronRight className="h-4 w-4" />
                   </button>
@@ -202,7 +202,7 @@ export const InHouseCalendar = ({ selectedClaimId, claims = [], evidence = [] }:
                       className={`px-3 py-1 rounded text-sm ${
                         filterByActiveClaim 
                           ? 'bg-yellow-400/20 text-gold border border-yellow-400' 
-                          : 'btn-gold'
+                          : 'bg-blue-900/30 border-2 border-green-500 text-green-500'
                       }`}
                     >
                       <Filter className="h-4 w-4 mr-2 inline" />
@@ -211,7 +211,7 @@ export const InHouseCalendar = ({ selectedClaimId, claims = [], evidence = [] }:
                   )}
                   <button
                     onClick={() => setShowAddTodo(true)}
-                    className="btn-gold px-3 py-1 rounded ml-2"
+                    className="px-3 py-1 rounded ml-2 bg-blue-900/30 border-2 border-green-500 text-green-500"
                   >
                     <Plus className="h-4 w-4 mr-2 inline" />
                     Add Task

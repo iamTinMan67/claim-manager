@@ -179,10 +179,50 @@ body {
   }
 }
 
+/* Auth button overrides - Global */
+.auth-button-blue-green,
+button.auth-button-blue-green,
+[data-radix-collection-item].auth-button-blue-green {
+  background-color: rgba(30, 58, 138, 0.3) !important;
+  border: 2px solid #10b981 !important;
+  color: #10b981 !important;
+  background: rgba(30, 58, 138, 0.3) !important;
+}
+
+.auth-button-blue-green:hover,
+button.auth-button-blue-green:hover,
+[data-radix-collection-item].auth-button-blue-green:hover {
+  background-color: rgba(30, 64, 175, 0.5) !important;
+  border-color: #059669 !important;
+  color: #059669 !important;
+  background: rgba(30, 64, 175, 0.5) !important;
+}
+
 /* Force background override */
 html, body, #root, .min-h-screen, div[class*="min-h-screen"] {
   background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 25%, #1d4ed8 50%, #2563eb 75%, #3b82f6 100%) !important;
   background-attachment: fixed !important;
+}
+
+/* Force button styling - highest specificity */
+button[type="submit"],
+form button[type="submit"],
+.auth-form button[type="submit"],
+div button[type="submit"] {
+  background-color: rgba(30, 58, 138, 0.3) !important;
+  border: 2px solid #10b981 !important;
+  color: #10b981 !important;
+  background: rgba(30, 58, 138, 0.3) !important;
+}
+
+button[type="submit"]:hover,
+form button[type="submit"]:hover,
+.auth-form button[type="submit"]:hover,
+div button[type="submit"]:hover {
+  background-color: rgba(30, 64, 175, 0.5) !important;
+  border-color: #059669 !important;
+  color: #059669 !important;
+  background: rgba(30, 64, 175, 0.5) !important;
 }
 
 /* Additional override for any container */

@@ -1,6 +1,7 @@
 
 export interface Evidence {
   id: string;
+  title: string;
   file_name: string | null;
   file_url: string | null;
   exhibit_id: string | null;

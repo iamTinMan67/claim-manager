@@ -158,7 +158,7 @@ const PaymentForm = ({
         <button
           type="submit"
           disabled={!stripe || isProcessing || !clientSecret}
-          className="flex-1 bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+          className="flex-1 bg-blue-900/30 border-2 border-green-500 text-green-500 px-4 py-3 rounded-lg hover:bg-blue-800/50 hover:border-green-400 hover:text-green-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
         >
           {isProcessing ? (
             <>

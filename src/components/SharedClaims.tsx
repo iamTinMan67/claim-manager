@@ -6,6 +6,7 @@ import CollaborationHub from './CollaborationHub'
 import { Users, Mail, Eye, Edit, Trash2, Plus, DollarSign, CreditCard, CheckCircle, Clock, AlertCircle, X, UserPlus, UserMinus, Crown, FileText, Home, ChevronLeft, User, UserCheck, MoreVertical, VolumeX, Settings } from 'lucide-react'
 import { useNavigation } from '@/contexts/NavigationContext'
 import EvidenceManager from './EvidenceManager'
+import { getClaimIdFromCaseNumber } from '@/utils/claimUtils'
 
 interface ClaimShare {
   id: string
@@ -134,10 +135,13 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
     queryFn: async () => {
       if (!selectedClaim || !currentUserId || !isGuest) return null
       
+      const claimId = await getClaimIdFromCaseNumber(selectedClaim)
+      if (!claimId) return null
+      
       const { data, error } = await supabase
         .from('claim_shares')
         .select('is_frozen, is_muted')
-        .eq('claim_id', selectedClaim)
+        .eq('claim_id', claimId)
         .eq('shared_with_id', currentUserId)
         .maybeSingle()
       
