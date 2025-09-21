@@ -15,6 +15,7 @@ import SharedClaims from './components/SharedClaims'
 import CollaborationHub from './components/CollaborationHub'
 import ExportFeatures from './components/ExportFeatures'
 import SubscriptionManager from './components/SubscriptionManager'
+import PrivilegesStatus from './components/PrivilegesStatus'
 import { Crown } from 'lucide-react'
 import AccessControl from './components/AccessControl'
 
@@ -210,6 +211,8 @@ function LoggedInContent({
         return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} onClaimColorChange={setSelectedClaimColor} isGuest={currentlyGuest} />
       case 'subscription':
         return <SubscriptionManager />
+      case 'privileges':
+        return <PrivilegesStatus />
       case 'todos-private':
         // If viewing shared claims, show shared version of todos
         return <TodoList selectedClaim={selectedClaim} claimColor={selectedClaimColor} isGuest={false} showGuestContent={false} isGuestFrozen={false} />

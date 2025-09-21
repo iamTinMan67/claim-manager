@@ -118,40 +118,92 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
     }
   })
 
-  // Get shared users for responsible user dropdown (only in shared view)
+  // Get all participants (host + guests) for responsible user dropdown (only in shared view)
   const { data: sharedUsers } = useQuery({
     queryKey: ['shared-users', selectedClaim],
     queryFn: async () => {
       if (!selectedClaim) return []
       
-      const { data, error } = await supabase
-        .from('claim_shares')
-        .select(`
-          shared_with_id,
-          profiles!shared_with_id(id, email, full_name)
-        `)
-        .eq('claim_id', selectedClaim)
-      
-      if (error) throw error
-      const guests = data?.map(share => share.profiles).filter(Boolean) || []
-      // Include host (claim owner) as assignable option
-      const { data: claimOwner } = await supabase
-        .from('claims')
-        .select('user_id')
-        .eq('case_number', selectedClaim)
-        .maybeSingle()
-      if (claimOwner?.user_id) {
-        const { data: ownerProfile } = await supabase
-          .from('profiles')
-          .select('id, email, full_name')
-          .eq('id', claimOwner.user_id)
+      try {
+        // Simple approach: get host first
+        const { data: hostData, error: hostError } = await supabase
+          .from('claims')
+          .select('user_id')
+          .eq('case_number', selectedClaim)
           .maybeSingle()
-        if (ownerProfile) {
-          const exists = guests.some((u: any) => u.id === ownerProfile.id)
-          if (!exists) guests.unshift(ownerProfile as any)
+        
+        if (hostError) {
+          console.error('Host query error:', hostError)
+          throw hostError
         }
+        if (!hostData) {
+          console.log('No host data found for claim:', selectedClaim)
+          return []
+        }
+        
+        // Get host profile
+        const { data: hostProfile, error: hostProfileError } = await supabase
+          .from('profiles')
+          .select('id, email, nickname')
+          .eq('id', hostData.user_id)
+          .maybeSingle()
+        
+        if (hostProfileError) {
+          console.error('Host profile error:', hostProfileError)
+          throw hostProfileError
+        }
+        
+        // Get guests
+        const { data: guestsData, error: guestsError } = await supabase
+          .from('claim_shares')
+          .select('shared_with_id')
+          .eq('claim_id', selectedClaim)
+        
+        if (guestsError) {
+          console.error('Guests query error:', guestsError)
+          throw guestsError
+        }
+        
+        // Get guest profiles
+        const guestIds = guestsData?.map(share => share.shared_with_id) || []
+        let guestProfiles = []
+        
+        if (guestIds.length > 0) {
+          const { data: guestProfilesData, error: guestProfilesError } = await supabase
+            .from('profiles')
+            .select('id, email, nickname')
+            .in('id', guestIds)
+          
+          if (guestProfilesError) {
+            console.error('Guest profiles error:', guestProfilesError)
+            throw guestProfilesError
+          }
+          
+          guestProfiles = guestProfilesData || []
+        }
+        
+        const participants = []
+        
+        // Add host first
+        if (hostProfile) {
+          participants.push(hostProfile)
+        }
+        
+        // Add guests
+        participants.push(...guestProfiles)
+        
+        console.log('Shared users query result:', {
+          selectedClaim,
+          hostProfile,
+          guestProfiles,
+          participants
+        })
+        
+        return participants
+      } catch (error) {
+        console.error('Shared users query failed:', error)
+        throw error
       }
-      return guests
     },
     enabled: !!selectedClaim && showGuestContent
   })
@@ -732,8 +784,9 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                   <textarea
                     name="description"
                     defaultValue={editingTodo.description || ''}
-                    className="w-full text-base border border-yellow-400/30 rounded-md px-4 py-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 text-left"
+                    className="w-full text-base border border-yellow-400/30 rounded-md px-4 py-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 text-left align-top"
                     rows={2}
+                    style={{ textAlign: 'left', verticalAlign: 'top' }}
                   />
                 </div>
                 <div>
@@ -741,7 +794,8 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                   <select
                     name="priority"
                     defaultValue={editingTodo.priority}
-                    className="w-[30%] h-8 text-base border border-yellow-400/30 rounded-md px-4 py-2 bg-white/10 text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 text-left"
+                    className="w-[50%] h-12 text-base border border-yellow-400/30 rounded-md px-4 py-2 bg-white/10 text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 text-left"
+                    style={{ textAlign: 'left' }}
                   >
                     <option value="low">Low</option>
                     <option value="medium">Medium</option>
@@ -772,19 +826,35 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                 <label className="block text-base font-medium mb-1">Assigned To</label>
                 <select
                   name="responsible_user_id"
-                  defaultValue={editingTodo.responsible_user_id || ''}
-                  className="w-[30%] h-8 text-base border border-yellow-400/30 rounded-md px-4 py-2 bg-white/10 text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 text-left"
+                  defaultValue={editingTodo.responsible_user_id || currentUser?.id || ''}
+                  className="w-[50%] h-12 text-base border border-yellow-400/30 rounded-md px-4 py-2 bg-white/10 text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 text-left"
+                  style={{ textAlign: 'left' }}
                 >
-                  <option value="">Assign to yourself</option>
                   {showGuestContent && sharedUsers && sharedUsers.length > 0 ? (
-                    sharedUsers.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.full_name || user.email} {user.id === editingTodo.user_id ? '(You)' : ''}
-                      </option>
-                    ))
+                    sharedUsers.map((user, index) => {
+                      // The first user in sharedUsers is always the host (claim owner)
+                      const isHost = index === 0
+                      const displayName = user.nickname || user.email
+                      
+                      // Debug logging
+                      console.log('Dropdown user data:', {
+                        user: user,
+                        index: index,
+                        isHost: isHost,
+                        displayName: displayName,
+                        nickname: user.nickname,
+                        email: user.email
+                      })
+                      
+                      return (
+                        <option key={user.id} value={user.id}>
+                          {isHost ? 'Host' : `Guest ${index}`}: {displayName}
+                        </option>
+                      )
+                    })
                   ) : (
-                    <option value={editingTodo.user_id || ''}>
-                      {editingTodo.creator_profile?.nickname || editingTodo.creator_profile?.email || 'You'}
+                    <option value={currentUser?.id || ''}>
+                      Host: {currentUser?.email || 'You'}
                     </option>
                   )}
                 </select>

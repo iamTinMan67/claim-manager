@@ -12,7 +12,7 @@ import { toast } from '@/hooks/use-toast';
 const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
+  const [nickname, setNickname] = useState('');
   const [loading, setLoading] = useState(false);
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
@@ -51,7 +51,7 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
     
-    const { error } = await signUp(email, password, fullName);
+    const { error } = await signUp(email, password, nickname);
     
     if (error) {
       toast({
@@ -120,13 +120,13 @@ const Auth = () => {
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-name">Full Name</Label>
+                  <Label htmlFor="signup-name">Nickname</Label>
                   <Input
                     id="signup-name"
                     type="text"
-                    placeholder="Enter your full name"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Enter your nickname"
+                    value={nickname}
+                    onChange={(e) => setNickname(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">

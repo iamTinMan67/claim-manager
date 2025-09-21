@@ -3,9 +3,10 @@ import { supabase } from '@/integrations/supabase/client'
 import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
 import type { User } from '@supabase/supabase-js'
-import { Calendar, FileText, Users, CheckSquare, Download, Moon, Sun, X, Home } from 'lucide-react'
+import { Calendar, FileText, Users, CheckSquare, Download, Moon, Sun, X, Home, Crown } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import SubscriptionManager from './SubscriptionManager'
+import PrivilegesStatus from './PrivilegesStatus'
 import { useTheme } from 'next-themes'
 import { useQuery } from '@tanstack/react-query'
 
@@ -41,7 +42,7 @@ export default function AuthComponent({
   const [resetTokens, setResetTokens] = useState<{accessToken: string, refreshToken: string} | null>(null)
   const { theme, setTheme } = useTheme()
   const [showAccountModal, setShowAccountModal] = useState(false)
-  const [profileFullName, setProfileFullName] = useState('')
+  const [profileNickname, setProfileNickname] = useState('')
   const [accountEmail, setAccountEmail] = useState('')
   const [newPassword1, setNewPassword1] = useState('')
   const [newPassword2, setNewPassword2] = useState('')
@@ -74,6 +75,7 @@ export default function AuthComponent({
         { id: 'todos-shared', label: 'Shared To-Do Lists', icon: CheckSquare, requiresClaim: true },
         { id: 'calendar-shared', label: 'Shared Calendar', icon: Calendar, requiresClaim: true },
         ...(selectedClaim ? [{ id: 'export', label: 'Export', icon: Download, requiresClaim: true }] : [] as any),
+        { id: 'privileges', label: 'Privileges', icon: Crown },
         { id: 'claims', label: 'Private Claims', icon: Home },
         { id: 'shared', label: 'Shared Claims', icon: Users },
       ]
@@ -81,6 +83,7 @@ export default function AuthComponent({
         { id: 'todos-private', label: 'To-Do Lists', icon: CheckSquare, requiresClaim: true },
         { id: 'calendar-private', label: 'Calendar', icon: Calendar, requiresClaim: true },
         ...(selectedClaim ? [{ id: 'export', label: 'Export', icon: Download, requiresClaim: true }] : [] as any),
+        { id: 'privileges', label: 'Privileges', icon: Crown },
         { id: 'shared', label: 'Shared Claims', icon: Users },
       ]
 
@@ -229,13 +232,13 @@ export default function AuthComponent({
       const { data: { user: current } } = await supabase.auth.getUser()
       if (current) {
         setAccountEmail(current.email || '')
-        // Load profile full_name
+        // Load profile nickname
         const { data } = await supabase
           .from('profiles')
-          .select('full_name')
+          .select('nickname')
           .eq('id', current.id)
           .maybeSingle()
-        setProfileFullName((data?.full_name as string) || '')
+        setProfileNickname((data?.nickname as string) || '')
       }
     } catch {}
   }
@@ -250,7 +253,7 @@ export default function AuthComponent({
       // Update profile name
       await supabase
         .from('profiles')
-        .update({ full_name: profileFullName })
+        .update({ nickname: profileNickname })
         .eq('id', current.id)
 
       // Update email if changed
@@ -514,7 +517,8 @@ export default function AuthComponent({
                         (activeTab === 'calendar-shared' && item.id === 'calendar-shared') ||
                         (activeTab === 'todos-shared' && item.id === 'todos-shared') ||
                         (activeTab === 'shared' && item.id === 'shared') ||
-                        (activeTab === 'claims' && item.id === 'claims')) {
+                        (activeTab === 'claims' && item.id === 'claims') ||
+                        (activeTab === 'privileges' && item.id === 'privileges')) {
                       return null
                     }
                     const Icon = item.icon
@@ -619,15 +623,20 @@ export default function AuthComponent({
               <div className="mb-3 text-sm text-yellow-300">{accountMessage}</div>
             )}
 
+            {/* Privileges Status Component */}
+            <div className="mb-6">
+              <PrivilegesStatus />
+            </div>
+
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Full Name</label>
+                <label className="block text-sm font-medium mb-1">Nickname</label>
                 <input
                   type="text"
-                  value={profileFullName}
-                  onChange={(e) => setProfileFullName(e.target.value)}
+                  value={profileNickname}
+                  onChange={(e) => setProfileNickname(e.target.value)}
                   className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
-                  placeholder="Your full name"
+                  placeholder="Your nickname"
                 />
               </div>
 

@@ -9,12 +9,10 @@ max_rows = 1000
 
 [auth]
 enabled = true
-port = 54324
 site_url = "http://localhost:3000"
 additional_redirect_urls = ["https://vwrgnlpajtwifbgyiutk.supabase.co"]
 jwt_expiry = 3600
 enable_signup = true
-email_double_confirm_changes = true
 enable_manual_linking = false
 
 [auth.email]
@@ -34,8 +32,6 @@ major_version = 15
 
 [realtime]
 enabled = true
-port = 54325
-tenant_id = "realtime-dev"
 
 [studio]
 enabled = true
@@ -43,12 +39,10 @@ port = 54323
 
 [storage]
 enabled = true
-port = 54324
 file_size_limit = "50MiB"
 
 [edge_runtime]
 enabled = true
-port = 54326
 
 [inbucket]
 enabled = true
