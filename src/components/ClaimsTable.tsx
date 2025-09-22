@@ -113,6 +113,8 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
+      
+      console.log('ClaimsTable: Fetching claims for user:', user.id, 'isGuest:', isGuest)
 
       let query = supabase
         .from('claims')
@@ -150,6 +152,10 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
         console.error('Claims query error:', error)
         throw error
       }
+      
+      console.log('ClaimsTable: Claims data received:', data)
+      console.log('ClaimsTable: Query was for isGuest:', isGuest)
+      console.log('ClaimsTable: User ID:', user.id)
       return data as Claim[]
     }
   })
@@ -608,9 +614,6 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                 </>
               )}
             </div>
-            <h2 className="text-2xl font-bold text-gold text-center flex-1">
-              {isGuest ? 'Shared Claims' : 'Claims'}
-            </h2>
             <div className="flex items-center space-x-2">
               {!isGuest && (
                 <button
@@ -747,15 +750,15 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
         </div>
       )}
 
-      {/* No Claims Message */}
-      {!showAddForm && !isLoading && claims && claims.length === 0 && (
+      {/* No Claims Message - Only show when there are no claims and no fake card is shown */}
+      {!showAddForm && !isLoading && claims && claims.length === 0 && isGuest && (
         <div className="card-enhanced p-8 text-center">
           <div className="text-gold-light">No claims found. Create your first claim to get started!</div>
         </div>
       )}
 
       {/* Claims Grid */}
-      {!showAddForm && claims && claims.length > 0 && (
+      {!showAddForm && claims && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {claims.map((claim, index) => (
           <div

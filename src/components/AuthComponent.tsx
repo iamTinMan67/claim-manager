@@ -10,6 +10,7 @@ import PrivilegesStatus from './PrivilegesStatus'
 import { useTheme } from 'next-themes'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
+import InvitationNotifications from './InvitationNotifications'
 
 interface AuthComponentProps {
   children?: React.ReactNode
@@ -518,6 +519,9 @@ export default function AuthComponent({
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
+                  {/* Invitation Notifications */}
+                  <InvitationNotifications />
+                  
                   {/* Guest Content Toggle - only show for claim owners when viewing todos/calendar */}
                   {!isGuest && (activeTab === 'todos' || activeTab === 'calendar') && onToggleGuestContent && (
                     <button

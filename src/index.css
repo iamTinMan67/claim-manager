@@ -2,419 +2,370 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Immediate background fix */
+/* Royal Blue Animated Theme with Glowing Effects */
 * {
   box-sizing: border-box;
 }
 
-/* Ensure navbar is always visible at top */
+/* Royal Blue with Purple & Sky Blue Gradient Background */
+html {
+  background: linear-gradient(135deg, 
+    #1e1b4b 0%, 
+    #312e81 10%, 
+    #3730a3 20%, 
+    #4338ca 30%, 
+    #4f46e5 40%, 
+    #6366f1 50%, 
+    #8b5cf6 60%, 
+    #a855f7 70%, 
+    #c084fc 80%, 
+    #ddd6fe 90%, 
+    #e0e7ff 100%) !important;
+  background-size: 400% 400% !important;
+  background-attachment: fixed !important;
+  animation: royalPurpleGradient 12s ease infinite !important;
+  min-height: 100vh !important;
+}
+
+body {
+  background: linear-gradient(135deg, 
+    #1e1b4b 0%, 
+    #312e81 10%, 
+    #3730a3 20%, 
+    #4338ca 30%, 
+    #4f46e5 40%, 
+    #6366f1 50%, 
+    #8b5cf6 60%, 
+    #a855f7 70%, 
+    #c084fc 80%, 
+    #ddd6fe 90%, 
+    #e0e7ff 100%) !important;
+  background-size: 400% 400% !important;
+  background-attachment: fixed !important;
+  animation: royalPurpleGradient 12s ease infinite !important;
+  color: #ffffff !important;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh !important;
+  overflow-x: hidden;
+}
+
+/* Animated Royal Purple Gradient */
+@keyframes royalPurpleGradient {
+  0% { background-position: 0% 50%; }
+  25% { background-position: 50% 0%; }
+  50% { background-position: 100% 50%; }
+  75% { background-position: 50% 100%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Floating Particles Animation with Purple & Sky Blue */
+html::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(circle at 20% 80%, rgba(139, 92, 246, 0.4) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.4) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(96, 165, 250, 0.4) 0%, transparent 50%),
+    radial-gradient(circle at 60% 60%, rgba(192, 132, 252, 0.3) 0%, transparent 50%);
+  animation: floatingParticles 20s ease-in-out infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+
+@keyframes floatingParticles {
+  0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.4; }
+  25% { transform: translateY(-20px) rotate(90deg); opacity: 0.7; }
+  50% { transform: translateY(-10px) rotate(180deg); opacity: 0.5; }
+  75% { transform: translateY(-30px) rotate(270deg); opacity: 0.8; }
+}
+
+/* Royal Purple & Sky Blue Card with Simple Border */
+.card-smudge {
+  background: rgba(30, 27, 75, 0.2) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 2px solid rgba(139, 92, 246, 0.3) !important;
+  box-shadow: 
+    0 8px 32px rgba(139, 92, 246, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative !important;
+  overflow: visible !important;
+}
+
+/* Enhanced Card Styles with Hover Effects */
+  .card-enhanced {
+  @apply card-smudge rounded-3xl;
+  border-radius: 24px !important;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative !important;
+}
+
+.card-enhanced:hover {
+  transform: translateY(-4px) scale(1.02) !important;
+  box-shadow: 
+    0 20px 60px rgba(139, 92, 246, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Royal Text Styling with Purple & Sky Blue Glow */
+.text-gold {
+  color: #ffffff !important;
+  text-shadow: 
+    0 0 15px rgba(139, 92, 246, 0.6),
+    0 0 30px rgba(168, 85, 247, 0.4),
+    0 2px 4px rgba(0, 0, 0, 0.3) !important;
+  font-weight: 600 !important;
+}
+
+.text-gold-light {
+  color: #e2e8f0 !important;
+  text-shadow: 
+    0 0 12px rgba(139, 92, 246, 0.4),
+    0 0 24px rgba(96, 165, 250, 0.3),
+    0 1px 2px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Royal Button with Glowing Effects */
+.btn-gold {
+  background: linear-gradient(135deg, 
+    rgba(30, 58, 138, 0.8) 0%, 
+    rgba(29, 78, 216, 0.9) 50%, 
+    rgba(37, 99, 235, 0.8) 100%) !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 
+    0 4px 20px rgba(30, 58, 138, 0.4),
+    0 0 0 1px rgba(59, 130, 246, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  border: 2px solid rgba(59, 130, 246, 0.8) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.btn-gold::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(255, 255, 255, 0.2), 
+    transparent);
+  transition: left 0.5s ease;
+}
+
+.btn-gold:hover::before {
+  left: 100%;
+}
+
+.btn-gold:hover {
+  background: linear-gradient(135deg, 
+    rgba(29, 78, 216, 0.9) 0%, 
+    rgba(37, 99, 235, 1) 50%, 
+    rgba(59, 130, 246, 0.9) 100%) !important;
+  transform: translateY(-2px) scale(1.05) !important;
+  box-shadow: 
+    0 8px 30px rgba(30, 58, 138, 0.6),
+    0 0 0 1px rgba(59, 130, 246, 1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+  border-color: rgba(59, 130, 246, 1) !important;
+}
+
+/* Auth Button Styling */
+.auth-button-blue-green,
+button.auth-button-blue-green,
+[data-radix-collection-item].auth-button-blue-green {
+  background: linear-gradient(135deg, 
+    rgba(30, 58, 138, 0.8) 0%, 
+    rgba(29, 78, 216, 0.9) 100%) !important;
+  border: 2px solid rgba(59, 130, 246, 0.8) !important;
+  color: #ffffff !important;
+  box-shadow: 
+    0 4px 20px rgba(30, 58, 138, 0.4),
+    0 0 0 1px rgba(59, 130, 246, 0.6) !important;
+  transition: all 0.3s ease !important;
+}
+
+.auth-button-blue-green:hover,
+button.auth-button-blue-green:hover,
+[data-radix-collection-item].auth-button-blue-green:hover {
+  background: linear-gradient(135deg, 
+    rgba(29, 78, 216, 0.9) 0%, 
+    rgba(37, 99, 235, 1) 100%) !important;
+  border-color: rgba(59, 130, 246, 1) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 
+    0 8px 30px rgba(30, 58, 138, 0.6),
+    0 0 0 1px rgba(59, 130, 246, 1) !important;
+}
+
+/* Force Background Override */
+html, body, #root, .min-h-screen, div[class*="min-h-screen"] {
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 15%, #1d4ed8 30%, #2563eb 45%, #3b82f6 60%, #60a5fa 75%, #93c5fd 90%, #dbeafe 100%) !important;
+  background-size: 400% 400% !important;
+  background-attachment: fixed !important;
+  animation: royalGradient 15s ease infinite !important;
+}
+
+/* Enhanced Input Fields */
+input, textarea, select {
+  background: rgba(30, 58, 138, 0.2) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 2px solid rgba(59, 130, 246, 0.5) !important;
+  color: #ffffff !important;
+  transition: all 0.3s ease !important;
+}
+
+input:focus, textarea:focus, select:focus {
+  background: rgba(30, 58, 138, 0.3) !important;
+  border-color: rgba(59, 130, 246, 0.8) !important;
+  box-shadow:
+    0 0 0 3px rgba(59, 130, 246, 0.2),
+    0 0 20px rgba(59, 130, 246, 0.3) !important;
+  outline: none !important;
+}
+
+/* Override White Backgrounds */
+.bg-white, .bg-gray-50, .bg-gray-100 {
+  background: rgba(30, 58, 138, 0.15) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 2px solid rgba(59, 130, 246, 0.3) !important;
+}
+
+/* Text Color Overrides */
+.text-gray-900, .text-gray-800, .text-gray-700, .text-gray-600, .text-gray-500 {
+  color: #ffffff !important;
+  text-shadow: 0 0 8px rgba(59, 130, 246, 0.3) !important;
+}
+
+.text-gray-400, .text-gray-300, .text-gray-200 {
+  color: #e2e8f0 !important;
+  text-shadow: 0 0 6px rgba(59, 130, 246, 0.2) !important;
+}
+
+/* Blue Text to Royal Blue */
+.text-blue-600, .text-blue-700, .text-blue-800, .text-blue-900,
+.text-blue-500, .text-blue-400, .text-blue-300, .text-blue-200, .text-blue-100 {
+  color: #60a5fa !important;
+  text-shadow: 0 0 10px rgba(96, 165, 250, 0.5) !important;
+}
+
+/* Navbar Sticky Effect */
 .card-smudge {
   position: sticky !important;
   top: 0 !important;
   z-index: 1000 !important;
 }
 
-html {
-  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 25%, #1d4ed8 50%, #2563eb 75%, #3b82f6 100%) !important;
-  background-attachment: fixed !important;
-}
-
-body {
-  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 25%, #1d4ed8 50%, #2563eb 75%, #3b82f6 100%) !important;
-  background-attachment: fixed !important;
-  color: #ffffff !important;
-  margin: 0;
-  padding: 0;
-  min-height: 100vh !important;
-}
-
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  
-  html, body {
-    background: linear-gradient(135deg, #10b981 0%, #059669 25%, #047857 50%, #065f46 75%, #064e3b 100%) !important;
-    background-attachment: fixed !important;
-    color: #ffffff !important;
-    min-height: 100vh !important;
-  }
-  
-  #root {
-    background: linear-gradient(135deg, #10b981 0%, #059669 25%, #047857 50%, #065f46 75%, #064e3b 100%) !important;
-    background-attachment: fixed !important;
-    min-height: 100vh !important;
-  }
-  
-  /* Smudge effect for cards */
-  .card-smudge {
-    background: rgba(30, 58, 138, 0.3);
-    backdrop-filter: blur(10px);
-    border: 2px solid #fbbf24;
-    box-shadow: 
-      0 8px 32px rgba(0, 0, 0, 0.2),
-      inset 0 1px 0 rgba(251, 191, 36, 0.3);
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .card-smudge::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(251, 191, 36, 0.2) 0%, transparent 70%);
-    animation: smudge 8s ease-in-out infinite;
-    pointer-events: none;
-  }
-  
-  @keyframes smudge {
-    0%, 100% { transform: translate(-20%, -20%) rotate(0deg); }
-    25% { transform: translate(20%, -10%) rotate(90deg); }
-    50% { transform: translate(-10%, 20%) rotate(180deg); }
-    75% { transform: translate(10%, 10%) rotate(270deg); }
-  }
-  
-  /* Enhanced card styles */
-  .card-enhanced {
-    @apply card-smudge rounded-2xl;
-    border-radius: 24px;
-    transition: all 0.3s ease;
-  }
-  
-  .card-enhanced:hover {
-    transform: translateY(-2px);
-    box-shadow: 
-      0 12px 40px rgba(0, 0, 0, 0.25),
-      inset 0 1px 0 rgba(251, 191, 36, 0.5);
-  }
-  
-  /* Text styling */
-  .text-gold {
-    color: #ffffff;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-  }
-  
-  .text-gold-light {
-    color: #f3f4f6;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-  }
-  
-  /* Button enhancements */
-  .btn-gold {
-    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
-    color: #fbbf24 !important;
-    font-weight: 600;
-    text-shadow: none;
-    box-shadow: 0 4px 15px rgba(30, 58, 138, 0.3);
-    border: 2px solid #fbbf24;
-    transition: all 0.3s ease;
-  }
-  
-  .btn-gold:hover {
-    background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%);
-    color: #fbbf24 !important;
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(30, 58, 138, 0.4);
-    border-color: #f59e0b;
-  }
-}
-
-/* Auth button overrides - Global */
-.auth-button-blue-green,
-button.auth-button-blue-green,
-[data-radix-collection-item].auth-button-blue-green {
-  background-color: rgba(30, 58, 138, 0.3) !important;
-  border: 2px solid #10b981 !important;
-  color: #10b981 !important;
-  background: rgba(30, 58, 138, 0.3) !important;
-}
-
-.auth-button-blue-green:hover,
-button.auth-button-blue-green:hover,
-[data-radix-collection-item].auth-button-blue-green:hover {
-  background-color: rgba(30, 64, 175, 0.5) !important;
-  border-color: #059669 !important;
-  color: #059669 !important;
-  background: rgba(30, 64, 175, 0.5) !important;
-}
-
-/* Force background override */
-html, body, #root, .min-h-screen, div[class*="min-h-screen"] {
-  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 25%, #1d4ed8 50%, #2563eb 75%, #3b82f6 100%) !important;
-  background-attachment: fixed !important;
-}
-
-/* Force button styling - highest specificity */
-button[type="submit"],
-form button[type="submit"],
-.auth-form button[type="submit"],
-div button[type="submit"] {
-  background-color: rgba(30, 58, 138, 0.3) !important;
-  border: 2px solid #10b981 !important;
-  color: #10b981 !important;
-  background: rgba(30, 58, 138, 0.3) !important;
-}
-
-button[type="submit"]:hover,
-form button[type="submit"]:hover,
-.auth-form button[type="submit"]:hover,
-div button[type="submit"]:hover {
-  background-color: rgba(30, 64, 175, 0.5) !important;
-  border-color: #059669 !important;
-  color: #059669 !important;
-  background: rgba(30, 64, 175, 0.5) !important;
-}
-
-/* Additional override for any container */
-.container, .mx-auto {
-  background: transparent !important;
-}
-
-/* Override any white backgrounds */
-.bg-white, .bg-gray-50, .bg-gray-100 {
-  background: rgba(30, 58, 138, 0.3) !important;
-  backdrop-filter: blur(10px);
-  border: 2px solid #fbbf24;
-}
-
-/* Ensure text is visible */
-.text-gray-900, .text-gray-800, .text-gray-700, .text-gray-600, .text-gray-500 {
+/* Select Dropdown Styling */
+select option {
+  background-color: rgba(30, 58, 138, 0.9) !important;
   color: #ffffff !important;
 }
 
-/* Change blue text to yellow for both light and dark mode styling */
-.text-blue-600, .text-blue-700, .text-blue-800, .text-blue-900,
-.text-blue-500, .text-blue-400, .text-blue-300, .text-blue-200, .text-blue-100 {
-  color: #fbbf24 !important;
-}
-
-/* Additional blue text overrides for light mode */
-.light .text-blue-600, .light .text-blue-700, .light .text-blue-800, .light .text-blue-900,
-.light .text-blue-500, .light .text-blue-400, .light .text-blue-300, .light .text-blue-200, .light .text-blue-100 {
-  color: #fbbf24 !important;
-}
-
-/* Additional blue text overrides for dark mode */
-.dark .text-blue-600, .dark .text-blue-700, .dark .text-blue-800, .dark .text-blue-900,
-.dark .text-blue-500, .dark .text-blue-400, .dark .text-blue-300, .dark .text-blue-200, .dark .text-blue-100 {
-  color: #fbbf24 !important;
-}
-
-/* Override any other blue text variations */
-[class*="text-blue"], [class*="text-indigo"], [class*="text-sky"] {
-  color: #fbbf24 !important;
-}
-
-/* Light mode (day mode) specific overrides - SWITCH TO ROYAL BLUE */
-.light {
-  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 25%, #1d4ed8 50%, #2563eb 75%, #3b82f6 100%) !important;
+/* Dark Mode Overrides */
+.dark {
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 15%, #1d4ed8 30%, #2563eb 45%, #3b82f6 60%, #60a5fa 75%, #93c5fd 90%, #dbeafe 100%) !important;
+  background-size: 400% 400% !important;
   background-attachment: fixed !important;
-}
-
-.light body {
-  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 25%, #1d4ed8 50%, #2563eb 75%, #3b82f6 100%) !important;
-  background-attachment: fixed !important;
-  color: #ffffff !important;
-}
-
-/* Light mode card styling - ROYAL BLUE THEME */
-.light .card-enhanced {
-  background: rgba(30, 58, 138, 0.3) !important;
-  backdrop-filter: blur(10px) !important;
-  border: 2px solid #fbbf24 !important;
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(251, 191, 36, 0.3);
-}
-
-/* Light mode white background overrides - ROYAL BLUE THEME */
-.light .bg-white, .light .bg-gray-50, .light .bg-gray-100 {
-  background: rgba(30, 58, 138, 0.3) !important;
-  backdrop-filter: blur(10px);
-  border: 2px solid #fbbf24;
-}
-
-/* Light mode text color overrides */
-.light .text-gray-900, .light .text-gray-800, .light .text-gray-700,
-.light .text-gray-600, .light .text-gray-500 {
-  color: #ffffff !important;
-}
-
-.light .text-gray-400, .light .text-gray-300, .light .text-gray-200 {
-  color: #f3f4f6 !important;
-}
-
-/* Light mode button styling - ROYAL BLUE THEME (already matches btn-gold) */
-.light .btn-gold {
-  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
-  color: #fbbf24 !important;
-  font-weight: 600;
-  text-shadow: none;
-  box-shadow: 0 4px 15px rgba(30, 58, 138, 0.3);
-  border: 2px solid #fbbf24;
-  transition: all 0.3s ease;
-}
-
-.light .btn-gold:hover {
-  background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%);
-  color: #fbbf24 !important;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(30, 58, 138, 0.4);
-  border-color: #f59e0b;
-}
-
-/* Light mode smudge effect - ROYAL BLUE THEME */
-.light .card-smudge {
-  background: rgba(30, 58, 138, 0.3);
-  backdrop-filter: blur(10px);
-  border: 2px solid #fbbf24;
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(251, 191, 36, 0.3);
-  position: relative;
-  overflow: hidden;
-}
-
-.light .card-smudge::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(251, 191, 36, 0.2) 0%, transparent 70%);
-  animation: smudge 8s ease-in-out infinite;
-  pointer-events: none;
-}
-
-/* Light mode card enhanced hover */
-.light .card-enhanced:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.25),
-    inset 0 1px 0 rgba(251, 191, 36, 0.5);
-}
-
-/* Light mode navbar sticky */
-.light .card-smudge {
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 1000 !important;
-}
-
-/* Light mode force background overrides - ROYAL BLUE THEME */
-.light html, .light body, .light #root, .light .min-h-screen, .light div[class*="min-h-screen"] {
-  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 25%, #1d4ed8 50%, #2563eb 75%, #3b82f6 100%) !important;
-  background-attachment: fixed !important;
-}
-
-/* Dark mode: set backgrounds to black */
-.dark, .dark body, .dark html, .dark #root, .dark .min-h-screen, .dark div[class*="min-h-screen"] {
-  background: #000000 !important;
-  background-attachment: fixed !important;
-  color: #ffffff !important;
+  animation: royalGradient 15s ease infinite !important;
 }
 
 .dark .card-enhanced {
-  background: rgba(0, 0, 0, 0.6) !important;
-  backdrop-filter: blur(10px);
-  border: 2px solid #fbbf24;
+  background: rgba(15, 23, 42, 0.4) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 2px solid rgba(59, 130, 246, 0.6) !important;
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(251, 191, 36, 0.2);
+    0 8px 32px rgba(15, 23, 42, 0.6),
+    0 0 0 1px rgba(59, 130, 246, 0.4) !important;
 }
 
 .dark .bg-white, .dark .bg-gray-50, .dark .bg-gray-100 {
-  background: rgba(0, 0, 0, 0.6) !important;
-  border: 2px solid #fbbf24;
+  background: rgba(15, 23, 42, 0.4) !important;
+  border: 2px solid rgba(59, 130, 246, 0.6) !important;
 }
 
-.dark .btn-gold {
-  background: #111111;
-  color: #fbbf24 !important;
-  border: 2px solid #fbbf24;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+/* Light Mode (Royal Blue Theme) */
+.light {
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 15%, #1d4ed8 30%, #2563eb 45%, #3b82f6 60%, #60a5fa 75%, #93c5fd 90%, #dbeafe 100%) !important;
+  background-size: 400% 400% !important;
+  background-attachment: fixed !important;
+  animation: royalGradient 15s ease infinite !important;
 }
 
-.dark .btn-gold:hover {
-  background: #181818;
-  color: #fbbf24 !important;
-  border-color: #f59e0b;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.8);
+.light .card-enhanced {
+  background: rgba(30, 58, 138, 0.15) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 2px solid rgba(59, 130, 246, 0.5) !important;
+  box-shadow: 
+    0 8px 32px rgba(30, 58, 138, 0.3),
+    0 0 0 1px rgba(59, 130, 246, 0.5) !important;
 }
 
-.text-gray-400, .text-gray-300, .text-gray-200 {
-  color: #f3f4f6 !important;
+.light .bg-white, .light .bg-gray-50, .light .bg-gray-100 {
+  background: rgba(30, 58, 138, 0.15) !important;
+  border: 2px solid rgba(59, 130, 246, 0.5) !important;
 }
 
-/* Style select dropdown options */
-select option {
-  background-color: #1f2937 !important; /* gray-800 */
-  color: #ffffff !important;
+/* Pulsing Glow Effect for Important Elements */
+@keyframes royalPulse {
+  0%, 100% { 
+    box-shadow: 
+      0 0 20px rgba(59, 130, 246, 0.4),
+      0 0 40px rgba(59, 130, 246, 0.2);
+  }
+  50% { 
+    box-shadow: 
+      0 0 30px rgba(59, 130, 246, 0.6),
+      0 0 60px rgba(59, 130, 246, 0.3);
+  }
 }
 
-/* Dark mode select options */
-.dark select option {
-  background-color: #000000 !important; /* black */
-  color: #ffffff !important;
+.royal-pulse {
+  animation: royalPulse 2s ease-in-out infinite;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(30, 58, 138, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  border-radius: 4px;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.7);
+}
+
+/* Loading Animation */
+@keyframes royalShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.royal-shimmer {
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(59, 130, 246, 0.4), 
+    transparent);
+  background-size: 200% 100%;
+  animation: royalShimmer 2s infinite;
 }

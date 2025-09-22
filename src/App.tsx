@@ -225,7 +225,7 @@ function LoggedInContent({
     
     switch (activeTab) {
       case 'claims':
-        return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} onClaimColorChange={setSelectedClaimColor} isGuest={currentlyGuest} />
+        return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} onClaimColorChange={setSelectedClaimColor} isGuest={false} />
       case 'subscription':
         return <SubscriptionManager />
       case 'privileges':
@@ -245,7 +245,7 @@ function LoggedInContent({
         }
         return <ExportFeatures selectedClaim={selectedClaim} claimColor={selectedClaimColor} />
       default:
-        return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} onClaimColorChange={setSelectedClaimColor} isGuest={currentlyGuest} />
+        return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} onClaimColorChange={setSelectedClaimColor} isGuest={false} />
     }
   }
 
