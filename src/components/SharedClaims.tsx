@@ -182,7 +182,30 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         throw error
       }
       console.log('SharedClaims: Shared claims data:', data)
-      return data as ClaimShare[]
+      // Also include claims with pending invitations (no accepted share yet)
+      const { data: pending, error: pendingErr } = await supabase
+        .from('pending_invitations')
+        .select(`
+          id, claim_id, status
+        `)
+        .eq('owner_id', user.id)
+        .eq('status', 'pending')
+
+      if (pendingErr) {
+        console.log('SharedClaims: Error fetching pending invitations:', pendingErr)
+      }
+
+      const pendingByClaim: Record<string, number> = {}
+      ;(pending || []).forEach(p => {
+        pendingByClaim[p.claim_id] = (pendingByClaim[p.claim_id] || 0) + 1
+      })
+
+      const withPendingFlag = (data as any[]).map(row => ({
+        ...row,
+        pending_invites: pendingByClaim[row.claim_id] || 0
+      }))
+
+      return withPendingFlag as any
     }
   })
 
@@ -242,9 +265,13 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
   const { data: myClaims } = useQuery({
     queryKey: ['my-claims-for-sharing'],
     queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return []
+
       const { data, error } = await supabase
         .from('claims')
         .select('case_number, title')
+        .eq('user_id', user.id)
         .order('title')
       
       if (error) throw error
@@ -895,6 +922,11 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                   <div>
                     <h3 className="text-base font-semibold dark:text-white">{`${share.claims.court} - ${share.claims.title}`}</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-300">Case: {share.claims.case_number}</p>
+                    {((share as any).pending_invites || 0) > 0 && (
+                      <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 mt-1">
+                        Pending invites: {(share as any).pending_invites}
+                      </span>
+                    )}
                 </div>
               </div>
                 <div className="flex items-center space-x-2">

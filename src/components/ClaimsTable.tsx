@@ -35,35 +35,9 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
 
   const queryClient = useQueryClient()
 
-  // Auto-complete functionality - load saved form data
-  const loadFormData = () => {
-    const savedData = localStorage.getItem('claimFormData')
-    if (savedData) {
-      try {
-        const parsed = JSON.parse(savedData)
-        setNewClaim(prev => ({ ...prev, ...parsed, status: 'Active', color: '#3B82F6' }))
-      } catch (error) {
-        console.error('Error loading form data:', error)
-      }
-    }
-  }
-
-  // Save form data to localStorage
-  const saveFormData = (data: typeof newClaim) => {
-    const dataToSave = {
-      case_number: data.case_number,
-      title: data.title,
-      court: data.court,
-      plaintiff_name: data.plaintiff_name,
-      defendant_name: data.defendant_name,
-      description: data.description
-    }
-    localStorage.setItem('claimFormData', JSON.stringify(dataToSave))
-  }
-
-  // Load form data when component mounts
+  // Stop persisting add-claim form data; clear any previous stored values once
   React.useEffect(() => {
-    loadFormData()
+    try { localStorage.removeItem('claimFormData') } catch {}
   }, [])
 
   // Clear error when user starts typing
@@ -143,9 +117,11 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
         }
       } else {
         // Show user's own claims
+        console.log('ClaimsTable: Querying for user claims with user_id:', user.id)
         query = query.eq('user_id', user.id)
       }
       
+      console.log('ClaimsTable: Final query:', query)
       const { data, error } = await query
       
       if (error) {
@@ -393,29 +369,6 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
               <h3 className="text-lg font-semibold text-gold">Add New Claim</h3>
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => {
-                    // Reset form for new claim
-                    const currentMatch = newClaim.case_number.match(/(\d+)/);
-                    const nextNum = currentMatch ? parseInt(currentMatch[1], 10) + 1 : 1;
-                    setNewClaim({
-                      case_number: '',
-                      title: '',
-                      court: '',
-                      plaintiff_name: '',
-                      defendant_name: '',
-                      description: '',
-                      status: 'Active',
-                      color: '#3B82F6'
-                    });
-                    setFormErrors({});
-                    loadFormData();
-                  }}
-                  className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2 hover:opacity-90"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Another</span>
-                </button>
-                <button
                   onClick={() => setShowAddForm(false)}
                   className="bg-white/10 border border-red-400 text-red-400 px-3 py-1 rounded-lg flex items-center space-x-2"
                 >
@@ -460,7 +413,6 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                       const updated = { ...newClaim, case_number: e.target.value }
                       setNewClaim(updated)
                       clearError('case_number')
-                      saveFormData(updated)
                     }}
                     className={`w-full border rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:ring-2 ${
                       formErrors.case_number 
@@ -485,7 +437,6 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                     onChange={(e) => {
                       const updated = { ...newClaim, court: e.target.value }
                       setNewClaim(updated)
-                      saveFormData(updated)
                     }}
                     className="w-2/3 border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                     style={{ width: 'calc(66.666667% + 25px)' }}
@@ -498,7 +449,6 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                     onChange={(e) => {
                       const updated = { ...newClaim, status: e.target.value }
                       setNewClaim(updated)
-                      saveFormData(updated)
                     }}
                     className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                     style={{ width: 'calc(66.666667% + 25px)' }}
@@ -514,13 +464,12 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Plaintiff</label>
-                <input
+                  <input
                   type="text"
                   value={newClaim.plaintiff_name}
                     onChange={(e) => {
                       const updated = { ...newClaim, plaintiff_name: e.target.value }
                       setNewClaim(updated)
-                      saveFormData(updated)
                     }}
                   className="w-2/3 border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                   style={{ width: 'calc(66.666667% + 25px)' }}
@@ -528,13 +477,12 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Defendant</label>
-                <input
+                  <input
                   type="text"
                   value={newClaim.defendant_name}
                     onChange={(e) => {
                       const updated = { ...newClaim, defendant_name: e.target.value }
                       setNewClaim(updated)
-                      saveFormData(updated)
                     }}
                   className="w-2/3 border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                   style={{ width: 'calc(66.666667% + 25px)' }}
@@ -565,7 +513,6 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                   onChange={(e) => {
                     const updated = { ...newClaim, description: e.target.value }
                     setNewClaim(updated)
-                    saveFormData(updated)
                   }}
                   className="border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                   style={{ width: 'calc(100% - 140px)' }}
@@ -614,17 +561,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                 </>
               )}
             </div>
-            <div className="flex items-center space-x-2">
-              {!isGuest && (
-                <button
-                  onClick={() => setShowAddForm(true)}
-                  className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2 hover:opacity-90"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add New Claim</span>
-                </button>
-              )}
-            </div>
+            <div className="flex items-center space-x-2" />
           </div>
         </>
       )}
@@ -750,10 +687,12 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
         </div>
       )}
 
-      {/* No Claims Message - Only show when there are no claims and no fake card is shown */}
-      {!showAddForm && !isLoading && claims && claims.length === 0 && isGuest && (
+      {/* No Claims Message - Show tailored banner for private vs shared */}
+      {!showAddForm && !isLoading && claims && claims.length === 0 && (
         <div className="card-enhanced p-8 text-center">
-          <div className="text-gold-light">No claims found. Create your first claim to get started!</div>
+          <div className="text-gold-light">
+            {isGuest ? 'No shared claims yet. Ask a host to share one with you.' : 'No private claims yet. Create a new claim.'}
+          </div>
         </div>
       )}
 
