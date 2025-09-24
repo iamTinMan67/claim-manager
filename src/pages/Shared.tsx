@@ -45,7 +45,7 @@ const Shared = () => {
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="shared">Shared Claims</TabsTrigger>
               <TabsTrigger value="calendar">Calendar & Tasks</TabsTrigger>
-              <TabsTrigger value="collaboration">Collaboration Hub</TabsTrigger>
+              <TabsTrigger value="collaboration">Connect</TabsTrigger>
             </TabsList>
 
             <TabsContent value="shared" className="space-y-4">

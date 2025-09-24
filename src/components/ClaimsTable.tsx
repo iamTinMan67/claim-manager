@@ -379,6 +379,41 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-4">
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Court</label>
+                  <input
+                    type="text"
+                    value={newClaim.court}
+                    onChange={(e) => {
+                      const updated = { ...newClaim, court: e.target.value }
+                      setNewClaim(updated)
+                    }}
+                    className="w-2/3 border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                    style={{ width: 'calc(66.666667% + 25px)' }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Status</label>
+                  <select
+                    value={newClaim.status}
+                    onChange={(e) => {
+                      const updated = { ...newClaim, status: e.target.value }
+                      setNewClaim(updated)
+                    }}
+                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                    style={{ width: 'calc(66.666667% + 25px)' }}
+                  >
+                    <option value="Pending">Pending</option>
+                    <option value="Active">Active</option>
+                    <option value="Appealing">Appealing</option>
+                    <option value="Closed">Closed</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Row 2: Title (left) and Case Number (right) */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Claim Title *</label>
@@ -389,7 +424,6 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                       const updated = { ...newClaim, title: e.target.value }
                       setNewClaim(updated)
                       clearError('title')
-                      saveFormData(updated)
                     }}
                     className={`w-full border rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:ring-2 ${
                       formErrors.title 
@@ -426,38 +460,6 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                   {formErrors.case_number && (
                     <p className="text-red-400 text-sm mt-1">{formErrors.case_number}</p>
                   )}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Court</label>
-                  <input
-                    type="text"
-                    value={newClaim.court}
-                    onChange={(e) => {
-                      const updated = { ...newClaim, court: e.target.value }
-                      setNewClaim(updated)
-                    }}
-                    className="w-2/3 border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
-                    style={{ width: 'calc(66.666667% + 25px)' }}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Status</label>
-                  <select
-                    value={newClaim.status}
-                    onChange={(e) => {
-                      const updated = { ...newClaim, status: e.target.value }
-                      setNewClaim(updated)
-                    }}
-                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
-                    style={{ width: 'calc(66.666667% + 25px)' }}
-                  >
-                    <option value="Pending">Pending</option>
-                    <option value="Active">Active</option>
-                    <option value="Appealing">Appealing</option>
-                    <option value="Closed">Closed</option>
-                  </select>
                 </div>
               </div>
             </div>
@@ -709,15 +711,22 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
             onClick={() => handleClaimSelect(claim)}
           >
             <div className="flex justify-between items-start mb-3">
-              <div className="flex items-center space-x-2">
-                <div 
-                  className="w-4 h-4 rounded-full"
-                  style={{ backgroundColor: claim.color || '#3B82F6' }}
-                />
-                <h3 className="text-lg font-semibold">{claim.title}</h3>
-                <span className="text-sm text-gray-600">- {claim.case_number}</span>
+              <div className="flex-1">
+                <div className="flex items-center space-x-2 mb-1">
+                  <div 
+                    className="w-4 h-4 rounded-full"
+                    style={{ backgroundColor: claim.color || '#3B82F6' }}
+                  />
+                  <h3 className="text-lg font-semibold">{claim.court || 'Unknown Court'}</h3>
+                </div>
+                <div className="mb-1">
+                  <span className="text-sm text-gray-600">{claim.title}</span>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-600">Case: {claim.case_number}</span>
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 ml-3">
                 {!isGuest && (
                   <>
                     <button
@@ -744,10 +753,6 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                 )}
               </div>
             </div>
-            
-            {claim.court && (
-              <p className="text-sm text-gray-600 mb-2">Court: {claim.court}</p>
-            )}
             
             <div className="flex justify-between items-center mt-3">
               <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${

@@ -4,7 +4,6 @@ import { Crown, Shield, Star, CheckCircle, XCircle } from 'lucide-react';
 
 const PrivilegesStatus: React.FC = () => {
   const { 
-    hasExclusive, 
     hasAdmin, 
     adminTier, 
     hasValidAccess, 
@@ -55,19 +54,6 @@ const PrivilegesStatus: React.FC = () => {
       </div>
 
       <div className="space-y-3">
-        {/* Exclusive Privileges */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <Crown className="w-5 h-5 text-purple-600 mr-2" />
-            <span className="font-medium">Exclusive Privileges</span>
-          </div>
-          {hasExclusive ? (
-            <CheckCircle className="w-5 h-5 text-green-500" />
-          ) : (
-            <XCircle className="w-5 h-5 text-red-500" />
-          )}
-        </div>
-
         {/* Admin Tier */}
         <div className="flex items-center justify-between">
           <div className="flex items-center">
@@ -113,11 +99,7 @@ const PrivilegesStatus: React.FC = () => {
       {/* Summary */}
       <div className="mt-4 p-3 bg-gray-50 rounded-lg">
         <p className="text-sm text-gray-600">
-          {hasExclusive ? (
-            <span className="text-purple-600 font-medium">
-              🎉 You have EXECUTIVE PRIVILEGES! You can bypass all subscription checks and limitations.
-            </span>
-          ) : hasAdmin ? (
+          {hasAdmin ? (
             <span className="text-blue-600 font-medium">
               🔧 You have ADMIN ACCESS with {adminTier} privileges.
             </span>

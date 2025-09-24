@@ -19,6 +19,7 @@ import CollaborationHub from './components/CollaborationHub'
 import ExportFeatures from './components/ExportFeatures'
 import SubscriptionManager from './components/SubscriptionManager'
 import PrivilegesStatus from './components/PrivilegesStatus'
+import Admin from './pages/Admin'
 import { Crown } from 'lucide-react'
 import AccessControl from './components/AccessControl'
 import { Toaster } from '@/components/ui/toaster'
@@ -230,6 +231,8 @@ function LoggedInContent({
         return <SubscriptionManager />
       case 'privileges':
         return <PrivilegesStatus />
+      case 'admin':
+        return <Admin />
       case 'events-private':
         // Private events (todos and calendar) - not tied to a specific claim
         return <Events selectedClaim={null} isGuest={false} isGuestFrozen={false} currentUserId={user?.id} />

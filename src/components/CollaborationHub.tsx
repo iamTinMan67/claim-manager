@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
-import VideoConference from './VideoConference'
+import JitsiCall from './JitsiCall'
 import { 
   MessageCircle, 
   Video, 
@@ -46,7 +46,25 @@ interface WhiteboardElement {
 }
 
 const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, currentUserId }: CollaborationHubProps) => {
-  const [activeTab, setActiveTab] = useState<'chat' | 'video' | 'documents'>('chat')
+  const [activeTab, setActiveTab] = useState<'chat' | 'video' | 'documents' | null>(null)
+
+  // Persist active tab per-claim to avoid unexpected resets
+  useEffect(() => {
+    if (!selectedClaim) return
+    try {
+      const saved = sessionStorage.getItem(`connect_tab_${selectedClaim}`)
+      if (saved === 'chat' || saved === 'video' || saved === 'documents') {
+        setActiveTab(saved as any)
+      } else {
+        setActiveTab(null)
+      }
+    } catch {}
+  }, [selectedClaim])
+
+  useEffect(() => {
+    if (!selectedClaim || !activeTab) return
+    try { sessionStorage.setItem(`connect_tab_${selectedClaim}`, activeTab) } catch {}
+  }, [activeTab, selectedClaim])
   const [newMessage, setNewMessage] = useState('')
   const [isRecording, setIsRecording] = useState(false)
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null)
@@ -242,7 +260,7 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
       <div className="card-smudge p-6">
         <div className="flex items-center space-x-2 mb-2">
           <Users className="w-5 h-5 text-yellow-600" />
-          <h3 className="text-lg font-semibold text-yellow-900">Collaboration Hub</h3>
+          <h3 className="text-lg font-semibold text-yellow-900">Connect</h3>
         </div>
         <p className="text-yellow-800">
           Please select a claim from the list below to start collaborating with chat, video calls, and whiteboard features.
@@ -252,7 +270,7 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
   }
 
   return (
-    <div className="space-y-6 h-full overflow-hidden overscroll-contain">
+    <div className="space-y-4 h-full overflow-hidden">
       
 
       {/* Tab Navigation */}
@@ -311,7 +329,7 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
 
         {/* Chat Tab */}
         {activeTab === 'chat' && (
-          <div className="p-6 flex flex-col h-full">
+          <div className="p-4 flex flex-col h-full">
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-semibold text-gold">Chat</h4>
               {!isGuest && (
@@ -377,7 +395,7 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
                 </button>
               )}
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto border rounded-lg p-4 mb-4 card-enhanced">
+            <div className="flex-1 min-h-0 overflow-y-auto border rounded-lg p-3 mb-3 card-enhanced max-h-[38vh]">
               {messagesLoading ? (
                 <div className="text-center text-gray-500">Loading messages...</div>
               ) : messages && messages.length > 0 ? (
@@ -470,51 +488,43 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
 
         {/* Video Tab */}
         {activeTab === 'video' && (
-          <div className="p-6 overflow-auto">
-            <div className="text-center mb-6">
-              <h3 className="text-lg font-semibold mb-2">Video Conference</h3>
-              <p className="text-gray-600">Choose a provider or join an existing link</p>
-            </div>
+          <div className="p-4 overflow-hidden">
 
-            {/* If any message contains a Meet link, show a Join button */}
-            {messages && (messages as any[]).some(m => m.message_type === 'video' && /^https?:\/\/meet\.google\.com\//.test(m.file_url || m.message)) ? (
-              <div className="card-enhanced p-4 mb-4">
-                <h4 className="font-semibold mb-2">Google Meet Link Shared</h4>
-                <button
-                  onClick={() => {
-                    const latest = [...(messages as any[])].reverse().find(m => m.message_type === 'video' && /^https?:\/\/meet\.google\.com\//.test(m.file_url || m.message))
-                    const href = latest?.file_url || (latest?.message?.match(/https?:\/\/meet\.google\.com\/[\w-]+/g)?.[0] ?? '')
-                    if (href) window.open(href, '_blank')
-                  }}
-                  className="bg-white/10 border border-green-400 text-green-400 px-4 py-2 rounded-lg hover:opacity-90"
-                >
-                  Join Google Meet
-                </button>
-              </div>
-            ) : null}
+            {/* Removed Google Meet join card to avoid Google login prompts */}
 
-            {/* Owner-only: share a Meet link */}
-            {!isGuest && (
-              <div className="card-smudge p-4 mb-4 flex items-center space-x-2">
-                <input
-                  type="url"
-                  placeholder="Paste Google Meet link (https://meet.google.com/...)"
-                  value={meetLink}
-                  onChange={(e) => setMeetLink(e.target.value)}
-                  className="flex-1 h-10 text-sm border border-yellow-400/30 rounded-md px-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
-                />
-                <button
-                  onClick={shareMeetLink}
-                  className="bg-white/10 border border-green-400 text-green-400 px-4 py-2 rounded-lg hover:opacity-90"
-                >
-                  Share Meet Link
-                </button>
+            {/* Inputs removed per request; sharing controls are on Documents tab */}
+
+            {/* Embedded Jitsi meeting using claimId as room name */}
+            {selectedClaim && (
+              <div className="card-enhanced p-0 overflow-hidden rounded-lg border">
+                <div className="px-4 py-2 text-sm text-gray-300 border-b flex items-center justify-between">
+                  <span>Jitsi Meeting</span>
+                  <div className="flex items-center gap-3">
+                    <a
+                      href={`https://meet.jit.si/${selectedClaim}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-400 hover:text-blue-300"
+                      title="Open meeting in a new tab"
+                    >
+                      Open in new tab
+                    </a>
+                    <button onClick={() => setActiveTab('chat')} className="text-red-400 hover:text-red-300">Close</button>
+                  </div>
+                </div>
+                <JitsiCall claimId={selectedClaim} height={420} />
               </div>
             )}
+          </div>
+        )}
 
-            {/* Owner-only: share a document (ONLYOFFICE/Collabora) */}
+        
+
+        {/* Documents Tab */}
+        {activeTab === 'documents' && (
+          <div className="p-4 space-y-3 overflow-hidden">
             {!isGuest && (
-              <div className="card-smudge p-4 mb-4 flex items-center space-x-2">
+              <div className="card-smudge p-4 flex items-center space-x-2">
                 <input
                   type="url"
                   placeholder="Paste document link (ONLYOFFICE/Collabora/Nextcloud)"
@@ -530,44 +540,13 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
                 </button>
               </div>
             )}
-
-            {/* Fallback: built-in Daily.co video */}
-            <VideoConference 
-              claimId={selectedClaim} 
-              onClose={() => setActiveTab('chat')}
-            />
-          </div>
-        )}
-
-        
-
-        {/* Documents Tab */}
-        {activeTab === 'documents' && (
-          <div className="p-6 space-y-4 overflow-auto">
-            {!isGuest && (
-              <div className="card-smudge p-4 flex items-center space-x-2">
-                <input
-                  type="url"
-                  placeholder="Paste ONLYOFFICE/Collabora/Nextcloud doc link (https://...)"
-                  value={docLink}
-                  onChange={(e) => setDocLink(e.target.value)}
-                  className="flex-1 h-10 text-sm border border-yellow-400/30 rounded-md px-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
-                />
-                <button
-                  onClick={shareDocumentLink}
-                  className="bg-white/10 border border-green-400 text-green-400 px-4 py-2 rounded-lg hover:opacity-90"
-                >
-                  Share Document
-                </button>
-              </div>
-            )}
             {latestDocLink ? (
-              <div className="card-enhanced p-0 overflow-hidden rounded-lg border">
+              <div className="card-enhanced p-0 overflow-hidden rounded-lg border max-h-[42vh]">
                 <div className="px-4 py-2 text-sm text-gray-300 border-b flex items-center justify-between">
                   <span>Embedded Document</span>
                   <a href={latestDocLink} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Open in new tab</a>
                 </div>
-                <div className="h-[70vh]">
+                <div className="h-[38vh]">
                   <iframe src={latestDocLink} title="Collaborative Document" className="w-full h-full border-0" />
                 </div>
               </div>

@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client'
 import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
 import type { User } from '@supabase/supabase-js'
-import { Calendar, FileText, Users, CheckSquare, Download, Moon, Sun, X, Home, Crown, CalendarDays } from 'lucide-react'
+import { Calendar, FileText, Users, CheckSquare, Download, Moon, Sun, X, Home, Crown, CalendarDays, Settings as Cog } from 'lucide-react'
+import ConnectToggle from './ConnectToggle'
 import { toast } from '@/hooks/use-toast'
 import SubscriptionManager from './SubscriptionManager'
 import PrivilegesStatus from './PrivilegesStatus'
@@ -519,6 +520,21 @@ export default function AuthComponent({
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
+                  {/* Admin (owner-only) */}
+                  {user?.id === 'f41fbcf1-c378-4594-9a46-fdc198c1a38a' && (
+                    <button
+                      onClick={() => onTabChange?.('admin')}
+                      className="p-2 rounded-lg hover:bg-yellow-400/20 transition-colors text-gold"
+                      title="Admin"
+                    >
+                      <Cog className="w-5 h-5" />
+                    </button>
+                  )}
+                  {/* Collaboration toggle (navbar) - to the left of notifications */}
+                  {activeTab === 'shared' && selectedClaim && (
+                    <ConnectToggle />
+                  )}
+
                   {/* Invitation Notifications */}
                   <InvitationNotifications />
                   

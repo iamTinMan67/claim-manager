@@ -7,6 +7,7 @@ import { Users, Mail, Eye, Edit, Trash2, Plus, DollarSign, CreditCard, CheckCirc
 import { useNavigation } from '@/contexts/NavigationContext'
 import EvidenceManager from './EvidenceManager'
 import { getClaimIdFromCaseNumber } from '@/utils/claimUtils'
+import { toast } from '@/hooks/use-toast'
 
 interface ClaimShare {
   id: string
@@ -65,6 +66,29 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
   React.useEffect(() => {
     setShowCollaboration(false)
   }, [selectedClaim])
+
+  // Ensure Shared page opens to the claims grid (no selection) when first loaded
+  React.useEffect(() => {
+    // Run once on mount
+    try {
+      if (selectedClaim) {
+        if (typeof window !== 'undefined') {
+          const url = new URL(window.location.href)
+          url.searchParams.delete('claim')
+          window.history.replaceState({}, '', url.toString())
+        }
+        window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null, claimColor: '#3B82F6' } }))
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Listen for navbar collaboration toggle
+  React.useEffect(() => {
+    const handler = () => setShowCollaboration((v) => !v)
+    window.addEventListener('toggleCollaboration', handler as EventListener)
+    return () => window.removeEventListener('toggleCollaboration', handler as EventListener)
+  }, [])
   const [shareData, setShareData] = useState({
     email: '',
     permission: 'edit' as const,
@@ -85,6 +109,23 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
   })
 
   const queryClient = useQueryClient()
+
+  // Suppress welcome screen while on Shared page and when opening share form
+  React.useEffect(() => {
+    try {
+      sessionStorage.setItem('welcome_seen_session', '1')
+      window.dispatchEvent(new Event('welcomePrefsChanged'))
+    } catch {}
+  }, [])
+
+  React.useEffect(() => {
+    if (showShareForm) {
+      try {
+        sessionStorage.setItem('welcome_seen_session', '1')
+        window.dispatchEvent(new Event('welcomePrefsChanged'))
+      } catch {}
+    }
+  }, [showShareForm])
 
   // Close dropdown when clicking outside
   React.useEffect(() => {
@@ -285,6 +326,12 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
+      // Resolve case_number (passed in shareInfo.claim_id) to real claim_id (UUID)
+      const resolvedClaimId = await getClaimIdFromCaseNumber(shareInfo.claim_id)
+      if (!resolvedClaimId) {
+        throw new Error('Could not resolve claim_id for the selected claim')
+      }
+
       // ENFORCE TIER LIMITS: require appropriate tier based on total guest shares
       const { data: subscriber } = await supabase
         .from('subscribers')
@@ -292,12 +339,13 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         .eq('user_id', user.id)
         .maybeSingle()
 
-      const tier = (subscriber?.subscription_tier || 'free') as 'free' | 'basic' | 'frontend'
+      const tier = (subscriber?.subscription_tier || 'free').toLowerCase() as 'free' | 'basic' | 'general' | 'premium'
       const isSubscribed = !!subscriber?.subscribed
 
       // Allowed totals across ALL claims owned by the host
-      const allowedGuestTotal = tier === 'frontend' ? Number.MAX_SAFE_INTEGER
-        : tier === 'basic' ? 7
+      const allowedGuestTotal = tier === 'premium' ? Number.MAX_SAFE_INTEGER
+        : tier === 'general' ? 7
+        : tier === 'basic' ? 4
         : 1 // free tier: 1 total guest
 
       // Current total guests across all owned claims (including pending invitations)
@@ -313,18 +361,31 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         .eq('status', 'pending')
 
       const currentTotalGuests = (totalGuestsCount || 0) + (pendingInvitationsCount || 0)
-      if (!isSubscribed || (currentTotalGuests + 1) > allowedGuestTotal) {
+      
+      console.log('SharedClaims: Tier check debug:', {
+        tier,
+        isSubscribed,
+        allowedGuestTotal,
+        totalGuestsCount,
+        pendingInvitationsCount,
+        currentTotalGuests,
+        tryingToAdd: 1
+      })
+      
+      if ((currentTotalGuests + 1) > allowedGuestTotal) {
         const needed = allowedGuestTotal === 1 ? 'basic' : 'frontend'
         const err = new Error('UPGRADE_REQUIRED') as any
         err.details = { tierNeeded: needed }
         throw err
       }
 
+      // Free tier: no unified cap. Users may guest unlimited claims.
+
       // SECURITY: Verify user owns the claim they're trying to share
       const { data: claimOwner, error: ownerError } = await supabase
         .from('claims')
         .select('user_id')
-        .eq('case_number', shareInfo.claim_id)
+        .eq('claim_id', resolvedClaimId)
         .single()
 
       if (ownerError || !claimOwner) {
@@ -336,10 +397,11 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
       }
 
       // First, check if user exists with an account (must be registered)
+      const normalizedEmail = (shareInfo.email || '').trim().toLowerCase()
       const { data: existingUser, error: userLookupError } = await supabase
         .from('profiles')
         .select('id')
-        .eq('email', shareInfo.email)
+        .ilike('email', normalizedEmail)
         .maybeSingle()
 
       if (userLookupError) {
@@ -360,7 +422,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
       const { data: existingShare } = await supabase
         .from('claim_shares')
         .select('id')
-        .eq('claim_id', shareInfo.claim_id)
+        .eq('claim_id', resolvedClaimId)
         .eq('shared_with_id', existingUser.id)
         .maybeSingle()
 
@@ -368,49 +430,36 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         throw new Error(`This claim is already shared with ${shareInfo.email}`)
       }
 
-      // Check if there's already a pending invitation
-      const { data: existingInvitation } = await supabase
-        .from('pending_invitations')
-        .select('id')
-        .eq('claim_id', shareInfo.claim_id)
-        .eq('invited_user_id', existingUser.id)
-        .eq('status', 'pending')
-        .maybeSingle()
-
-      if (existingInvitation) {
-        throw new Error(`An invitation is already pending for ${shareInfo.email}`)
-      }
-
       // Calculate donation amount
       const currentGuestCount = (guestCounts?.[shareInfo.claim_id] || 0) + 1
       const donationAmount = calculateDonationAmount(currentGuestCount)
       
-      // Create pending invitation instead of direct share
+      // Create a pending invitation (guest must accept)
       const invitationData = {
-        claim_id: shareInfo.claim_id,
-        owner_id: user.id,
+        claim_id: resolvedClaimId,
+            owner_id: user.id,
         invited_user_id: existingUser.id,
-        invited_email: shareInfo.email,
-        permission: shareInfo.permission,
-        can_view_evidence: shareInfo.can_view_evidence,
-        is_frozen: shareInfo.is_frozen,
-        is_muted: shareInfo.is_muted,
+        invited_email: normalizedEmail,
+            permission: shareInfo.permission,
+            can_view_evidence: shareInfo.can_view_evidence,
+          is_frozen: shareInfo.is_frozen,
+          is_muted: shareInfo.is_muted,
         donation_amount: donationAmount,
         donation_required: donationAmount > 0,
         status: 'pending'
       }
-      
+
       const { data: invitation, error: invitationError } = await supabase
         .from('pending_invitations')
         .insert([invitationData])
-        .select()
-        .single()
+          .select()
+          .single()
 
       if (invitationError) {
         throw invitationError
       }
 
-      // Create notification for the invited user
+      // Notify the guest
       const { error: notificationError } = await supabase
         .from('notifications')
         .insert([{
@@ -420,19 +469,30 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
           message: `You've been invited to join claim ${shareInfo.claim_id}`,
           data: {
             invitation_id: invitation.id,
-            claim_id: shareInfo.claim_id,
+            claim_id: resolvedClaimId,
             owner_id: user.id
           }
         }])
 
       if (notificationError) {
-        console.error('Failed to create notification:', notificationError)
-        // Don't throw error here as invitation was created successfully
+        console.warn('Invitation created but notification failed:', notificationError)
       }
-      
+
+      console.log('SharedClaims: Invitation created', invitation)
       return invitation
     },
-    onSuccess: () => {
+    onSuccess: (result: any) => {
+      console.log('SharedClaims: share success', result)
+      toast({ title: 'Invitation sent', description: 'Your guest has been invited.' })
+      
+      // Fair usage warning for free-tier users (non-blocking)
+      if (tier === 'free') {
+        toast({
+          title: 'Fair usage',
+          description: 'Free plan: you can invite 1 guest total across your hosted claims. You can be a guest on unlimited claims.'
+        })
+      }
+      
       queryClient.invalidateQueries({ queryKey: ['shared-claims'] })
       queryClient.invalidateQueries({ queryKey: ['guest-counts'] })
       queryClient.invalidateQueries({ queryKey: ['pending-invitations'] })
@@ -448,29 +508,11 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
       })
       setClaimToShare('')
     },
-    onError: (error) => {
-      if ((error as any).message === 'PAYMENT_REQUIRED') {
-        // Show payment modal
-        const currentGuestCount = (guestCounts?.[claimToShare] || 0) + 1
-        const amount = calculateDonationAmount(currentGuestCount)
-        
-        setPaymentData({
-          amount: amount,
-          claimId: claimToShare,
-          guestEmail: shareData.email
-        })
-        setShowPaymentModal(true)
-      } else if ((error as any).message === 'UPGRADE_REQUIRED') {
-        const needed = (error as any).details?.tierNeeded === 'frontend' ? 'Premium (Buy All Files.)' : 'Basic'
-        setShareError(`Upgrade required: Your current plan does not allow adding another guest. Please upgrade to ${needed}. Redirecting to subscription...`)
-        try {
-          window.dispatchEvent(new CustomEvent('tabChange', { detail: 'subscription' }))
-        } catch {}
-        setShowShareForm(false)
-      } else {
-        // Show error message for other errors (like user not found)
-        setShareError((error as any).message)
-      }
+    onError: (error: any) => {
+      console.error('SharedClaims: share error', error)
+      const msg = error?.message || 'Unable to send invitation.'
+      toast({ title: 'Share failed', description: msg })
+      setShareError(msg)
     }
   })
 
@@ -592,36 +634,73 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
     // Handle payment error silently
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const claimId = selectedClaim || claimToShare
-    
-    if (!shareData.email.trim() || !claimId) {
-      return
-    }
-    
-    // Parse multiple email addresses
-    const emails = shareData.email
-      .split(',')
-      .map(email => email.trim())
-      .filter(email => email.length > 0)
-    
+
+    setShareError(null)
+
+    // Normalize and split emails
+    const raw = (shareData.email || '').split(',')
+    const emails = raw.map((s) => s.trim().toLowerCase()).filter((s) => s.length > 0)
+
     if (emails.length === 0) {
-      setShareError('Please enter at least one valid email address')
+      setShareError('Please enter at least one email address.')
       return
     }
     
-    // Process each email individually
-    emails.forEach((email, index) => {
-      // Add a small delay between requests to avoid overwhelming the server
-      setTimeout(() => {
-        shareClaimMutation.mutate({
-          ...shareData,
-          email: email,
-          claim_id: claimId
-        })
-      }, index * 100) // 100ms delay between each request
-    })
+    try {
+      // Get current user and tier limits
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
+      // Subscription/tier
+      const { data: subscriber } = await supabase
+        .from('subscribers')
+        .select('subscription_tier, subscribed')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      const tier = (subscriber?.subscription_tier || 'free').toLowerCase() as 'free' | 'basic' | 'general' | 'premium'
+      const isSubscribed = !!subscriber?.subscribed
+
+      const allowedGuestTotal = tier === 'premium' ? Number.MAX_SAFE_INTEGER
+        : tier === 'general' ? 7
+        : tier === 'basic' ? 4
+        : 1 // free tier
+
+      // Current total guests across all owned claims
+      const { count: totalGuestsCount } = await supabase
+        .from('claim_shares')
+        .select('id', { count: 'exact', head: true })
+        .eq('owner_id', user.id)
+
+      const { count: pendingInvitationsCount } = await supabase
+        .from('pending_invitations')
+        .select('id', { count: 'exact', head: true })
+        .eq('owner_id', user.id)
+        .eq('status', 'pending')
+
+      const currentTotalGuests = (totalGuestsCount || 0) + (pendingInvitationsCount || 0)
+      const remainingSlots = allowedGuestTotal === Number.MAX_SAFE_INTEGER ? Number.MAX_SAFE_INTEGER : Math.max(0, allowedGuestTotal - currentTotalGuests)
+
+      // If the number of emails exceeds remaining slots, route to subscription
+      if (allowedGuestTotal !== Number.MAX_SAFE_INTEGER && emails.length > remainingSlots) {
+        try { sessionStorage.setItem('welcome_seen_session', '1') } catch {}
+        // Navigate to subscription/upgrade
+        navigateTo('subscription')
+        setShareError(`Your plan allows ${allowedGuestTotal} total guest${allowedGuestTotal === 1 ? '' : 's'}. You already have ${currentTotalGuests}. Please upgrade to invite ${emails.length} more guest${emails.length === 1 ? '' : 's'}.`)
+        return
+      }
+
+      // Otherwise proceed; invite each email (existing flow)
+      emails.forEach((email, idx) => {
+        setTimeout(() => {
+          shareClaimMutation.mutate({ ...shareData, email, claim_id: selectedClaim || claimToShare })
+        }, idx * 150)
+      })
+    } catch (err: any) {
+      setShareError(err?.message || 'Unable to process invitations right now.')
+    }
   }
 
 
@@ -640,67 +719,9 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
 
       {/* Collaboration Section */}
       {showCollaboration && selectedClaim && (
-        <div className="card-enhanced rounded-lg shadow border-l-4 sticky top-4 z-30" style={{ borderLeftColor: claimColor }}>
-          <div className="p-4 border-b">
-            <div className="flex items-center justify-between mb-2">
-              {/* Left: Back + Home */}
-              <div className="flex items-center space-x-2">
-              <button
-                onClick={() => {
-                  try {
-                    if (typeof window !== 'undefined') {
-                      const url = new URL(window.location.href)
-                      url.searchParams.delete('claim')
-                      window.history.pushState({}, '', url.toString())
-                    }
-                    window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null, claimColor: '#3B82F6' } }))
-                  } catch {}
-                }}
-                className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                <span>Back</span>
-              </button>
-              <button
-                onClick={() => {
-                  try {
-                    window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null, claimColor: '#3B82F6' } }))
-                    window.dispatchEvent(new CustomEvent('tabChange', { detail: 'claims' }))
-                  } catch {}
-                  navigateTo('claims')
-                }}
-                className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
-              >
-                <Home className="w-4 h-4" />
-                <span>Home</span>
-              </button>
-          </div>
-
-              {/* Center: Hub tagline */}
-              <div className="flex-1 text-center">
-                <div className="text-sm text-gray-700">
-                  Collaboration Hub — Chat, video calls, and whiteboard collaboration for this claim.
-                </div>
-                <div className="text-sm font-medium text-green-600">
-                  Free collaboration included!
-                </div>
-              </div>
-
-              {/* Right: spacer to keep center aligned */}
-              <div className="flex items-center space-x-2 opacity-0">
-                 <button className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2">
-                   <ChevronLeft className="w-4 h-4" />
-                   <span>Back</span>
-                 </button>
-                 <button className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2">
-                   <Home className="w-4 h-4" />
-                   <span>Home</span>
-                 </button>
-              </div>
-            </div>
-          </div>
-          <div className="p-0 h-[70vh]">
-            <div className="h-full overflow-auto">
+        <div className="card-enhanced rounded-lg shadow border-l-4 relative z-30 w-full" style={{ borderLeftColor: claimColor }}>
+          <div className="p-0 h-[calc(100vh-2rem)]">
+            <div className="h-full overflow-hidden">
             <CollaborationHub 
               selectedClaim={selectedClaim} 
               claimColor={claimColor}
@@ -717,7 +738,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         <div className="card-smudge p-6">
           <div className="flex items-center space-x-2 mb-2">
             <Users className="w-5 h-5 text-yellow-600" />
-            <h3 className="text-lg font-semibold text-yellow-900">Collaboration Hub</h3>
+            <h3 className="text-lg font-semibold text-yellow-900">Connect</h3>
           </div>
           <p className="text-yellow-800">
             Please select a claim from the list below to start collaborating with chat, video calls, and whiteboard features.
@@ -735,7 +756,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
 
 
       {showShareForm && (
-        <div className="card-enhanced p-6 border-l-4" style={{ borderLeftColor: claimColor }}>
+        <div className="card-enhanced p-6 border-l-4 relative z-20" style={{ borderLeftColor: claimColor }}>
           <h3 className="text-lg font-semibold mb-4 text-gold">Share a Claim</h3>
           {(selectedClaim || claimToShare) && (
             <div className="card-smudge p-4 mb-4">
@@ -818,7 +839,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
               />
               <div className="mt-1 text-xs text-gray-500">
                 Separate multiple emails with commas. Each guest will be added individually.
-              </div>
+            </div>
             </div>
             
             {/* Error Display */}
@@ -884,19 +905,19 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
 
           {/* No Claims Message - Only show when there are no claims at all and share form is not open */}
           {!showShareForm && (!sharedClaims || sharedClaims.length === 0) && (!guestClaims || guestClaims.length === 0) && (
-            <div className="card-enhanced p-8 text-center mb-6">
+            <div className="card-enhanced p-8 text-center mb-6 relative z-0">
               <div className="text-gold-light">No shared claims yet. Share a claim from your private claims screen, or wait for a host to share one with you.</div>
-            </div>
+                </div>
           )}
           
-          <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {/* Claims I Own (Host) - Filter out any that also appear as guest claims */}
           {sharedClaims?.filter(share => 
             !guestClaims?.some(guest => guest.claims.case_number === share.claims.case_number)
           ).map((share) => (
             <div
               key={share.id}
-              className="card-enhanced p-5 cursor-pointer hover:shadow-lg transition-shadow border-l-4"
+              className="card-enhanced p-4 cursor-pointer hover:shadow-lg transition-shadow border-l-4"
               style={{ borderLeftColor: share.claims.color || '#3B82F6' }}
               onClick={() => {
                 if (typeof window !== 'undefined') {
@@ -912,6 +933,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                 }))
               }}
             >
+              
               {/* Header with title and action buttons */}
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center space-x-3">
@@ -920,8 +942,9 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                   style={{ backgroundColor: share.claims.color || '#3B82F6' }}
                 />
                   <div>
-                    <h3 className="text-base font-semibold dark:text-white">{`${share.claims.court} - ${share.claims.title}`}</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">Case: {share.claims.case_number}</p>
+                    <h3 className="text-lg font-semibold dark:text-white">{share.claims.court}</h3>
+                    <span className="block text-sm text-gray-600 dark:text-gray-300">{share.claims.title}</span>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{share.claims.case_number}</p>
                     {((share as any).pending_invites || 0) > 0 && (
                       <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 mt-1">
                         Pending invites: {(share as any).pending_invites}
@@ -993,10 +1016,10 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                 </div>
               </div>
 
-              {/* Guest Information */}
+              {/* Guest Information (I'm the host) */}
               <div className="p-4 mb-4">
                 <div className="flex items-center space-x-2 mb-2">
-                  <Crown className="w-4 h-4 text-purple-600" />
+                  <UserPlus className="w-4 h-4 text-green-600" />
                   <span className="font-medium text-gray-700 dark:text-gray-300">Guest:</span>
                   <span className="text-gray-600 dark:text-gray-400">{share.shared_with_profile?.nickname || share.shared_with_profile?.email || share.shared_with_id}</span>
                   </div>
@@ -1021,64 +1044,19 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                     </span>
                 </div>
                           )}
-                </div>
+                        </div>
               </div>
+            
+              {/* Match private card width */}
+              <div style={{ width: 'calc(100% - 35px)' }} />
                         </div>
           ))}
-
-          {/* Action Card - Always at the end, but hide when share form is open */}
-          {!showShareForm && (
-            !isGuest ? (
-              /* Share Claim Card for Hosts */
-              <div
-                className="card-enhanced p-4 cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-dashed border-gray-300 hover:border-gray-400 flex flex-col items-center justify-center text-center"
-                onClick={() => setShowShareForm(true)}
-                style={{ 
-                  width: 'calc(80% - 28px)'
-                }}
-              >
-                <div className="flex items-center space-x-2 mb-3">
-                  <div className="w-4 h-4 rounded-full bg-gray-300" />
-                  <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400">Share a Claim</h3>
-                </div>
-                <div className="flex justify-center mb-2">
-                  <UserPlus className="w-12 h-12 text-green-500" />
-                </div>
-                <div className="text-sm text-gray-500 dark:text-gray-500">
-                  Click to share a private claim
-                </div>
-              </div>
-            ) : (
-              /* Join Claim Card for Guests */
-              <div
-                className="card-enhanced p-4 cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-dashed border-gray-300 hover:border-gray-400 flex flex-col items-center justify-center text-center"
-                onClick={() => {
-                  // TODO: Implement join claim functionality
-                  alert('Join claim functionality coming soon!')
-                }}
-                style={{ 
-                  width: 'calc(80% - 28px)'
-                }}
-              >
-                <div className="flex items-center space-x-2 mb-3">
-                  <div className="w-4 h-4 rounded-full bg-gray-300" />
-                  <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400">Join a Claim</h3>
-                </div>
-                <div className="flex justify-center mb-2">
-                  <UserCheck className="w-12 h-12 text-blue-500" />
-                </div>
-                <div className="text-sm text-gray-500 dark:text-gray-500">
-                  Click to join a claim (coming soon)
-                </div>
-              </div>
-            )
-          )}
 
           {/* Claims I'm a Guest On */}
           {guestClaims?.map((guestClaim) => (
             <div
               key={guestClaim.id}
-              className="card-enhanced p-5 cursor-pointer hover:shadow-lg transition-shadow border-l-4"
+              className="card-enhanced p-4 cursor-pointer hover:shadow-lg transition-shadow border-l-4"
               style={{ borderLeftColor: guestClaim.claims.color || '#3B82F6' }}
               onClick={() => {
                 if (typeof window !== 'undefined') {
@@ -1102,8 +1080,9 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                   style={{ backgroundColor: guestClaim.claims.color || '#3B82F6' }}
                 />
                   <div>
-                    <h3 className="text-base font-semibold dark:text-white">{`${guestClaim.claims.court} - ${guestClaim.claims.title}`}</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">Case: {guestClaim.claims.case_number}</p>
+                    <h3 className="text-lg font-semibold dark:text-white">{guestClaim.claims.court}</h3>
+                    <span className="block text-sm text-gray-600 dark:text-gray-300">{guestClaim.claims.title}</span>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{guestClaim.claims.case_number}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -1122,10 +1101,10 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                         </div>
               </div>
 
-              {/* Host Information */}
+              {/* Host Information (I'm the guest) */}
               <div className="p-4 mb-4">
               <div className="flex items-center space-x-2 mb-2">
-                  <UserPlus className="w-4 h-4 text-green-600" />
+                  <Crown className="w-4 h-4 text-purple-600" />
                   <span className="font-medium text-gray-700 dark:text-gray-300">Host:</span>
                   <span className="text-gray-600 dark:text-gray-400">{guestClaim.owner_profile?.nickname || guestClaim.owner_profile?.email || guestClaim.owner_id}</span>
                         </div>
@@ -1141,10 +1120,53 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                       <span className="text-sm font-medium capitalize">{guestClaim.permission} Access</span>
                 </div>
                   </div>
-                  </div>
                 </div>
+                </div>
+              {/* Match private card width */}
+              <div style={{ width: 'calc(100% - 35px)' }} />
               </div>
           ))}
+
+          {/* Action card LAST: render after host and guest cards */}
+          {!showShareForm && (
+            !isGuest ? (
+              <div
+                className="card-enhanced p-4 cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-dashed border-gray-300 hover:border-gray-400 flex flex-col items-center justify-center text-center"
+                onClick={() => {
+                  try {
+                    sessionStorage.setItem('welcome_seen_session', '1')
+                    window.dispatchEvent(new Event('welcomePrefsChanged'))
+                  } catch {}
+                  setShowShareForm(true)
+                }}
+                style={{ width: 'calc(80% - 28px)' }}
+              >
+                <div className="flex items-center space-x-2 mb-3">
+                  <div className="w-4 h-4 rounded-full bg-gray-300" />
+                  <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400">Share a Claim</h3>
+          </div>
+                <div className="flex justify-center mb-2">
+                  <UserPlus className="w-12 h-12 text-green-500" />
+                </div>
+                <div className="text-sm text-gray-500 dark:text-gray-500">Click to share a private claim</div>
+              </div>
+            ) : (
+              <div
+                className="card-enhanced p-4 cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-dashed border-gray-300 hover:border-gray-400 flex flex-col items-center justify-center text-center"
+                onClick={() => { alert('Join claim functionality coming soon!') }}
+                style={{ width: 'calc(80% - 28px)' }}
+              >
+                <div className="flex items-center space-x-2 mb-3">
+                  <div className="w-4 h-4 rounded-full bg-gray-300" />
+                  <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400">Join a Claim</h3>
+                </div>
+                <div className="flex justify-center mb-2">
+                  <UserCheck className="w-12 h-12 text-blue-500" />
+                </div>
+                <div className="text-sm text-gray-500 dark:text-gray-500">Click to join a claim (coming soon)</div>
+              </div>
+            )
+          )}
           </div>
                         </div>
                       )}
@@ -1156,7 +1178,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         <div className="space-y-6">
           {/* Header with navigation */}
           <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-2">
+            <div className={`flex items-center space-x-2 ${showCollaboration ? 'hidden' : ''}`}>
                 <button
             onClick={() => {
                   try {
@@ -1187,16 +1209,10 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                 <span>Home</span>
                 </button>
                 </div>
-            <h2 className="text-2xl font-bold text-gold text-center flex-1">Claim Details</h2>
-            <div className="flex items-center">
-              <button
-                onClick={() => setShowCollaboration(!showCollaboration)}
-                className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
-              >
-                <Users className="w-4 h-4" />
-                <span>{showCollaboration ? 'Hide' : 'Show'} Collaboration</span>
-              </button>
-            </div>
+            {/* Hide Claim Details title while Collaboration is active; removed duplicate toggle */}
+            {!showCollaboration && (
+              <h2 className="text-2xl font-bold text-gold text-center flex-1">Claim Details</h2>
+            )}
               </div>
           
           {/* Evidence Management with stable layout */}
@@ -1206,14 +1222,15 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
             claimColor={claimColor} 
             amendMode={amendMode}
             isGuest={isGuest}
+            guestCanEdit={true} 
             currentUserId={currentUserId}
             isGuestFrozen={guestStatus?.is_frozen || false}
             onEditClaim={() => {}}
             onDeleteClaim={() => {}}
             onSetAmendMode={setAmendMode}
-              hidePendingReview={showCollaboration}
-              isStatic={true}
-            />
+            hidePendingReview={showCollaboration}
+            isStatic={false}
+          />
             </div>
           </div>
       )}
@@ -1237,6 +1254,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
             claimColor={claimColor} 
             amendMode={amendMode}
             isGuest={isGuest}
+            guestCanEdit={true}
             currentUserId={currentUserId}
             isGuestFrozen={false}
             onSetAmendMode={setAmendMode}

@@ -85,11 +85,11 @@ html::before {
 }
 
 /* Royal Purple & Sky Blue Card with Simple Border */
-.card-smudge {
+  .card-smudge {
   background: rgba(30, 27, 75, 0.2) !important;
   backdrop-filter: blur(20px) !important;
   border: 2px solid rgba(139, 92, 246, 0.3) !important;
-  box-shadow: 
+    box-shadow: 
     0 8px 32px rgba(139, 92, 246, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
@@ -103,26 +103,26 @@ html::before {
   border-radius: 24px !important;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
   position: relative !important;
-}
-
-.card-enhanced:hover {
+  }
+  
+  .card-enhanced:hover {
   transform: translateY(-4px) scale(1.02) !important;
-  box-shadow: 
+    box-shadow: 
     0 20px 60px rgba(139, 92, 246, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
-}
-
+  }
+  
 /* Royal Text Styling with Purple & Sky Blue Glow */
-.text-gold {
+  .text-gold {
   color: #ffffff !important;
   text-shadow: 
     0 0 15px rgba(139, 92, 246, 0.6),
     0 0 30px rgba(168, 85, 247, 0.4),
     0 2px 4px rgba(0, 0, 0, 0.3) !important;
   font-weight: 600 !important;
-}
-
-.text-gold-light {
+  }
+  
+  .text-gold-light {
   color: #e2e8f0 !important;
   text-shadow: 
     0 0 12px rgba(139, 92, 246, 0.4),
@@ -131,7 +131,7 @@ html::before {
 }
 
 /* Royal Button with Glowing Effects */
-.btn-gold {
+  .btn-gold {
   background: linear-gradient(135deg, 
     rgba(30, 58, 138, 0.8) 0%, 
     rgba(29, 78, 216, 0.9) 50%, 

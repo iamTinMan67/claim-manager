@@ -14,6 +14,7 @@ interface EvidenceManagerProps {
   claimColor?: string
   amendMode?: boolean
   isGuest?: boolean
+  guestCanEdit?: boolean
   currentUserId?: string
   isGuestFrozen?: boolean
   onEditClaim?: () => void
@@ -28,6 +29,7 @@ const EvidenceManager = ({
   claimColor = '#3B82F6', 
   amendMode = false,
   isGuest = false,
+  guestCanEdit = false,
   currentUserId,
   isGuestFrozen = false,
   onEditClaim,
@@ -36,7 +38,7 @@ const EvidenceManager = ({
   isStatic = false,
   hidePendingReview = false
 }: EvidenceManagerProps) => {
-  const isInteractive = !isStatic && !isGuest
+  const isInteractive = !isStatic && (!isGuest || guestCanEdit)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showLinkModal, setShowLinkModal] = useState(false)
   const [editingEvidence, setEditingEvidence] = useState<Evidence | null>(null)
@@ -44,6 +46,24 @@ const EvidenceManager = ({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [dragOverItem, setDragOverItem] = useState<string | null>(null)
+  const [isCollapsed, setIsCollapsed] = useState(true)
+
+  // Persist collapsed state per-claim (by case_number)
+  useEffect(() => {
+    try {
+      if (!selectedClaim) return
+      const stored = localStorage.getItem(`evidence_collapsed_${selectedClaim}`)
+      if (stored === '0') setIsCollapsed(false)
+      if (stored === '1') setIsCollapsed(true)
+    } catch {}
+  }, [selectedClaim])
+
+  useEffect(() => {
+    try {
+      if (!selectedClaim) return
+      localStorage.setItem(`evidence_collapsed_${selectedClaim}` , isCollapsed ? '1' : '0')
+    } catch {}
+  }, [isCollapsed, selectedClaim])
 
   const queryClient = useQueryClient()
 
@@ -537,32 +557,8 @@ const EvidenceManager = ({
         <div className="px-6 py-4 border-b border-yellow-400/20 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gold">Evidence List</h3>
           <div className="flex items-center gap-2">
-            {isInteractive && (!isGuest || (isGuest && !isGuestFrozen)) && (
-              <button
-                onClick={() => {
-                  if (!selectedClaim) {
-                    alert('Please select a claim before linking evidence. The Case Number is required.')
-                    return
-                  }
-                  setShowLinkModal(true)
-                }}
-                disabled={!selectedClaim}
-                className="bg-white/10 border border-yellow-400 text-yellow-400 px-3 py-2 rounded-lg flex items-center space-x-2 hover:opacity-90"
-              >
-                <Link className="w-4 h-4" />
-                <span>Link</span>
-              </button>
-            )}
-            {onSetAmendMode && isInteractive && (
-              <button
-                onClick={() => onSetAmendMode(!amendMode)}
-                className={`px-3 py-2 rounded-lg flex items-center space-x-2 bg-white/10 border border-red-400 text-red-400 hover:opacity-90`}
-              >
-                <Settings className="w-4 h-4" />
-                <span>{amendMode ? 'Exit Amend' : 'Amend'}</span>
-              </button>
-            )}
-            {isInteractive && (!isGuest || (isGuest && !isGuestFrozen)) && (
+            {/* Order: Add, Amend, Link, then Show. Hide first three while collapsed */}
+            {!isCollapsed && isInteractive && (!isGuest || (isGuest && !isGuestFrozen)) && (
               <button
                 onClick={() => {
                   if (!selectedClaim) {
@@ -572,15 +568,48 @@ const EvidenceManager = ({
                   setShowAddModal(true)
                 }}
                 disabled={!selectedClaim}
-                className="bg-white/10 border border-green-400 text-green-400 px-3 py-2 rounded-lg flex items-center space-x-2 hover:opacity-90"
+                className="bg-white/10 border border-green-400 text-green-400 px-3 h-8 rounded-lg flex items-center space-x-2 hover:opacity-90"
               >
                 <Plus className="w-4 h-4" />
                 <span>{isGuest ? 'Submit' : 'Add'}</span>
               </button>
             )}
+            {!isCollapsed && onSetAmendMode && isInteractive && (
+              <button
+                onClick={() => onSetAmendMode(!amendMode)}
+                className={`px-3 h-8 rounded-lg flex items-center space-x-2 bg-white/10 border border-red-400 text-red-400 hover:opacity-90`}
+              >
+                <Settings className="w-4 h-4" />
+                <span>{amendMode ? 'Exit Amend' : 'Amend'}</span>
+              </button>
+            )}
+            {!isCollapsed && isInteractive && (!isGuest || (isGuest && !isGuestFrozen)) && (
+              <button
+                onClick={() => {
+                  if (!selectedClaim) {
+                    alert('Please select a claim before linking evidence. The Case Number is required.')
+                    return
+                  }
+                  setShowLinkModal(true)
+                }}
+                disabled={!selectedClaim}
+                className="bg-white/10 border border-white text-white px-3 h-8 rounded-lg flex items-center space-x-2 hover:opacity-90"
+              >
+                <Link className="w-4 h-4" />
+                <span>Link</span>
+              </button>
+            )}
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="bg-white/10 border border-yellow-400 text-yellow-400 px-3 h-8 rounded-lg flex items-center space-x-2 hover:opacity-90"
+              title={isCollapsed ? 'Show evidence' : 'Hide evidence'}
+            >
+              <span>{isCollapsed ? 'Show' : 'Hide'}</span>
+            </button>
+          </div>
         </div>
-        </div>
-        <div className={`${isStatic ? 'max-h-[75vh] overflow-y-auto overflow-x-hidden' : ''} ${!isStatic ? 'overflow-x-auto' : ''}`} style={{ scrollbarGutter: isStatic ? 'stable both-edges' as any : undefined }}>
+        {!isCollapsed && (
+          <div className={`${isStatic ? 'max-h-[75vh] overflow-y-auto overflow-x-hidden' : ''} ${!isStatic ? 'overflow-x-auto' : ''}`} style={{ scrollbarGutter: isStatic ? 'stable both-edges' as any : undefined }}>
             <table className={`min-w-full ${isStatic ? 'table-fixed' : 'table-auto'} divide-y divide-yellow-400/20`}>
             <thead className="bg-yellow-400/10">
               <tr>
@@ -872,6 +901,7 @@ const EvidenceManager = ({
             </tbody>
           </table>
         </div>
+        )}
       </div>
       )}
 

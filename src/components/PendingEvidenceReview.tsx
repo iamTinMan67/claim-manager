@@ -147,11 +147,7 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
   }
 
   if (!pendingEvidence || pendingEvidence.length === 0) {
-    return (
-      <div className="card-enhanced p-6 text-center">
-        <div className="text-gold">No pending evidence for review</div>
-      </div>
-    )
+    return null
   }
 
   return (
