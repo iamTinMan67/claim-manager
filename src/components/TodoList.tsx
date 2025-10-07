@@ -24,9 +24,10 @@ interface TodoListProps {
   isGuest?: boolean
   showGuestContent?: boolean
   isGuestFrozen?: boolean
+  showNavigation?: boolean
 }
 
-const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, showGuestContent = false, isGuestFrozen = false }: TodoListProps) => {
+const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, showGuestContent = false, isGuestFrozen = false, showNavigation = true }: TodoListProps) => {
   const { navigateBack, navigateTo } = useNavigation()
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingTodo, setEditingTodo] = useState<TodoWithUser | null>(null)
@@ -120,8 +121,8 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
           query = query.eq('case_number', selectedClaim)
         }
       } else {
-        // Private view: show items created by me OR assigned to me across all claims
-        query = query.or(`user_id.eq.${user.id},responsible_user_id.eq.${user.id}`)
+        // Private view: only show items assigned to me (not items I created for others)
+        query = query.eq('responsible_user_id', user.id)
       }
       
       const { data, error } = await query
@@ -280,8 +281,8 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         // Show all todos for shared claim (regardless of who created or is assigned)
         // This is handled by the RLS policy for shared claims
       } else {
-        // Show only todos created by the current user
-        query = query.eq('user_id', user.id)
+        // Private view: only show todos assigned to me (not todos I created for others)
+        query = query.eq('responsible_user_id', user.id)
       }
       
       const { data, error } = await query
@@ -452,31 +453,32 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
     <div className="space-y-6 min-h-[75vh]">
       
       
-      <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => {
-              sessionStorage.setItem('welcome_seen_session', '1')
-              navigateBack()
-            }}
-            className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2 hover:opacity-90"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back</span>
-          </button>
-          <button
-            onClick={() => {
-              sessionStorage.setItem('welcome_seen_session', '1')
-              navigateTo(isGuest ? 'shared' : 'claims')
-            }}
-            className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2 hover:opacity-90"
-          >
-            <Home className="w-4 h-4" />
-            <span>Home</span>
-          </button>
-          {(!isGuest) || (showGuestContent && !isGuestFrozen) ? (
+      {showNavigation && (
+        <div className="flex justify-between items-center">
+          <div className="flex items-center space-x-2">
             <button
               onClick={() => {
+                sessionStorage.setItem('welcome_seen_session', '1')
+                navigateBack()
+              }}
+              className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2 hover:opacity-90"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back</span>
+            </button>
+            <button
+              onClick={() => {
+                sessionStorage.setItem('welcome_seen_session', '1')
+                navigateTo(isGuest ? 'shared' : 'claims')
+              }}
+              className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2 hover:opacity-90"
+            >
+              <Home className="w-4 h-4" />
+              <span>Home</span>
+            </button>
+            <button
+              onClick={() => {
+              console.log('Add New clicked, currentUser:', currentUser?.id)
               setNewTodo(prev => ({ ...prev, responsible_user_id: currentUser?.id || '' }))
               setShowAddForm(true)
             }}
@@ -485,11 +487,30 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
               <Plus className="w-4 h-4" />
               <span>Add New</span>
             </button>
-          ) : null}
+          </div>
+          <h2 className="text-2xl font-bold flex-1" style={{ marginLeft: '90px' }}>To-Do Lists</h2>
+          <div className="flex items-center space-x-3 justify-end" />
         </div>
-        <h2 className="text-2xl font-bold flex-1" style={{ marginLeft: '90px' }}>To-Do Lists</h2>
-        <div className="flex items-center space-x-3 justify-end" />
-      </div>
+      )}
+
+      {!showNavigation && (
+        <div className="mb-4">
+          <h2 className="text-2xl font-bold">To-Do Lists</h2>
+          <div className="mt-2">
+            <button
+              onClick={() => {
+              console.log('Add New clicked, currentUser:', currentUser?.id)
+              setNewTodo(prev => ({ ...prev, responsible_user_id: currentUser?.id || '' }))
+              setShowAddForm(true)
+            }}
+              className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg hover:opacity-90 flex items-center space-x-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add New</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {showAddForm && (!isGuest || (showGuestContent && !isGuestFrozen)) ? (
         // Form overlay - hide main content

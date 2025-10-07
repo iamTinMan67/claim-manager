@@ -107,7 +107,6 @@ export default function AuthComponent({
       if (type === 'recovery' || (accessToken.length > 100 && refreshToken.length > 100)) {
         setIsPasswordReset(true)
         setResetTokens({ accessToken, refreshToken })
-        setLoading(false)
         // Clear the URL to prevent auto-login
         window.history.replaceState({}, document.title, window.location.pathname)
         return
@@ -167,6 +166,21 @@ export default function AuthComponent({
       selectedClaim,
       isInSharedContext: activeTab === 'shared'
     })
+
+    // When opening Shared Claims tab, clear any previously selected claim
+    if (tabId === 'shared') {
+      try {
+        window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null } }))
+      } catch {}
+    }
+
+    // When switching to Private Claims, clear any shared selection to avoid dangling selection
+    if (tabId === 'claims') {
+      try {
+        window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null } }))
+      } catch {}
+    }
+
     onTabChange?.(tabId)
     // Mark welcome as seen for this session when navigating away from subscription
     try {

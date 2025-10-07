@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { PendingEvidence, Claim } from '@/types/database'
-import { CheckCircle, XCircle, Clock, FileText, ExternalLink, Calendar, Eye } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, FileText, ExternalLink, Calendar, Eye, Trash } from 'lucide-react'
 import { getClaimIdFromCaseNumber } from '@/utils/claimUtils'
 
 interface PendingEvidenceReviewProps {
@@ -40,7 +40,7 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
       if (error) throw error
       return data as PendingEvidence[]
     },
-    enabled: !!selectedClaim && isOwner
+    enabled: !!selectedClaim
   })
 
   // Get all claims for the approve modal
@@ -134,9 +134,7 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
     }
   }
 
-  if (!isOwner || !selectedClaim) {
-    return null
-  }
+  if (!selectedClaim) return null
 
   if (isLoading) {
     return (
@@ -156,89 +154,98 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
         <h3 className="text-lg font-semibold text-gold mb-4">Pending Evidence Review</h3>
         
         {pendingEvidence.map((evidence) => (
-          <div key={evidence.id} className="card-smudge p-4 mb-4">
-            <div className="flex justify-between items-start mb-3">
-              <div className="space-y-1">
+          <div key={evidence.id} className="card-smudge p-3 mb-3">
+            <div className="flex justify-between items-start mb-2">
+              <div className="space-y-1 w-full">
                 <h4 className="text-base font-medium text-gold">
-                  {evidence.file_name || evidence.description || 'Evidence Item'}
+                  {evidence.title || evidence.description || 'Evidence Item'}
                 </h4>
-                <p className="text-sm text-gray-300">
-                  Submitted: {new Date(evidence.submitted_at).toLocaleDateString()}
-                </p>
+                {/* Single row with labels over values; Description first */}
+                <div className="grid grid-cols-4 gap-3 text-sm items-start">
+                  <div>
+                    <div className="text-gold">Description</div>
+                    <div className="text-white mt-0.5 leading-snug">{evidence.description || '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-gold">Submitted</div>
+                    <div className="text-white leading-snug">{new Date(evidence.submitted_at).toLocaleDateString()}</div>
+                  </div>
+                  <div>
+                    <div className="text-gold">Method</div>
+                    <div className="text-white leading-snug">{evidence.method || '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-gold flex items-center gap-1"><Calendar className="w-4 h-4" /> Date</div>
+                    <div className="text-white leading-snug">{evidence.date_submitted ? new Date(evidence.date_submitted).toLocaleDateString() : '-'}</div>
+                  </div>
+                </div>
               </div>
-              {getStatusBadge(evidence.status)}
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-              {evidence.exhibit_id && (
-                <div>
-                  <span className="font-medium text-gold">Exhibit:</span> 
-                  <span className="ml-1 text-white">{evidence.exhibit_id}</span>
-                </div>
-              )}
-              {evidence.method && (
-                <div>
-                  <span className="font-medium text-gold">Method:</span> 
-                  <span className="ml-1 text-white">{evidence.method}</span>
-                </div>
-              )}
-              {evidence.number_of_pages && (
-                <div>
-                  <span className="font-medium text-gold">Pages:</span> 
-                  <span className="ml-1 text-white">{evidence.number_of_pages}</span>
-                </div>
-              )}
-              {evidence.date_submitted && (
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-4 h-4 text-gold" />
-                  <span className="text-white">{new Date(evidence.date_submitted).toLocaleDateString()}</span>
-                </div>
-              )}
+              <div className="flex flex-col items-end gap-2">
+                <div className="pt-1">{getStatusBadge(evidence.status)}</div>
+                {/* Align icons to badge's right edge */}
+                {evidence.file_url && (
+                  <a
+                    href={evidence.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gold hover:text-yellow-300"
+                    title="View file"
+                  >
+                    <Eye className="w-5 h-5" />
+                  </a>
+                )}
+                {!isOwner ? (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await supabase
+                          .from('pending_evidence')
+                          .update({ status: 'withdrawn' })
+                          .eq('id', evidence.id)
+                          .eq('status', 'pending')
+                        queryClient.invalidateQueries({ queryKey: ['pending-evidence'] })
+                      } catch {}
+                    }}
+                    className="text-red-600 hover:text-red-700"
+                    title="Withdraw request"
+                  >
+                    <Trash className="w-5 h-5" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleReject(evidence)}
+                    disabled={rejectMutation.isPending}
+                    className="text-red-600 hover:text-red-700 disabled:opacity-50"
+                    title="Reject"
+                  >
+                    <Trash className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
             </div>
 
-            {evidence.description && (
-              <div className="mb-4">
-                <span className="font-medium text-gold">Description:</span>
-                <p className="text-white mt-1">{evidence.description}</p>
-              </div>
-            )}
+            {/* Description now included in the single-row grid above */}
 
-            {evidence.file_url && (
-              <div className="mb-4">
-                <a
-                  href={evidence.file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-gold hover:text-yellow-300"
-                >
-                  <Eye className="w-4 h-4" />
-                  View File
-                </a>
-              </div>
-            )}
+            {/* Removed duplicate view link (now in grid row 2 col 4) */}
 
             <div className="flex space-x-3">
-              <button
-                onClick={() => handleApprove(evidence)}
-                disabled={approveMutation.isPending}
-                className="px-4 py-2 rounded-lg flex items-center space-x-2 disabled:opacity-50"
-                style={{ 
-                  backgroundColor: 'rgba(30, 58, 138, 0.3)',
-                  border: '2px solid #10b981',
-                  color: '#10b981'
-                }}
-              >
-                <CheckCircle className="w-4 h-4" />
-                <span>Approve</span>
-              </button>
-              <button
-                onClick={() => handleReject(evidence)}
-                disabled={rejectMutation.isPending}
-                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center space-x-2 disabled:opacity-50"
-              >
-                <XCircle className="w-4 h-4" />
-                <span>Reject</span>
-              </button>
+              {isOwner ? (
+                <>
+                  <button
+                    onClick={() => handleApprove(evidence)}
+                    disabled={approveMutation.isPending}
+                    className="px-4 py-2 rounded-lg flex items-center space-x-2 disabled:opacity-50"
+                    style={{ 
+                      backgroundColor: 'rgba(30, 58, 138, 0.3)',
+                      border: '2px solid #10b981',
+                      color: '#10b981'
+                    }}
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    <span>Approve</span>
+                  </button>
+                </>
+              ) : null}
             </div>
           </div>
         ))}

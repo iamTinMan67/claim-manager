@@ -20,7 +20,7 @@ import ExportFeatures from './components/ExportFeatures'
 import SubscriptionManager from './components/SubscriptionManager'
 import PrivilegesStatus from './components/PrivilegesStatus'
 import Admin from './pages/Admin'
-import { Crown } from 'lucide-react'
+import { Crown, ArrowLeft, Home } from 'lucide-react'
 import AccessControl from './components/AccessControl'
 import { Toaster } from '@/components/ui/toaster'
 
@@ -239,8 +239,22 @@ function LoggedInContent({
       case 'events-shared':
         // Shared events (todos and calendar) - tied to selected claim
         return <Events selectedClaim={selectedClaim} isGuest={true} isGuestFrozen={false} currentUserId={user?.id} />
+      case 'todos-private':
+        // Private todos - not tied to a specific claim
+        return <Events selectedClaim={null} isGuest={false} isGuestFrozen={false} currentUserId={user?.id} />
+      case 'calendar-private':
+        // Private calendar - not tied to a specific claim
+        return <Events selectedClaim={null} isGuest={false} isGuestFrozen={false} currentUserId={user?.id} />
       case 'shared':
-        return <SharedClaims selectedClaim={selectedClaim} claimColor={selectedClaimColor} currentUserId={user?.id} isGuest={currentlyGuest} />
+        return selectedClaim
+          ? <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} onClaimColorChange={setSelectedClaimColor} isGuest={currentlyGuest} />
+          : <SharedClaims selectedClaim={selectedClaim} claimColor={selectedClaimColor} currentUserId={user?.id} isGuest={currentlyGuest} prioritizeGuestClaims={!isInSharedContext} />
+      case 'todos-shared':
+        // Shared todos - tied to selected claim
+        return <Events selectedClaim={selectedClaim} isGuest={true} isGuestFrozen={false} currentUserId={user?.id} />
+      case 'calendar-shared':
+        // Shared calendar - tied to selected claim  
+        return <Events selectedClaim={selectedClaim} isGuest={true} isGuestFrozen={false} currentUserId={user?.id} />
       case 'export':
         // If viewing shared claims, show shared version of export
         if (isViewingSharedClaims) {
@@ -253,11 +267,52 @@ function LoggedInContent({
   }
 
   return (
-    <div className="min-h-screen">
+    <>
+      {/* Navigation Buttons for Events pages - Positioned like private claims page */}
+        {(activeTab === 'todos-private' || activeTab === 'calendar-private' || activeTab === 'todos-shared' || activeTab === 'calendar-shared' || activeTab === 'events-private' || activeTab === 'events-shared') && (
+          <div className="flex justify-between items-center mb-4 px-4">
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => {
+                  sessionStorage.setItem('welcome_seen_session', '1')
+                  // Back: if currently on a shared view, go to shared list; otherwise go to private claims
+                  if (['events-shared', 'todos-shared', 'calendar-shared', 'shared'].includes(activeTab)) {
+                    setActiveTab('shared')
+                  } else {
+                    setActiveTab('claims')
+                  }
+                }}
+                className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back</span>
+              </button>
+              <button
+                onClick={() => {
+                  sessionStorage.setItem('welcome_seen_session', '1')
+                  // Navigate to opposite context
+                  if (isInSharedContext) {
+                    setActiveTab('claims')
+                  } else {
+                    setActiveTab('shared')
+                  }
+                }}
+                className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
+              >
+                <Home className="w-4 h-4" />
+                <span>{isInSharedContext ? 'Private Claims' : 'Home'}</span>
+              </button>
+            </div>
+            <div className="flex items-center space-x-2" />
+          </div>
+        )}
+      
+      <div className="min-h-screen">
         <main className="container mx-auto px-4 py-2">
           {renderContent()}
         </main>
-    </div>
+      </div>
+    </>
   )
 }
 

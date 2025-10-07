@@ -4,9 +4,10 @@ import { useQuery } from '@tanstack/react-query'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { Claim } from '@/types/database'
-import { Edit, Trash2, Plus, X, Settings, Home, ChevronLeft } from 'lucide-react'
+import { Edit, Trash2, Plus, X, Settings, Home, ChevronLeft, Users, Crown } from 'lucide-react'
 import { useNavigation } from '@/contexts/NavigationContext'
 import EvidenceManager from './EvidenceManager'
+import CollaborationHub from './CollaborationHub'
 import { getClaimIdFromCaseNumber } from '@/utils/claimUtils'
 
 interface ClaimsTableProps {
@@ -32,8 +33,32 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
     color: '#3B82F6'
   })
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({})
+  const [showCollaboration, setShowCollaboration] = useState(false)
 
   const queryClient = useQueryClient()
+
+  // Listen for global connect toggle so the hub can open in selected-claim view
+  React.useEffect(() => {
+    const onToggle = () => setShowCollaboration(v => !v)
+    window.addEventListener('toggleCollaboration', onToggle as EventListener)
+    return () => window.removeEventListener('toggleCollaboration', onToggle as EventListener)
+  }, [])
+
+  // For private view, determine which of the user's claims are shared (to show Users icon)
+  const { data: ownedSharedClaimIds } = useQuery({
+    queryKey: ['owned-shared-claim-ids'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return new Set<string>()
+      const { data, error } = await supabase
+        .from('claim_shares')
+        .select('claim_id')
+        .eq('owner_id', user.id)
+      if (error) return new Set<string>()
+      const ids = new Set<string>((data || []).map(r => r.claim_id).filter(Boolean))
+      return ids
+    }
+  })
 
   // Stop persisting add-claim form data; clear any previous stored values once
   React.useEffect(() => {
@@ -60,30 +85,11 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
     }
   })
 
-  // Check if current user is a guest and if they're frozen
-  const { data: guestStatus } = useQuery({
-    queryKey: ['guest-status', selectedClaim, currentUser?.id],
-    queryFn: async () => {
-      if (!selectedClaim || !currentUser?.id) return null
-      
-      const claimId = await getClaimIdFromCaseNumber(selectedClaim)
-      if (!claimId) return null
-      
-      const { data, error } = await supabase
-        .from('claim_shares')
-        .select('is_frozen, is_muted')
-        .eq('claim_id', claimId)
-        .eq('shared_with_id', currentUser.id)
-        .maybeSingle()
-      
-      if (error) return null
-      return data
-    },
-    enabled: !!selectedClaim && !!currentUser?.id && isGuest
-  })
+  // Guest freeze status not currently used; default to not frozen
+  const guestStatus = null as null
 
   const { data: claims, isLoading, error } = useQuery({
-    queryKey: ['claims'],
+    queryKey: ['claims', { isGuest }],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
@@ -137,7 +143,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
   })
 
   const addClaimMutation = useMutation({
-    mutationFn: async (claimData: typeof newClaim) => {
+    mutationFn: async (claimData: Omit<typeof newClaim, 'color'>) => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
@@ -260,9 +266,6 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
     }
     
     addClaimMutation.mutate(claimData)
-    
-    // Save form data for auto-complete
-    saveFormData(newClaim)
   }
 
   const handleUpdate = (e: React.FormEvent) => {
@@ -300,13 +303,27 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
     )
   }
 
-  // If a claim is selected, show only that claim with evidence subform
+  // If a claim is selected, show only that claim with evidence subform (and optional Connect Hub)
   if (selectedClaim) {
     const claim = claims?.find(c => c.case_number === selectedClaim)
     if (!claim) return <div>Claim not found</div>
 
     return (
       <div className="space-y-6">
+        {showCollaboration && (
+          <div className="card-enhanced rounded-lg shadow border-l-4 relative z-30 w-full" style={{ borderLeftColor: claim.color || '#3B82F6' }}>
+            <div className="p-0 h-[calc(100vh-2rem)]">
+              <div className="h-full overflow-hidden">
+                <CollaborationHub 
+                  selectedClaim={selectedClaim}
+                  claimColor={claim.color || '#3B82F6'}
+                  currentUserId={currentUser?.id}
+                  isGuest={isGuest}
+                />
+              </div>
+            </div>
+          </div>
+        )}
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2">
             <button
@@ -318,10 +335,12 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                     window.history.pushState({}, '', url.toString())
                   }
                   window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null } }))
-                  window.dispatchEvent(new CustomEvent('tabChange', { detail: 'claims' }))
+                  // If viewing a shared claim (guest context), go back to shared list; otherwise go to private claims
+                  const targetTab = isGuest ? 'shared' : 'claims'
+                  window.dispatchEvent(new CustomEvent('tabChange', { detail: targetTab }))
                   sessionStorage.setItem('welcome_seen_session', '1')
                 } catch {}
-                navigateTo('claims')
+                navigateTo(isGuest ? 'shared' : 'claims')
               }}
               className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
             >
@@ -330,7 +349,13 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
             </button>
             {isGuest && (
               <button
-                onClick={() => { try { sessionStorage.setItem('welcome_seen_session', '1') } catch {}; navigateTo('claims') }}
+                onClick={() => { 
+                  try { 
+                    sessionStorage.setItem('welcome_seen_session', '1')
+                    window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null } }))
+                  } catch {}
+                  navigateTo('claims') 
+                }}
                 className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
               >
                 <Home className="w-4 h-4" />
@@ -349,7 +374,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
           amendMode={amendMode}
           isGuest={isGuest}
           currentUserId={currentUser?.id}
-          isGuestFrozen={guestStatus?.is_frozen || false}
+          isGuestFrozen={false}
           onEditClaim={() => setEditingClaim(claim)}
           onDeleteClaim={() => deleteClaimMutation.mutate(claim.case_number)}
           onSetAmendMode={setAmendMode}
@@ -554,7 +579,13 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                     <span>Back</span>
                   </button>
                   <button
-                    onClick={() => navigateTo('claims')}
+                    onClick={() => { 
+                      try { 
+                        window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null } }))
+                        sessionStorage.setItem('welcome_seen_session', '1') 
+                      } catch {}
+                      navigateTo('claims')
+                    }}
                     className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
                   >
                     <Home className="w-4 h-4" />
@@ -706,7 +737,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
             key={claim.case_number}
             className="card-enhanced p-4 cursor-pointer hover:shadow-lg transition-shadow"
             style={{ 
-              width: 'calc(100% - 35px)'
+              width: 'calc(80% - 28px)'
             }}
             onClick={() => handleClaimSelect(claim)}
           >
@@ -727,6 +758,16 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                 </div>
               </div>
               <div className="flex items-center space-x-2 ml-3">
+                {/* Sharing status icon: Users if shared, Lock if private */}
+                {!isGuest ? (
+                  (ownedSharedClaimIds && claim.claim_id && ownedSharedClaimIds.has(claim.claim_id)) ? (
+                    <Users className="w-4 h-4 text-green-500" aria-label="Shared" />
+                  ) : (
+                    <Crown className="w-4 h-4 text-yellow-500" aria-label="Private" />
+                  )
+                ) : (
+                  <Users className="w-4 h-4 text-green-500" aria-label="Shared with you" />
+                )}
                 {!isGuest && (
                   <>
                     <button

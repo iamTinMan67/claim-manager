@@ -33,6 +33,7 @@ interface CalendarProps {
   isGuest?: boolean
   showGuestContent?: boolean
   isGuestFrozen?: boolean
+  showNavigation?: boolean
 }
 
 interface TodoWithUser extends Todo {
@@ -46,7 +47,7 @@ interface TodoWithUser extends Todo {
   }
 }
 
-const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, showGuestContent = false, isGuestFrozen = false }: CalendarProps) => {
+const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, showGuestContent = false, isGuestFrozen = false, showNavigation = true }: CalendarProps) => {
   const { navigateBack, navigateTo, canGoBack } = useNavigation()
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
@@ -463,31 +464,31 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
 
   return (
     <div className="space-y-6 min-h-[75vh]">
-      {/* Sticky Navigation Controls */}
-      <div className="sticky top-0 z-20 backdrop-blur-sm border-b border-yellow-400/20 p-4 -mx-4 mb-6">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => {
-                sessionStorage.setItem('welcome_seen_session', '1')
-                navigateBack()
-              }}
-              className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2 hover:opacity-90"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back</span>
-            </button>
-            <button
-              onClick={() => {
-                sessionStorage.setItem('welcome_seen_session', '1')
-                navigateTo(isGuest ? 'shared' : 'claims')
-              }}
-              className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2 hover:opacity-90"
-            >
-              <Home className="w-4 h-4" />
-              <span>Home</span>
-            </button>
-            {(!isGuest) || (isGuest && !isGuestFrozen) ? (
+      {showNavigation && (
+        /* Sticky Navigation Controls */
+        <div className="sticky top-0 z-20 backdrop-blur-sm border-b border-yellow-400/20 p-4 -mx-4 mb-6">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => {
+                  sessionStorage.setItem('welcome_seen_session', '1')
+                  navigateBack()
+                }}
+                className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2 hover:opacity-90"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back</span>
+              </button>
+              <button
+                onClick={() => {
+                  sessionStorage.setItem('welcome_seen_session', '1')
+                  navigateTo(isGuest ? 'shared' : 'claims')
+                }}
+                className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2 hover:opacity-90"
+              >
+                <Home className="w-4 h-4" />
+                <span>Home</span>
+              </button>
               <button
                 onClick={() => {
                   const now = new Date()
@@ -507,35 +508,62 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                 <Plus className="w-4 h-4" />
                 <span>Add New</span>
               </button>
-            ) : null}
-          </div>
-          
-          {/* Calendar Navigation Controls - True Center */}
-          <div className="flex-1 flex justify-center">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
-                className="px-3 py-1 border rounded hover:bg-yellow-400/20 text-gold"
-              >
-                Previous
-              </button>
-              <h3 className="text-lg font-semibold">
-                {format(currentDate, 'MMMM yyyy')}
-              </h3>
-              <button
-                onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}
-                className="px-3 py-1 border rounded hover:bg-yellow-400/20 text-gold"
-              >
-                Next
-              </button>
+            </div>
+            
+            {/* Calendar Navigation Controls - True Center */}
+            <div className="flex-1 flex justify-center">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
+                  className="px-3 py-1 border rounded hover:bg-yellow-400/20 text-gold"
+                >
+                  Previous
+                </button>
+                <h3 className="text-lg font-semibold">
+                  {format(currentDate, 'MMMM yyyy')}
+                </h3>
+                <button
+                  onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}
+                  className="px-3 py-1 border rounded hover:bg-yellow-400/20 text-gold"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-3 justify-end">
+              {/* Empty space for balance */}
             </div>
           </div>
-          
-          <div className="flex items-center space-x-3 justify-end">
-            {/* Empty space for balance */}
+        </div>
+      )}
+
+      {!showNavigation && (
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold">Calendar Events</h2>
+          <div className="mt-2">
+            <button
+              onClick={() => {
+                const now = new Date()
+                const nowStr = format(now, "yyyy-MM-dd'T'HH:mm")
+                setNewEvent(prev => ({
+                  ...prev,
+                  start_time: nowStr,
+                  end_time: nowStr,
+                  claim_id: selectedClaim || '',
+                  color: selectedClaim ? claimColor : prev.color,
+                  assignee_id: currentUser?.id
+                }))
+                setShowAddForm(true)
+              }}
+              className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg hover:opacity-90 flex items-center space-x-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add New</span>
+            </button>
           </div>
         </div>
-      </div>
+      )}
 
       {showAddForm && (
         // Form overlay - hide main content

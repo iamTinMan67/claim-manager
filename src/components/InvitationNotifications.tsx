@@ -52,27 +52,42 @@ const InvitationNotifications = () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return []
 
-      const { data, error } = await supabase
-        .from('pending_invitations')
-        .select(`
-          *,
-          claims:claim_id (
-            title,
-            case_number,
-            color
-          ),
-          owner:owner_id (
-            email,
-            nickname
-          )
-        `)
-        .eq('invited_user_id', user.id)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false })
+      try {
+        const { data, error } = await supabase
+          .from('pending_invitations')
+          .select(`
+            *,
+            claims:claim_id (
+              title,
+              case_number,
+              color
+            ),
+            owner:owner_id (
+              email,
+              nickname
+            )
+          `)
+          .eq('invited_user_id', user.id)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
 
-      if (error) throw error
-      return data as PendingInvitation[]
-    }
+        if (error) {
+          // If it's a 400 error, the table likely doesn't exist or has wrong structure
+          if (error.code === 'PGRST116' || error.message?.includes('400')) {
+            console.warn('pending_invitations table not accessible, skipping invitations')
+            return []
+          }
+          console.warn('Error fetching pending invitations received:', error)
+          return []
+        }
+        return data as PendingInvitation[]
+      } catch (err) {
+        console.warn('Exception fetching pending invitations received:', err)
+        return []
+      }
+    },
+    retry: false, // Don't retry on error
+    refetchOnWindowFocus: false // Don't refetch on window focus
   })
 
   // Fetch pending invitations SENT (I'm the owner)
@@ -82,23 +97,38 @@ const InvitationNotifications = () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return []
 
-      const { data, error } = await supabase
-        .from('pending_invitations')
-        .select(`
-          *,
-          claims:claim_id (
-            title,
-            case_number,
-            color
-          )
-        `)
-        .eq('owner_id', user.id)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false })
+      try {
+        const { data, error } = await supabase
+          .from('pending_invitations')
+          .select(`
+            *,
+            claims:claim_id (
+              title,
+              case_number,
+              color
+            )
+          `)
+          .eq('owner_id', user.id)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
 
-      if (error) throw error
-      return data as PendingInvitation[]
-    }
+        if (error) {
+          // If it's a 400 error, the table likely doesn't exist or has wrong structure
+          if (error.code === 'PGRST116' || error.message?.includes('400')) {
+            console.warn('pending_invitations table not accessible, skipping invitations')
+            return []
+          }
+          console.warn('Error fetching pending invitations sent:', error)
+          return []
+        }
+        return data as PendingInvitation[]
+      } catch (err) {
+        console.warn('Exception fetching pending invitations sent:', err)
+        return []
+      }
+    },
+    retry: false, // Don't retry on error
+    refetchOnWindowFocus: false // Don't refetch on window focus
   })
 
   // Fetch unread notifications

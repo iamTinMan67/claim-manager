@@ -38,15 +38,19 @@ const EvidenceManager = ({
   isStatic = false,
   hidePendingReview = false
 }: EvidenceManagerProps) => {
-  const isInteractive = !isStatic && (!isGuest || guestCanEdit)
+  const isInteractive = !isStatic && (!isGuest || !isGuestFrozen)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showLinkModal, setShowLinkModal] = useState(false)
+  const [availableEvidence, setAvailableEvidence] = useState<Evidence[]>([])
   const [editingEvidence, setEditingEvidence] = useState<Evidence | null>(null)
   const [expandedEvidence, setExpandedEvidence] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [dragOverItem, setDragOverItem] = useState<string | null>(null)
   const [isCollapsed, setIsCollapsed] = useState(true)
+  const [diagnosticsRunning, setDiagnosticsRunning] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({})
+  const [linkPermissions, setLinkPermissions] = useState<Record<string, boolean>>({})
 
   // Persist collapsed state per-claim (by case_number)
   useEffect(() => {
@@ -58,6 +62,8 @@ const EvidenceManager = ({
     } catch {}
   }, [selectedClaim])
 
+  // No auto-expand or auto-open modal; user will click Show or Add each time
+
   useEffect(() => {
     try {
       if (!selectedClaim) return
@@ -66,6 +72,113 @@ const EvidenceManager = ({
   }, [isCollapsed, selectedClaim])
 
   const queryClient = useQueryClient()
+
+  // Guest download permission based on claim_shares.allow_guest_downloads
+  const { data: guestDownloadAllowed } = useQuery({
+    queryKey: ['share-downloads', selectedClaim, isGuest],
+    enabled: Boolean(selectedClaim) && Boolean(isGuest),
+    queryFn: async () => {
+      try {
+        if (!isGuest || !selectedClaim) return true
+        const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+        let claimId: string | null = null
+        if (uuidPattern.test(selectedClaim)) {
+          claimId = selectedClaim
+        } else {
+          claimId = await getClaimIdFromCaseNumber(selectedClaim)
+        }
+        if (!claimId) return true
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return true
+        const { data: share } = await supabase
+          .from('claim_shares')
+          .select('allow_guest_downloads')
+          .eq('claim_id', claimId)
+          .eq('shared_with_id', user.id)
+          .maybeSingle()
+        return (share?.allow_guest_downloads ?? true) as boolean
+      } catch {
+        return true
+      }
+    }
+  })
+
+  // Host-side control: toggle allow_guest_downloads for this claim across all shares
+  const { data: hostGuestDownloadAllowed } = useQuery({
+    queryKey: ['share-downloads-host', selectedClaim, isGuest],
+    enabled: Boolean(selectedClaim) && !isGuest,
+    queryFn: async () => {
+      try {
+        if (isGuest || !selectedClaim) return true
+        const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+        let claimId: string | null = null
+        if (uuidPattern.test(selectedClaim)) {
+          claimId = selectedClaim
+        } else {
+          claimId = await getClaimIdFromCaseNumber(selectedClaim)
+        }
+        if (!claimId) return true
+        const { data } = await supabase
+          .from('claim_shares')
+          .select('allow_guest_downloads')
+          .eq('claim_id', claimId)
+          .limit(1)
+          .maybeSingle()
+        return (data?.allow_guest_downloads ?? true) as boolean
+      } catch {
+        return true
+      }
+    }
+  })
+
+  const toggleGuestDownloads = async (next: boolean) => {
+    try {
+      const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+      let claimId: string | null = null
+      if (selectedClaim) {
+        claimId = uuidPattern.test(selectedClaim) ? selectedClaim : await getClaimIdFromCaseNumber(selectedClaim)
+      }
+      if (!claimId) return
+      const { error } = await supabase
+        .from('claim_shares')
+        .update({ allow_guest_downloads: next })
+        .eq('claim_id', claimId)
+      if (error) throw error
+      queryClient.invalidateQueries({ queryKey: ['share-downloads-host', selectedClaim] })
+      queryClient.invalidateQueries({ queryKey: ['share-downloads', selectedClaim] })
+    } catch (e) {
+      console.warn('Failed to toggle allow_guest_downloads', e)
+    }
+  }
+
+  // Determine if current user is the owner of the selected claim
+  const { data: isOwner } = useQuery({
+    queryKey: ['claim-owner', selectedClaim],
+    enabled: Boolean(selectedClaim),
+    queryFn: async () => {
+      try {
+        if (!selectedClaim) return false
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return false
+        const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+        let claimId: string | null = null
+        if (uuidPattern.test(selectedClaim)) {
+          claimId = selectedClaim
+        } else {
+          claimId = await getClaimIdFromCaseNumber(selectedClaim)
+        }
+        if (!claimId) return false
+        const { data: claim } = await supabase
+          .from('claims')
+          .select('user_id')
+          .eq('claim_id', claimId)
+          .maybeSingle()
+        return claim?.user_id === user.id
+      } catch {
+        return false
+      }
+    }
+  })
 
   // One-time cleanup: delete evidence rows without a case_number (user directive)
   useEffect(() => {
@@ -113,9 +226,26 @@ const EvidenceManager = ({
       return data as Evidence[]
     }
 
-      // First, get the claim_id from the case_number
-      console.log('EvidenceManager: Getting claim_id for case_number:', selectedClaim)
-      const claimId = await getClaimIdFromCaseNumber(selectedClaim)
+      // Determine claim_id from either case_number or direct UUID
+      const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+      let claimId: string | null = null
+      if (uuidPattern.test(selectedClaim)) {
+        console.log('EvidenceManager: selectedClaim appears to be a claim_id (UUID):', selectedClaim)
+        claimId = selectedClaim
+      } else {
+        console.log('EvidenceManager: Getting claim_id for case_number:', selectedClaim)
+        claimId = await getClaimIdFromCaseNumber(selectedClaim)
+        if (!claimId) {
+          // Fallback: try session-stashed UUID from SharedClaims click
+          try {
+            const stashed = sessionStorage.getItem('selected_claim_uuid')
+            if (stashed && uuidPattern.test(stashed)) {
+              console.log('EvidenceManager: Using stashed claim UUID from sessionStorage:', stashed)
+              claimId = stashed
+            }
+          } catch {}
+        }
+      }
       
       if (!claimId) {
         console.error('EvidenceManager: Could not find claim_id for case_number:', selectedClaim)
@@ -138,8 +268,31 @@ const EvidenceManager = ({
         ? supabase.from('evidence').select('*').in('id', linkedIds)
         : Promise.resolve({ data: [] as any[], error: null } as any)
 
-      // No legacy case_number query needed - evidence is only linked via evidence_claims table
-      const byLegacyPromise = Promise.resolve({ data: [] as any[], error: null } as any)
+      // Legacy fallback: if no links found, try loading by case_number and owner
+      let byLegacyPromise: Promise<any> = Promise.resolve({ data: [] as any[], error: null } as any)
+      if (!linkedIds.length && selectedClaim) {
+        try {
+          console.log('EvidenceManager: No linked evidence found, attempting legacy case_number fallback for', selectedClaim)
+          // Find claim owner to limit scope
+          const { data: claimOwner } = await supabase
+            .from('claims')
+            .select('user_id')
+            .eq('claim_id', claimId)
+            .maybeSingle()
+          const ownerId = claimOwner?.user_id
+          // Build legacy query
+          let legacyQuery = supabase
+            .from('evidence')
+            .select('*')
+            .eq('case_number', selectedClaim)
+          if (ownerId) {
+            legacyQuery = legacyQuery.eq('user_id', ownerId)
+          }
+          byLegacyPromise = legacyQuery
+        } catch (e) {
+          console.warn('EvidenceManager: Legacy fallback setup failed:', e)
+        }
+      }
 
       const [byLink, byLegacy] = await Promise.all([byLinkPromise, byLegacyPromise])
       if (byLink.error) throw byLink.error
@@ -191,10 +344,7 @@ const EvidenceManager = ({
         })
       })
       
-      // Optional: filter out rows with no meaningful identifier (neither file_name nor file_url)
-      merged = merged.filter((e: any) => (e.file_name && e.file_name.length) || (e.file_url && e.file_url.length))
-      
-      console.log('EvidenceManager: After filtering:', merged.length, 'items')
+      console.log('EvidenceManager: After merge (no filtering):', merged.length, 'items')
 
       // No need to filter by case_number since evidence is already linked via evidence_claims table
 
@@ -213,6 +363,137 @@ const EvidenceManager = ({
       return merged
     }
   })
+
+  // Load per-item guest download permission from evidence_claims for current claim
+  useEffect(() => {
+    const loadPermissions = async () => {
+      try {
+        if (!selectedClaim) return
+        const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+        let claimId: string | null = null
+        if (uuidPattern.test(selectedClaim)) {
+          claimId = selectedClaim
+        } else {
+          claimId = await getClaimIdFromCaseNumber(selectedClaim)
+        }
+        if (!claimId) return
+        const { data, error } = await supabase
+          .from('evidence_claims')
+          .select('evidence_id, guest_download_allowed')
+          .eq('claim_id', claimId)
+        if (error) return
+        const map: Record<string, boolean> = {}
+        ;(data || []).forEach((r: any) => {
+          if (r.evidence_id) map[r.evidence_id] = r.guest_download_allowed !== false
+        })
+        setLinkPermissions(map)
+      } catch {}
+    }
+    loadPermissions()
+  }, [selectedClaim])
+
+  const runAccessDiagnostics = async () => {
+    try {
+      setDiagnosticsRunning(true)
+      console.log('Diagnostics: starting...')
+      console.log('Diagnostics: props', { selectedClaim, isGuest, currentUserId })
+
+      const { data: authInfo } = await supabase.auth.getUser()
+      const authUser = authInfo?.user
+      console.log('Diagnostics: auth user', authUser?.id)
+
+      if (!selectedClaim) {
+        console.warn('Diagnostics: No selectedClaim; aborting')
+        return
+      }
+
+      const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+      let claimId: string | null = null
+      if (uuidPattern.test(selectedClaim)) {
+        claimId = selectedClaim
+      } else {
+        claimId = await getClaimIdFromCaseNumber(selectedClaim)
+      }
+
+      if (!claimId) {
+        console.error('Diagnostics: could not resolve claimId for', selectedClaim)
+        return
+      }
+      console.log('Diagnostics: resolved claimId', claimId)
+
+      // Check claim shares for this user
+      try {
+        const { data: shares, error: shareErr } = await supabase
+          .from('claim_shares')
+          .select('*')
+          .eq('claim_id', claimId)
+        if (shareErr) {
+          console.warn('Diagnostics: claim_shares error', shareErr)
+        } else {
+          console.log('Diagnostics: claim_shares rows', shares?.length || 0)
+          console.log('Diagnostics: claim_shares sample', shares?.slice(0, 3))
+          if (authUser) {
+            const relevant = (shares || []).filter(s => s.shared_with_id === authUser.id || s.owner_id === authUser.id)
+            console.log('Diagnostics: claim_shares relevant to current user', relevant)
+          }
+        }
+      } catch (e) {
+        console.warn('Diagnostics: claim_shares check failed', e)
+      }
+
+      // Fetch evidence_claims rows
+      const { data: linkRows, error: linkErr } = await supabase
+        .from('evidence_claims')
+        .select('*')
+        .eq('claim_id', claimId)
+      if (linkErr) {
+        console.error('Diagnostics: evidence_claims error', linkErr)
+        return
+      }
+      console.log('Diagnostics: evidence_claims count', linkRows?.length || 0)
+      const linkedIds = (linkRows || []).map(r => r.evidence_id).filter(Boolean)
+      console.log('Diagnostics: linked evidence IDs', linkedIds)
+
+      if (!linkedIds.length) {
+        console.warn('Diagnostics: No linked evidence IDs for this claim')
+      }
+
+      // Try batch fetch of evidence
+      const { data: evBatch, error: evBatchErr } = linkedIds.length
+        ? await supabase.from('evidence').select('id,user_id,case_number,display_order,title,file_name,created_at').in('id', linkedIds)
+        : { data: [] as any[], error: null as any }
+      if (evBatchErr) {
+        console.error('Diagnostics: evidence batch select error', evBatchErr)
+      } else {
+        console.log('Diagnostics: evidence batch count', evBatch?.length || 0)
+        console.log('Diagnostics: evidence batch sample', evBatch?.slice(0, 5))
+      }
+
+      // Probe first few individually to detect partial RLS blocks
+      for (const probeId of linkedIds.slice(0, 5)) {
+        try {
+          const { data: single, error: singleErr } = await supabase
+            .from('evidence')
+            .select('id,user_id,case_number,display_order,title,file_name,created_at')
+            .eq('id', probeId)
+            .maybeSingle()
+          if (singleErr) {
+            console.warn('Diagnostics: single evidence blocked', { probeId, error: singleErr })
+          } else {
+            console.log('Diagnostics: single evidence ok', single)
+          }
+        } catch (e) {
+          console.warn('Diagnostics: single evidence probe failed', { probeId, error: e })
+        }
+      }
+
+      console.log('Diagnostics: complete')
+    } catch (e) {
+      console.error('Diagnostics: unexpected failure', e)
+    } finally {
+      setDiagnosticsRunning(false)
+    }
+  }
 
   const updateDisplayOrderMutation = useMutation({
     mutationFn: async (updates: { id: string; display_order: number }[]) => {
@@ -384,11 +665,11 @@ const EvidenceManager = ({
 
   return (
     <div className="space-y-6 pb-16">
-      {/* Pending Evidence Review - hide when collaboration hub is active */}
-      {isGuest && selectedClaim && currentUserId && !hidePendingReview && (
+      {/* Pending Evidence Review: show for both roles; host can approve, guest can withdraw */}
+      {selectedClaim && currentUserId && !hidePendingReview && (
         <PendingEvidenceReview 
           selectedClaim={selectedClaim} 
-          isOwner={true} 
+          isOwner={!isGuest} 
         />
       )}
       
@@ -557,8 +838,19 @@ const EvidenceManager = ({
         <div className="px-6 py-4 border-b border-yellow-400/20 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gold">Evidence List</h3>
           <div className="flex items-center gap-2">
-            {/* Order: Add, Amend, Link, then Show. Hide first three while collapsed */}
-            {!isCollapsed && isInteractive && (!isGuest || (isGuest && !isGuestFrozen)) && (
+            {!isGuest && (
+              <label className="flex items-center gap-2 text-xs text-gold/80 mr-2">
+                <input
+                  type="checkbox"
+                  checked={!!hostGuestDownloadAllowed}
+                  onChange={(e) => toggleGuestDownloads(e.target.checked)}
+                />
+                <span>Guest downloads</span>
+              </label>
+            )}
+            
+            {/* Order: Add, Amend, Link, then Show. Keep Add visible even when collapsed */}
+            {isInteractive && (!isGuest || (isGuest && !isGuestFrozen)) && (
               <button
                 onClick={() => {
                   if (!selectedClaim) {
@@ -583,20 +875,92 @@ const EvidenceManager = ({
                 <span>{amendMode ? 'Exit Amend' : 'Amend'}</span>
               </button>
             )}
-            {!isCollapsed && isInteractive && (!isGuest || (isGuest && !isGuestFrozen)) && (
+            {!isCollapsed && isInteractive && !isGuest && false && (
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (!selectedClaim) {
                     alert('Please select a claim before linking evidence. The Case Number is required.')
                     return
                   }
-                  setShowLinkModal(true)
+                  try {
+                    // Resolve claim_id
+                    const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+                    let resolvedClaimId: string | null = null
+                    if (uuidPattern.test(selectedClaim)) {
+                      resolvedClaimId = selectedClaim
+                    } else {
+                      resolvedClaimId = await getClaimIdFromCaseNumber(selectedClaim)
+                    }
+                    if (!resolvedClaimId) {
+                      alert('Could not resolve claim ID for linking.')
+                      return
+                    }
+
+                    // Find claim owner
+                    const { data: claimInfo } = await supabase
+                      .from('claims')
+                      .select('user_id')
+                      .eq('claim_id', resolvedClaimId)
+                      .maybeSingle()
+                    const ownerId = claimInfo?.user_id || null
+
+                    // Get currently linked evidence ids for this claim
+                    const { data: existingLinks } = await supabase
+                      .from('evidence_claims')
+                      .select('evidence_id')
+                      .eq('claim_id', resolvedClaimId)
+                    const linkedIds = (existingLinks || []).map(r => r.evidence_id)
+
+                    // Fetch available evidence owned by owner and not already linked
+                    let query = supabase
+                      .from('evidence')
+                      .select('*')
+                    if (ownerId) query = query.eq('user_id', ownerId)
+                    if (linkedIds.length) query = query.not('id', 'in', `(${linkedIds.join(',')})`)
+                    const { data: avail } = await query
+
+                    setAvailableEvidence((avail as any) || [])
+                    setShowLinkModal(true)
+                  } catch (e) {
+                    console.warn('Failed to load available evidence for linking:', e)
+                    setAvailableEvidence([])
+                    setShowLinkModal(true)
+                  }
                 }}
                 disabled={!selectedClaim}
                 className="bg-white/10 border border-white text-white px-3 h-8 rounded-lg flex items-center space-x-2 hover:opacity-90"
               >
                 <Link className="w-4 h-4" />
                 <span>Link</span>
+              </button>
+            )}
+            {!isCollapsed && !isGuest && Object.values(selectedIds).some(Boolean) && (
+              <button
+                onClick={async () => {
+                  try {
+                    const target = window.prompt('Enter target Case Number (or claim UUID) to link selected evidence to:')
+                    if (!target) return
+                    const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+                    const targetClaimId = uuidPattern.test(target) ? target : await getClaimIdFromCaseNumber(target)
+                    if (!targetClaimId) {
+                      alert('Could not resolve target claim')
+                      return
+                    }
+                    const ids = Object.entries(selectedIds).filter(([, v]) => v).map(([k]) => k)
+                    for (const id of ids) {
+                      await supabase.from('evidence_claims').insert({ evidence_id: id, claim_id: targetClaimId })
+                    }
+                    setSelectedIds({})
+                    toast({ title: 'Linked', description: `Linked ${ids.length} item(s)` })
+                  } catch (e) {
+                    console.warn('Bulk link failed', e)
+                    alert('Failed to link selected items')
+                  }
+                }}
+                className="bg-white/10 border border-white text-white px-3 h-8 rounded-lg flex items-center space-x-2 hover:opacity-90"
+              >
+                <Link className="w-4 h-4" />
+                <span>Link Selected</span>
               </button>
             )}
             <button
@@ -613,9 +977,11 @@ const EvidenceManager = ({
             <table className={`min-w-full ${isStatic ? 'table-fixed' : 'table-auto'} divide-y divide-yellow-400/20`}>
             <thead className="bg-yellow-400/10">
               <tr>
-                <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-16' : 'w-12'}`}>
-                  Order
-                </th>
+                {!isGuest && (
+                  <th className={`px-2 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-12' : 'w-10'}`}>
+                    
+                  </th>
+                )}
                 <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-48' : ''}`}>
                   File Name
                 </th>
@@ -654,16 +1020,17 @@ const EvidenceManager = ({
                       } align-middle ${isStatic ? 'h-14' : 'h-12'}`}
                       onClick={() => (isInteractive ? handleRowClick(item) : undefined)}
                     >
-                    <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-500`}>
-                      {amendMode && !isGuest ? (
-                        <div className="flex items-center space-x-2">
-                          <GripVertical className="w-4 h-4 text-gray-400 cursor-move" />
-                          <span>{item.display_order || '-'}</span>
-                        </div>
-                      ) : (
-                        <span>{item.display_order || '-'}</span>
-                      )}
-                    </td>
+                    {/* Order column hidden as requested */}
+                    {!isGuest && (
+                      <td className={`px-2 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-500`}>
+                        <input
+                          type="checkbox"
+                          checked={!!selectedIds[item.id]}
+                          onChange={(e) => setSelectedIds({ ...selectedIds, [item.id]: e.target.checked })}
+                          title="Select for bulk link"
+                        />
+                      </td>
+                    )}
                     <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-900`}>
                       {item.title || item.file_name || item.name || '-'}
                     </td>
@@ -681,7 +1048,7 @@ const EvidenceManager = ({
                     </td>
                     <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm font-medium`}>
                       <div className="flex space-x-2">
-                        {item.file_url && (
+                        {item.file_url && (!isGuest || (guestDownloadAllowed && (linkPermissions[item.id] !== false))) && (
                           <>
                           <button
                               onClick={() => window.open(item.file_url as string, '_blank')}
@@ -714,13 +1081,41 @@ const EvidenceManager = ({
                             )}
                           </>
                         )}
+                        {!isGuest && (
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation()
+                              try {
+                                const allowed = !(linkPermissions[item.id] !== false)
+                                const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+                                let claimId: string | null = null
+                                if (selectedClaim) {
+                                  claimId = uuidPattern.test(selectedClaim) ? selectedClaim : await getClaimIdFromCaseNumber(selectedClaim)
+                                }
+                                if (!claimId) return
+                                await supabase
+                                  .from('evidence_claims')
+                                  .update({ guest_download_allowed: allowed })
+                                  .eq('claim_id', claimId)
+                                  .eq('evidence_id', item.id)
+                                setLinkPermissions({ ...linkPermissions, [item.id]: allowed })
+                              } catch (err) {
+                                console.warn('Failed to update guest_download_allowed', err)
+                              }
+                            }}
+                            className={`text-xs px-2 py-1 rounded border ${linkPermissions[item.id] !== false ? 'text-green-600 border-green-600' : 'text-gray-500 border-gray-400'}`}
+                            title="Toggle guest download for this item"
+                          >
+                            {linkPermissions[item.id] !== false ? 'Guest On' : 'Guest Off'}
+                          </button>
+                        )}
                         {/* Removed duplicate delete button - now handled above */}
                       </div>
                     </td>
                     </tr>
                     {expandedEvidence === item.id && editingEvidence && (
                       <tr>
-                        <td colSpan={6} className="px-6 py-4 bg-yellow-400/10 border-t">
+                        <td colSpan={isGuest ? 6 : 7} className="px-6 py-4 bg-yellow-400/10 border-t">
                           <div className="card-enhanced p-6 border-l-4" style={{ borderLeftColor: claimColor }}>
                             <div className="flex justify-between items-center mb-4">
                               <h4 className="text-lg font-semibold">Edit Evidence</h4>
@@ -975,6 +1370,32 @@ const EvidenceManager = ({
                   console.error('Error linking evidence to claim:', linkError)
                   // Don't throw here, evidence was created successfully
                 }
+
+                // If guest submitted, create a pending_evidence record for host review
+                if (isGuest) {
+                  try {
+                    await supabase
+                      .from('pending_evidence')
+                      .insert([{
+                        claim_id: claimId,
+                        submitter_id: user.id,
+                        status: 'pending',
+                        submitted_at: new Date().toISOString(),
+                        description: evidence.title || evidence.file_name || '',
+                        file_name: insertedEvidence.file_name || null,
+                        file_url: insertedEvidence.file_url || null,
+                        method: insertedEvidence.method || null,
+                        url_link: insertedEvidence.url_link || null,
+                        book_of_deeds_ref: insertedEvidence.book_of_deeds_ref || null,
+                        number_of_pages: insertedEvidence.number_of_pages || null,
+                        date_submitted: insertedEvidence.date_submitted || null
+                      }])
+                    // Refresh pending list for owner views
+                    queryClient.invalidateQueries({ queryKey: ['pending-evidence', selectedClaim] })
+                  } catch (err) {
+                    console.warn('Failed to create pending_evidence entry:', err)
+                  }
+                }
               }
 
               // Close modal and refresh
@@ -1003,7 +1424,7 @@ const EvidenceManager = ({
       {showLinkModal && selectedClaim && (
         <LinkEvidenceModal
           claim={{ case_number: selectedClaim } as any}
-          availableEvidence={[]} // TODO: Fetch available evidence from other claims
+          availableEvidence={availableEvidence as any}
           onClose={() => setShowLinkModal(false)}
           onLink={async (evidenceId, claimId) => {
             try {

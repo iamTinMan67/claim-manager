@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import JitsiCall from './JitsiCall'
+import TodoList from './TodoList'
 import { 
   MessageCircle, 
   Video, 
@@ -9,7 +10,8 @@ import {
   Users,
   FileText,
   Paperclip,
-  Trash2
+  Trash2,
+  CheckSquare
 } from 'lucide-react'
 import { getClaimIdFromCaseNumber } from '@/utils/claimUtils'
 
@@ -46,14 +48,14 @@ interface WhiteboardElement {
 }
 
 const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, currentUserId }: CollaborationHubProps) => {
-  const [activeTab, setActiveTab] = useState<'chat' | 'video' | 'documents' | null>(null)
+  const [activeTab, setActiveTab] = useState<'chat' | 'video' | 'documents' | 'todos' | null>(null)
 
   // Persist active tab per-claim to avoid unexpected resets
   useEffect(() => {
     if (!selectedClaim) return
     try {
       const saved = sessionStorage.getItem(`connect_tab_${selectedClaim}`)
-      if (saved === 'chat' || saved === 'video' || saved === 'documents') {
+      if (saved === 'chat' || saved === 'video' || saved === 'documents' || saved === 'todos') {
         setActiveTab(saved as any)
       } else {
         setActiveTab(null)
@@ -325,6 +327,23 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
             <FileText className="w-5 h-5 inline mr-2" />
             Documents
           </button>
+          
+          <button
+            onClick={() => setActiveTab('todos')}
+            className={`flex-1 px-6 py-3 text-center font-medium ${
+              activeTab === 'todos' 
+                ? 'border-b-2 text-white' 
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+            style={activeTab === 'todos' ? { 
+              borderBottomColor: claimColor,
+              backgroundColor: `${claimColor}20`,
+              color: claimColor
+            } : {}}
+          >
+            <CheckSquare className="w-5 h-5 inline mr-2" />
+            Todos
+          </button>
         </div>
 
         {/* Chat Tab */}
@@ -555,6 +574,22 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
                 No document shared yet. {isGuest ? 'Ask the claim owner to share a document link.' : 'Paste and share a document link to embed it here.'}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Todos Tab */}
+        {activeTab === 'todos' && (
+          <div className="p-4 overflow-hidden h-full">
+            <div className="text-xs text-gray-500 mb-2">
+              CollaborationHub Debug: isGuest={isGuest.toString()}, selectedClaim={selectedClaim}
+            </div>
+            <TodoList 
+              selectedClaim={selectedClaim} 
+              claimColor={claimColor} 
+              isGuest={isGuest} 
+              showGuestContent={true} 
+              isGuestFrozen={false} 
+            />
           </div>
         )}
       </div>
