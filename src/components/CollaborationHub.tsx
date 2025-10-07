@@ -100,15 +100,20 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
       // Fetch sender details for each message
       const messagesWithSenders = await Promise.all(
         (data || []).map(async (message) => {
-          const { data: senderData } = await supabase
-            .from('profiles')
-            .select('email, full_name')
-            .eq('id', message.sender_id)
-            .single()
-          
-          return {
-            ...message,
-            sender: senderData || { email: 'Unknown', full_name: 'Unknown User' }
+          try {
+            const { data: senderData } = await supabase
+              .from('profiles')
+              .select('email, full_name, nickname')
+              .eq('id', message.sender_id)
+              .maybeSingle()
+
+            const displayName = (senderData as any)?.nickname || (senderData as any)?.full_name || (senderData as any)?.email || (message as any)?.metadata?.sender_name || 'Unknown User'
+            const email = (senderData as any)?.email || (message as any)?.metadata?.sender_name || 'Unknown'
+            return { ...message, sender: { email, full_name: displayName } }
+          } catch {
+            const { data: authUser } = await supabase.auth.getUser()
+            const fallback = (message as any)?.metadata?.sender_name || authUser?.user?.email || 'Unknown User'
+            return { ...message, sender: { email: fallback, full_name: fallback } }
           }
         })
       )
@@ -126,19 +131,45 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
     return last.file_url || (last.message?.match(/https?:\/\/\S+/)?.[0] ?? '')
   }, [messages])
 
-  // Send message mutation
+  // Resolve claim UUID (accepts case_number or UUID in selectedClaim)
+  const resolveClaimId = async (): Promise<string | null> => {
+    if (!selectedClaim) return null
+    const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+    if (uuidPattern.test(selectedClaim)) return selectedClaim
+    try { return await getClaimIdFromCaseNumber(selectedClaim) } catch { return null }
+  }
+
+  // Send message mutation (always writes with claim UUID to match query)
   const sendMessageMutation = useMutation({
     mutationFn: async (messageData: { message: string; message_type: string; file_url?: string; file_name?: string; file_size?: number }) => {
+      const claimId = await resolveClaimId()
+      if (!claimId || !currentUserId) throw new Error('Missing claim or user')
+      // Embed sender display in metadata to survive RLS on profiles
+      let senderDisplay: string | null = null
+      try {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('nickname, email')
+          .eq('id', currentUserId)
+          .maybeSingle()
+        senderDisplay = (prof as any)?.nickname || (prof as any)?.email || null
+      } catch {}
+      if (!senderDisplay) {
+        const { data: authInfo } = await supabase.auth.getUser()
+        senderDisplay = authInfo?.user?.email || null
+      }
+
       const { data, error } = await supabase
         .from('chat_messages')
         .insert({
-          claim_id: selectedClaim!,
-          sender_id: currentUserId!,
+          claim_id: claimId,
+          sender_id: currentUserId,
           message: messageData.message,
           message_type: messageData.message_type as any,
           file_url: messageData.file_url,
           file_name: messageData.file_name,
-          file_size: messageData.file_size
+          file_size: messageData.file_size,
+          metadata: senderDisplay ? { sender_name: senderDisplay } : undefined
         })
         .select()
         .single()

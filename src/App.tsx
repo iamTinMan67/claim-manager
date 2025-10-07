@@ -62,6 +62,25 @@ function AppContent() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
 
+  // Deep link restore: parse URL for shared claim details
+  React.useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const tab = params.get('tab')
+      const claim = params.get('claim') // case_number or claim_id
+      const color = params.get('color')
+      if (tab === 'shared') {
+        navigateTo('shared')
+        if (claim) {
+          setSelectedClaim(claim)
+          if (color) setSelectedClaimColor(color)
+          setIsInSharedContext(true)
+          sessionStorage.setItem('selected_claim_uuid', claim)
+        }
+      }
+    } catch {}
+  }, [])
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">
       <div className="text-gold">Loading...</div>

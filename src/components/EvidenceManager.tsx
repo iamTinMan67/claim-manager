@@ -51,6 +51,17 @@ const EvidenceManager = ({
   const [diagnosticsRunning, setDiagnosticsRunning] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({})
   const [linkPermissions, setLinkPermissions] = useState<Record<string, boolean>>({})
+  const [filterText, setFilterText] = useState('')
+  const [methodFilter, setMethodFilter] = useState<string>('')
+  const [tagFilter, setTagFilter] = useState<string>('')
+  const [columnPrefs, setColumnPrefs] = useState<{ showMethod: boolean; showPages: boolean; showExhibit: boolean }>(() => {
+    try {
+      const raw = localStorage.getItem('evidence_column_prefs')
+      if (raw) return JSON.parse(raw)
+    } catch {}
+    return { showMethod: true, showPages: true, showExhibit: true }
+  })
+  const [autoApproveTrusted, setAutoApproveTrusted] = useState<boolean>(false)
 
   // Persist collapsed state per-claim (by case_number)
   useEffect(() => {
@@ -102,6 +113,13 @@ const EvidenceManager = ({
       }
     }
   })
+
+  // Clear any selections when leaving amend mode
+  useEffect(() => {
+    if (!amendMode) {
+      setSelectedIds({})
+    }
+  }, [amendMode])
 
   // Host-side control: toggle allow_guest_downloads for this claim across all shares
   const { data: hostGuestDownloadAllowed } = useQuery({
@@ -363,6 +381,83 @@ const EvidenceManager = ({
       return merged
     }
   })
+
+  // Derived: filtered evidence based on search and method
+  const filteredEvidence = React.useMemo(() => {
+    let list = evidenceData || []
+    if (filterText.trim()) {
+      const q = filterText.toLowerCase()
+      list = list.filter((e) => {
+        const title = (e.title || e.file_name || e.name || '').toString().toLowerCase()
+        const method = (e.method || '').toString().toLowerCase()
+        return title.includes(q) || method.includes(q)
+      })
+    }
+    if (methodFilter) {
+      const mf = methodFilter.toLowerCase()
+      list = list.filter((e) => ((e.method || '') as any)
+        .toString()
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '') === mf)
+    }
+    if (tagFilter) {
+      // Simple client-side tags using localStorage mapping evidenceId -> tag
+      try {
+        const raw = localStorage.getItem('evidence_tags')
+        const map = raw ? (JSON.parse(raw) as Record<string, string>) : {}
+        list = list.filter((e) => (map[e.id as any] || '') === tagFilter)
+      } catch {}
+    }
+    return list
+  }, [evidenceData, filterText, methodFilter])
+
+  useEffect(() => {
+    try { localStorage.setItem('evidence_column_prefs', JSON.stringify(columnPrefs)) } catch {}
+  }, [columnPrefs])
+
+  // Try to load auto-approve flag from DB; fallback to localStorage
+  useEffect(() => {
+    const loadAutoApprove = async () => {
+      try {
+        if (!selectedClaim || isGuest) return
+        const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+        const claimId = uuidPattern.test(selectedClaim) ? selectedClaim : await getClaimIdFromCaseNumber(selectedClaim)
+        if (!claimId) return
+        const { data } = await supabase
+          .from('claim_shares')
+          .select('auto_approve_trusted')
+          .eq('claim_id', claimId)
+          .limit(1)
+          .maybeSingle()
+        if (data && typeof (data as any).auto_approve_trusted === 'boolean') {
+          setAutoApproveTrusted((data as any).auto_approve_trusted)
+          return
+        }
+      } catch {}
+      try {
+        const raw = localStorage.getItem(`auto_approve_trusted_${selectedClaim}`)
+        if (raw != null) setAutoApproveTrusted(raw === '1')
+      } catch {}
+    }
+    loadAutoApprove()
+  }, [selectedClaim, isGuest])
+
+  const saveAutoApproveTrusted = async (next: boolean) => {
+    setAutoApproveTrusted(next)
+    try {
+      const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+      const claimId = selectedClaim ? (uuidPattern.test(selectedClaim) ? selectedClaim : await getClaimIdFromCaseNumber(selectedClaim)) : null
+      if (claimId) {
+        await supabase
+          .from('claim_shares')
+          .update({ auto_approve_trusted: next })
+          .eq('claim_id', claimId)
+      }
+    } catch (e) {
+      console.warn('Auto-approve trusted not persisted to DB; falling back to localStorage', e)
+    }
+    try { localStorage.setItem(`auto_approve_trusted_${selectedClaim}`, next ? '1' : '0') } catch {}
+  }
 
   // Load per-item guest download permission from evidence_claims for current claim
   useEffect(() => {
@@ -838,6 +933,49 @@ const EvidenceManager = ({
         <div className="px-6 py-4 border-b border-yellow-400/20 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gold">Evidence List</h3>
           <div className="flex items-center gap-2">
+            {/* Quick Filters */}
+            <input
+              type="text"
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
+              placeholder="Search title or method"
+              className="px-2 h-8 rounded bg-white/10 border border-yellow-400/40 text-gold placeholder-yellow-300/70"
+            />
+            <select
+              value={methodFilter}
+              onChange={(e) => setMethodFilter(e.target.value)}
+              className="px-2 h-8 rounded bg-white/10 border border-yellow-400/40 text-gold"
+            >
+              <option value="">All methods</option>
+              <option value="post">Post</option>
+              <option value="email">Email</option>
+              <option value="hand">Hand</option>
+              <option value="call">Call</option>
+              <option value="todo">To-Do</option>
+            </select>
+            <select
+              value={tagFilter}
+              onChange={(e) => setTagFilter(e.target.value)}
+              className="px-2 h-8 rounded bg-white/10 border border-yellow-400/40 text-gold"
+            >
+              <option value="">All tags</option>
+              <option value="Needs review">Needs review</option>
+              <option value="Approved">Approved</option>
+              <option value="Requires action">Requires action</option>
+            </select>
+            {/* Column visibility */}
+            <label className="text-xs flex items-center gap-1">
+              <input type="checkbox" checked={columnPrefs.showMethod} onChange={(e) => setColumnPrefs({ ...columnPrefs, showMethod: e.target.checked })} />
+              Method
+            </label>
+            <label className="text-xs flex items-center gap-1">
+              <input type="checkbox" checked={columnPrefs.showPages} onChange={(e) => setColumnPrefs({ ...columnPrefs, showPages: e.target.checked })} />
+              Pages
+            </label>
+            <label className="text-xs flex items-center gap-1">
+              <input type="checkbox" checked={columnPrefs.showExhibit} onChange={(e) => setColumnPrefs({ ...columnPrefs, showExhibit: e.target.checked })} />
+              Exhibit
+            </label>
             {!isGuest && (
               <label className="flex items-center gap-2 text-xs text-gold/80 mr-2">
                 <input
@@ -846,6 +984,16 @@ const EvidenceManager = ({
                   onChange={(e) => toggleGuestDownloads(e.target.checked)}
                 />
                 <span>Guest downloads</span>
+              </label>
+            )}
+            {!isGuest && (
+              <label className="flex items-center gap-2 text-xs text-gold/80 mr-2">
+                <input
+                  type="checkbox"
+                  checked={!!autoApproveTrusted}
+                  onChange={(e) => saveAutoApproveTrusted(e.target.checked)}
+                />
+                <span>Auto-approve trusted</span>
               </label>
             )}
             
@@ -934,7 +1082,7 @@ const EvidenceManager = ({
                 <span>Link</span>
               </button>
             )}
-            {!isCollapsed && !isGuest && Object.values(selectedIds).some(Boolean) && (
+            {!isCollapsed && !isGuest && amendMode && Object.values(selectedIds).some(Boolean) && (
               <button
                 onClick={async () => {
                   try {
@@ -972,39 +1120,71 @@ const EvidenceManager = ({
             </button>
           </div>
         </div>
+        {amendMode && !isCollapsed && (
+          <div className="px-6 py-3 bg-yellow-400/10 border-b border-yellow-400/20 text-xs text-gold flex items-center justify-between">
+            <div>
+              Amend mode enabled: drag to reorder, bulk select, delete, and toggle guest access per item.
+            </div>
+            <button
+              onClick={() => onSetAmendMode?.(false)}
+              className="px-2 py-1 rounded bg-white/10 border border-red-400 text-red-400"
+            >
+              Exit
+            </button>
+          </div>
+        )}
         {!isCollapsed && (
           <div className={`${isStatic ? 'max-h-[75vh] overflow-y-auto overflow-x-hidden' : ''} ${!isStatic ? 'overflow-x-auto' : ''}`} style={{ scrollbarGutter: isStatic ? 'stable both-edges' as any : undefined }}>
             <table className={`min-w-full ${isStatic ? 'table-fixed' : 'table-auto'} divide-y divide-yellow-400/20`}>
             <thead className="bg-yellow-400/10">
               <tr>
-                {!isGuest && (
+                {!isGuest && amendMode && (
                   <th className={`px-2 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-12' : 'w-10'}`}>
-                    
+                    <input
+                      type="checkbox"
+                      checked={filteredEvidence.every((e) => selectedIds[e.id as any]) && filteredEvidence.length > 0}
+                      onChange={(e) => {
+                        const next: Record<string, boolean> = { ...selectedIds }
+                        if (e.target.checked) {
+                          for (const it of filteredEvidence) next[it.id as any] = true
+                        } else {
+                          for (const it of filteredEvidence) delete next[it.id as any]
+                        }
+                        setSelectedIds(next)
+                      }}
+                      title="Select all filtered"
+                    />
                   </th>
                 )}
                 <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-48' : ''}`}>
                   File Name
                 </th>
-                <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-20' : ''}`}>
-                  Method
-                </th>
-                <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-16' : ''}`}>
-                  Pages
-                </th>
+                {columnPrefs.showMethod && (
+                  <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-20' : ''}`}>
+                    Method
+                  </th>
+                )}
+                {columnPrefs.showPages && (
+                  <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-16' : ''}`}>
+                    Pages
+                  </th>
+                )}
                 <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-24' : ''}`}>
                   Date Submitted
                 </th>
-                <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-20' : ''}`}>
-                  Exhibit #
-                </th>
+                {columnPrefs.showExhibit && (
+                  <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-20' : ''}`}>
+                    Exhibit #
+                  </th>
+                )}
                 <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-24' : ''}`}>
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody className="card-enhanced divide-y divide-gray-200">
-              {evidenceData && evidenceData.length > 0 ? (
-                evidenceData.map((item) => (
+              {filteredEvidence && filteredEvidence.length > 0 ? (
+                filteredEvidence.map((item) => (
                   <React.Fragment key={item.id}>
                     <tr 
                       draggable={isInteractive && amendMode}
@@ -1021,7 +1201,7 @@ const EvidenceManager = ({
                       onClick={() => (isInteractive ? handleRowClick(item) : undefined)}
                     >
                     {/* Order column hidden as requested */}
-                    {!isGuest && (
+                    {!isGuest && amendMode && (
                       <td className={`px-2 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-500`}>
                         <input
                           type="checkbox"
@@ -1034,18 +1214,24 @@ const EvidenceManager = ({
                     <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-900`}>
                       {item.title || item.file_name || item.name || '-'}
                     </td>
-                    <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-500`}>
-                      {item.method || '-'}
-                    </td>
-                    <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-500`}>
-                      {item.number_of_pages || '-'}
-                    </td>
+                    {columnPrefs.showMethod && (
+                      <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-500`}>
+                        {item.method || '-'}
+                      </td>
+                    )}
+                    {columnPrefs.showPages && (
+                      <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-500`}>
+                        {item.number_of_pages || '-'}
+                      </td>
+                    )}
                     <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-500`}>
                       {item.date_submitted ? new Date(item.date_submitted).toLocaleDateString() : '-'}
                     </td>
-                    <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-500`}>
-                      {item.exhibit_number || '-'}
-                    </td>
+                    {columnPrefs.showExhibit && (
+                      <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-500`}>
+                        {item.exhibit_number || '-'}
+                      </td>
+                    )}
                     <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm font-medium`}>
                       <div className="flex space-x-2">
                         {item.file_url && (!isGuest || (guestDownloadAllowed && (linkPermissions[item.id] !== false))) && (
@@ -1067,7 +1253,7 @@ const EvidenceManager = ({
                             >
                               <Download className="w-4 h-4" />
                             </button>
-                            {!isGuest && (
+                            {!isGuest && amendMode && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
@@ -1081,7 +1267,7 @@ const EvidenceManager = ({
                             )}
                           </>
                         )}
-                        {!isGuest && (
+                        {!isGuest && amendMode && (
                           <button
                             onClick={async (e) => {
                               e.stopPropagation()

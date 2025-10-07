@@ -72,20 +72,15 @@ export default function AuthComponent({
   })
 
   // Navigation items
-  const navItems = activeTab === 'shared'
-    ? [
-        { id: 'events-shared', label: 'Events', icon: CalendarDays, requiresClaim: true },
-        ...(selectedClaim ? [{ id: 'export', label: 'Export', icon: Download, requiresClaim: true }] : [] as any),
-        // { id: 'privileges', label: 'Privileges', icon: Crown }, // Hidden for now
-        { id: 'claims', label: 'Private Claims', icon: Home },
-        { id: 'shared', label: 'Shared Claims', icon: Users },
-      ]
-    : [
-        { id: 'events-private', label: 'Events', icon: CalendarDays, requiresClaim: true },
-        ...(selectedClaim ? [{ id: 'export', label: 'Export', icon: Download, requiresClaim: true }] : [] as any),
-        // { id: 'privileges', label: 'Privileges', icon: Crown }, // Hidden for now
-        { id: 'shared', label: 'Shared Claims', icon: Users },
-      ]
+  const navItems = [
+    { id: 'events-private', label: 'Events', icon: CalendarDays, requiresClaim: true },
+    { id: 'shared', label: 'Shared Claims', icon: Users },
+    // Shared-specific entries appear only when activeTab === 'shared'
+    ...(activeTab === 'shared' ? [
+      { id: 'events-shared', label: 'Events', icon: CalendarDays, requiresClaim: true },
+      { id: 'export', label: 'Export', icon: Download, requiresClaim: true },
+    ] : [{ id: 'export', label: 'Export', icon: Download, requiresClaim: true }])
+  ]
 
   useEffect(() => {
     // Check if this is a password reset flow - do this FIRST before any auth calls
@@ -490,13 +485,14 @@ export default function AuthComponent({
                       return null
                     }
                     // Hide only the current tab link to reduce clutter
-                    if ((activeTab === 'calendar-private' && item.id === 'calendar-private') ||
-                        (activeTab === 'todos-private' && item.id === 'todos-private') ||
-                        (activeTab === 'calendar-shared' && item.id === 'calendar-shared') ||
-                        (activeTab === 'todos-shared' && item.id === 'todos-shared') ||
+                    if ((activeTab === 'events-private' && item.id === 'events-private') ||
+                        (activeTab === 'events-shared' && item.id === 'events-shared') ||
                         (activeTab === 'shared' && item.id === 'shared') ||
-                        (activeTab === 'claims' && item.id === 'claims') ||
                         (activeTab === 'privileges' && item.id === 'privileges')) {
+                      return null
+                    }
+                    // Hide Shared Claims link when viewing shared events (back button navigates to same destination)
+                    if ((activeTab === 'events-shared') && item.id === 'shared') {
                       return null
                     }
                     const Icon = item.icon

@@ -17,6 +17,7 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
   const [showApproveModal, setShowApproveModal] = useState(false)
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [selectedPending, setSelectedPending] = useState<PendingEvidence | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({})
   const [selectedClaimIds, setSelectedClaimIds] = useState<string[]>([])
   const [rejectReason, setRejectReason] = useState('')
   const queryClient = useQueryClient()
@@ -42,6 +43,15 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
     },
     enabled: !!selectedClaim
   })
+
+  const allSelected = (pendingEvidence || []).length > 0 && (pendingEvidence || []).every(p => selectedIds[p.id])
+  const toggleSelectAll = (checked: boolean) => {
+    const next: Record<string, boolean> = {}
+    if (checked) {
+      for (const p of pendingEvidence || []) next[p.id] = true
+    }
+    setSelectedIds(next)
+  }
 
   // Get all claims for the approve modal
   const { data: allClaims } = useQuery({
@@ -106,6 +116,34 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
     setShowRejectModal(true)
   }
 
+  const handleBatchApprove = async () => {
+    if (!isOwner) return
+    const ids = Object.entries(selectedIds).filter(([, v]) => v).map(([k]) => k)
+    for (const pid of ids) {
+      try {
+        await supabase.rpc('approve_pending_evidence' as any, { pending_id: pid, reviewer_notes_param: null })
+      } catch (e) {
+        console.warn('Batch approve failed for', pid, e)
+      }
+    }
+    queryClient.invalidateQueries({ queryKey: ['pending-evidence', selectedClaim] })
+    setSelectedIds({})
+  }
+
+  const handleBatchReject = async () => {
+    if (!isOwner) return
+    const ids = Object.entries(selectedIds).filter(([, v]) => v).map(([k]) => k)
+    for (const pid of ids) {
+      try {
+        await supabase.rpc('reject_pending_evidence' as any, { pending_id: pid, p_reason: 'Rejected by batch' })
+      } catch (e) {
+        console.warn('Batch reject failed for', pid, e)
+      }
+    }
+    queryClient.invalidateQueries({ queryKey: ['pending-evidence', selectedClaim] })
+    setSelectedIds({})
+  }
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
@@ -151,7 +189,19 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
   return (
     <div className="space-y-4">
       <div className="card-enhanced p-4">
-        <h3 className="text-lg font-semibold text-gold mb-4">Pending Evidence Review</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gold">Pending Evidence Review</h3>
+          {isOwner && (
+            <div className="flex items-center gap-2 text-xs">
+              <label className="flex items-center gap-1">
+                <input type="checkbox" checked={allSelected} onChange={(e) => toggleSelectAll(e.target.checked)} />
+                Select all
+              </label>
+              <button onClick={handleBatchApprove} className="px-2 py-1 rounded bg-white/10 border border-green-500 text-green-500">Approve selected</button>
+              <button onClick={handleBatchReject} className="px-2 py-1 rounded bg-white/10 border border-red-500 text-red-500">Reject selected</button>
+            </div>
+          )}
+        </div>
         
         {pendingEvidence.map((evidence) => (
           <div key={evidence.id} className="card-smudge p-3 mb-3">
