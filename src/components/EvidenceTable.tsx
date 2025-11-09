@@ -87,7 +87,7 @@ const EvidenceTable = () => {
                   {item.file_name || '-'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {item.exhibit_id || '-'}
+                  {(item as any).exhibit_number || '-'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {item.method || '-'}

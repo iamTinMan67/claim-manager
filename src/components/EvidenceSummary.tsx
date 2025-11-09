@@ -137,7 +137,7 @@ export const EvidenceSummary = ({ evidenceCount, claim, evidenceList, onUpdateCl
             <div key={evidence.id} className="bg-white border rounded-lg p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
                 <div className="flex flex-wrap">
-                  <span className="text-gray-900">{evidence.exhibit_id || 'N/A'}</span>
+                  <span className="text-gray-900">{(evidence as any).exhibit_number || 'N/A'}</span>
                 </div>
                 <div className="flex flex-wrap">
                   <span className="text-gray-900">{removeFileExtension(evidence.file_name)}</span>

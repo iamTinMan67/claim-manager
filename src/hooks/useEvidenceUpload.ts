@@ -88,12 +88,14 @@ export const useEvidenceUpload = () => {
         fileName = uploadResult.fileName;
       }
 
-      // Use exhibit reference as-is
-      const exhibitId = formData.exhibitRef;
+      // Extract exhibit number from exhibit reference (e.g., "Exhibit 1" -> 1)
+      const exhibitRef = formData.exhibitRef;
+      const exhibitNumberMatch = exhibitRef.match(/(\d+)/);
+      const exhibitNumber = exhibitNumberMatch ? parseInt(exhibitNumberMatch[1], 10) : null;
       
       const evidenceData = {
         title: formData.title || "Untitled Evidence",
-        exhibit_id: exhibitId,
+        exhibit_number: exhibitNumber,
         file_name: fileName,
         file_url: fileUrl,
         number_of_pages: formData.numberOfPages ? parseInt(formData.numberOfPages) : null,

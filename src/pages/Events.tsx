@@ -39,15 +39,15 @@ const Events: React.FC<EventsProps> = ({
           <div className="flex space-x-1 mb-6">
             {tabs.map((tab) => {
               const Icon = tab.icon
+              // Hide the active tab
+              if (activeTab === tab.id) {
+                return null
+              }
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as 'todos' | 'calendar')}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                    activeTab === tab.id
-                      ? 'bg-yellow-400 text-black'
-                      : 'text-gray-300 hover:bg-white/10'
-                  }`}
+                  className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors text-gray-300 hover:bg-white/10 border-2 border-transparent"
                 >
                   <Icon className="w-4 h-4" />
                   <span>{tab.label}</span>

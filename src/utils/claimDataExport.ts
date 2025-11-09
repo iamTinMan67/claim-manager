@@ -136,7 +136,7 @@ const generateClaimDataCSV = (data: ClaimDataExport): string => {
   
   data.evidence.forEach(evidence => {
     lines.push([
-      escapeCSV(evidence.exhibit_id || ''),
+      escapeCSV((evidence as any).exhibit_number?.toString() || ''),
       escapeCSV(evidence.file_name || ''),
       escapeCSV(evidence.number_of_pages?.toString() || ''),
       escapeCSV(evidence.method || ''),

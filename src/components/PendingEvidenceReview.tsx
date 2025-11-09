@@ -16,10 +16,12 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
 }) => {
   const [showApproveModal, setShowApproveModal] = useState(false)
   const [showRejectModal, setShowRejectModal] = useState(false)
+  const [showBatchRejectModal, setShowBatchRejectModal] = useState(false)
   const [selectedPending, setSelectedPending] = useState<PendingEvidence | null>(null)
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({})
   const [selectedClaimIds, setSelectedClaimIds] = useState<string[]>([])
   const [rejectReason, setRejectReason] = useState('')
+  const [batchRejectReason, setBatchRejectReason] = useState('')
   const queryClient = useQueryClient()
 
   // Get pending evidence for the selected claim
@@ -90,8 +92,8 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
   const rejectMutation = useMutation({
     mutationFn: async ({ pendingId, reason }: { pendingId: string, reason: string }) => {
       const { data, error } = await supabase.rpc('reject_pending_evidence', {
-        p_pending_id: pendingId,
-        p_reason: reason
+        pending_id: pendingId,
+        reviewer_notes_param: reason
       })
       if (error) throw error
       return data
@@ -101,6 +103,28 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
       setShowRejectModal(false)
       setSelectedPending(null)
       setRejectReason('')
+    }
+  })
+
+  // Batch reject mutation
+  const batchRejectMutation = useMutation({
+    mutationFn: async ({ ids, reason }: { ids: string[], reason: string }) => {
+      for (const pid of ids) {
+        const { error } = await supabase.rpc('reject_pending_evidence', {
+          pending_id: pid,
+          reviewer_notes_param: reason
+        })
+        if (error) {
+          console.warn('Batch reject failed for', pid, error)
+          throw error
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pending-evidence', selectedClaim] })
+      setSelectedIds({})
+      setShowBatchRejectModal(false)
+      setBatchRejectReason('')
     }
   })
 
@@ -130,18 +154,15 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
     setSelectedIds({})
   }
 
-  const handleBatchReject = async () => {
+  const handleBatchReject = () => {
     if (!isOwner) return
     const ids = Object.entries(selectedIds).filter(([, v]) => v).map(([k]) => k)
-    for (const pid of ids) {
-      try {
-        await supabase.rpc('reject_pending_evidence' as any, { pending_id: pid, p_reason: 'Rejected by batch' })
-      } catch (e) {
-        console.warn('Batch reject failed for', pid, e)
-      }
+    if (ids.length === 0) {
+      alert('Please select at least one item to reject.')
+      return
     }
-    queryClient.invalidateQueries({ queryKey: ['pending-evidence', selectedClaim] })
-    setSelectedIds({})
+    setBatchRejectReason('')
+    setShowBatchRejectModal(true)
   }
 
   const getStatusBadge = (status: string) => {
@@ -244,33 +265,6 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
                     <Eye className="w-5 h-5" />
                   </a>
                 )}
-                {!isOwner ? (
-                  <button
-                    onClick={async () => {
-                      try {
-                        await supabase
-                          .from('pending_evidence')
-                          .update({ status: 'withdrawn' })
-                          .eq('id', evidence.id)
-                          .eq('status', 'pending')
-                        queryClient.invalidateQueries({ queryKey: ['pending-evidence'] })
-                      } catch {}
-                    }}
-                    className="text-red-600 hover:text-red-700"
-                    title="Withdraw request"
-                  >
-                    <Trash className="w-5 h-5" />
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleReject(evidence)}
-                    disabled={rejectMutation.isPending}
-                    className="text-red-600 hover:text-red-700 disabled:opacity-50"
-                    title="Reject"
-                  >
-                    <Trash className="w-5 h-5" />
-                  </button>
-                )}
               </div>
             </div>
 
@@ -294,8 +288,39 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
                     <CheckCircle className="w-4 h-4" />
                     <span>Approve</span>
                   </button>
+                  <button
+                    onClick={() => handleReject(evidence)}
+                    disabled={rejectMutation.isPending}
+                    className="px-4 py-2 rounded-lg flex items-center space-x-2 disabled:opacity-50"
+                    style={{ 
+                      backgroundColor: 'rgba(30, 58, 138, 0.3)',
+                      border: '2px solid #ef4444',
+                      color: '#ef4444'
+                    }}
+                  >
+                    <XCircle className="w-4 h-4" />
+                    <span>Reject</span>
+                  </button>
                 </>
-              ) : null}
+              ) : (
+                <button
+                  onClick={async () => {
+                    try {
+                      await supabase
+                        .from('pending_evidence')
+                        .update({ status: 'withdrawn' })
+                        .eq('id', evidence.id)
+                        .eq('status', 'pending')
+                      queryClient.invalidateQueries({ queryKey: ['pending-evidence'] })
+                    } catch {}
+                  }}
+                  className="px-4 py-2 rounded-lg flex items-center space-x-2 bg-white/10 border border-red-500 text-red-500 hover:bg-red-500/20"
+                  title="Withdraw request"
+                >
+                  <Trash className="w-4 h-4" />
+                  <span>Withdraw</span>
+                </button>
+              )}
             </div>
           </div>
         ))}
@@ -303,8 +328,8 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
 
       {/* Approve Modal */}
       {showApproveModal && selectedPending && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="card-enhanced p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]" style={{ zIndex: 9999 }}>
+          <div className="card-enhanced p-6 max-w-md w-full mx-4 relative z-[10000]" style={{ zIndex: 10000 }} onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-gold mb-4">Approve Evidence</h3>
             <p className="text-white mb-4">
               Link "{selectedPending.file_name || selectedPending.description}" to which claims?
@@ -363,8 +388,8 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
 
       {/* Reject Modal */}
       {showRejectModal && selectedPending && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="card-enhanced p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]" style={{ zIndex: 9999 }} onClick={() => { setShowRejectModal(false); setSelectedPending(null); setRejectReason('') }}>
+          <div className="card-enhanced p-6 max-w-md w-full mx-4 relative z-[10000]" style={{ zIndex: 10000 }} onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-gold mb-4">Reject Evidence</h3>
             <p className="text-white mb-4">
               Why are you rejecting "{selectedPending.file_name || selectedPending.description}"?
@@ -394,6 +419,51 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
                   setShowRejectModal(false)
                   setSelectedPending(null)
                   setRejectReason('')
+                }}
+                className="bg-yellow-400/20 text-gold px-4 py-2 rounded-lg hover:bg-yellow-400/30"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Reject Modal */}
+      {showBatchRejectModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]" style={{ zIndex: 9999 }} onClick={() => { setShowBatchRejectModal(false); setBatchRejectReason('') }}>
+          <div className="card-enhanced p-6 max-w-md w-full mx-4 relative z-[10000]" style={{ zIndex: 10000 }} onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-gold mb-4">Reject Selected Evidence</h3>
+            <p className="text-white mb-4">
+              You are about to reject {Object.entries(selectedIds).filter(([, v]) => v).length} item(s). Please provide a reason:
+            </p>
+            
+            <textarea
+              value={batchRejectReason}
+              onChange={(e) => setBatchRejectReason(e.target.value)}
+              placeholder="Enter rejection reason..."
+              className="w-full p-3 border border-yellow-400/30 bg-white/10 text-gold rounded-lg focus:border-yellow-400 focus:outline-none"
+              rows={3}
+            />
+
+            <div className="flex space-x-3 mt-4">
+              <button
+                onClick={() => {
+                  const ids = Object.entries(selectedIds).filter(([, v]) => v).map(([k]) => k)
+                  batchRejectMutation.mutate({ 
+                    ids, 
+                    reason: batchRejectReason 
+                  })
+                }}
+                disabled={batchRejectMutation.isPending || !batchRejectReason.trim()}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {batchRejectMutation.isPending ? 'Rejecting...' : 'Reject All'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowBatchRejectModal(false)
+                  setBatchRejectReason('')
                 }}
                 className="bg-yellow-400/20 text-gold px-4 py-2 rounded-lg hover:bg-yellow-400/30"
               >

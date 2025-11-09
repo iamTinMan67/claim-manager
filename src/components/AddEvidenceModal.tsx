@@ -52,19 +52,13 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
       try {
         let query = supabase
           .from('evidence')
-          .select('exhibit_id, exhibit_number')
+          .select('exhibit_number')
           .limit(2000);
         // No need to filter by case_number since evidence table doesn't have this column
         const { data, error } = await query;
         if (error) throw error;
         let maxNum = 0;
         (data || []).forEach((row: any) => {
-          const ref: string = row.exhibit_id || '';
-          const match = ref.match(/exhibit[-\s_]*(\d+)/i);
-          if (match) {
-            const n = parseInt(match[1], 10);
-            if (!Number.isNaN(n)) maxNum = Math.max(maxNum, n);
-          }
           if (row.exhibit_number && Number.isFinite(row.exhibit_number)) {
             maxNum = Math.max(maxNum, Number(row.exhibit_number));
           }

@@ -35,7 +35,7 @@ export class EvidenceService {
         id: item.id,
         file_name: item.file_name,
         file_url: item.file_url,
-        exhibit_id: item.exhibit_id,
+        exhibit_number: (item as any).exhibit_number, // Primary field for exhibit numbers
         number_of_pages: item.number_of_pages,
         date_submitted: item.date_submitted,
         method: item.method,
@@ -73,7 +73,7 @@ export class EvidenceService {
         .insert([{ 
           file_name: evidenceData.file_name,
           file_url: evidenceData.file_url,
-          exhibit_id: evidenceData.exhibit_id,
+          exhibit_number: evidenceData.exhibit_number,
           number_of_pages: evidenceData.number_of_pages,
           date_submitted: evidenceData.date_submitted,
           method: evidenceData.method,
@@ -104,19 +104,25 @@ export class EvidenceService {
 
   static async updateEvidence(id: string, updates: Partial<Evidence>): Promise<void> {
     const operation = async () => {
+      const updateData: any = {
+        number_of_pages: updates.number_of_pages,
+        date_submitted: updates.date_submitted,
+        method: updates.method,
+        url_link: updates.url_link,
+        book_of_deeds_ref: updates.book_of_deeds_ref,
+        file_name: updates.file_name,
+        file_url: updates.file_url,
+        display_order: updates.display_order,
+      };
+      
+      // Only include exhibit_number if it's being updated
+      if (updates.exhibit_number !== undefined) {
+        updateData.exhibit_number = updates.exhibit_number;
+      }
+      
       const { error } = await supabase
         .from('evidence')
-        .update({
-          exhibit_id: updates.exhibit_id,
-          number_of_pages: updates.number_of_pages,
-          date_submitted: updates.date_submitted,
-          method: updates.method,
-          url_link: updates.url_link,
-          book_of_deeds_ref: updates.book_of_deeds_ref,
-          file_name: updates.file_name,
-          file_url: updates.file_url,
-          display_order: updates.display_order,
-        })
+        .update(updateData)
         .eq('id', id);
 
       if (error) {
@@ -276,14 +282,13 @@ export class EvidenceService {
 
   static async reorderEvidence(evidenceList: Evidence[]): Promise<void> {
     const operation = async () => {
-      // Update display_order for each evidence item and regenerate exhibit_id
+      // Update display_order for each evidence item and update exhibit_number
       const updates = evidenceList.map((evidence, index) => {
-        const newExhibitId = `EX${(index + 1).toString().padStart(3, '0')}`;
         return supabase
           .from('evidence')
           .update({ 
             display_order: index + 1,
-            exhibit_id: newExhibitId
+            exhibit_number: index + 1
           })
           .eq('id', evidence.id);
       });

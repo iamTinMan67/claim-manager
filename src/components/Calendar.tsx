@@ -185,14 +185,17 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       
       const { data, error } = await supabase
         .from('claim_shares')
-        .select('shared_with_id, profiles:shared_with_id(email, full_name)')
+        .select('shared_with_id, profiles:shared_with_id(id, email, full_name)')
         .eq('claim_id', claimId)
       if (error) throw error
-      const list = (data || []).map((row: any) => ({
-        id: row.shared_with_id as string,
-        email: row.shared_with_id as string,
-        full_name: row.shared_with_id as string
-      }))
+      const list = (data || []).map((row: any) => {
+        const profile = row.profiles
+        return {
+          id: profile?.id || row.shared_with_id,
+          email: profile?.email || row.shared_with_id || '',
+          full_name: profile?.full_name || profile?.email || ''
+        }
+      }).filter((u: any) => u.id) // Filter out any invalid entries
       // Include host (claim owner) as potential assignee
       const { data: claimOwner } = await supabase
         .from('claims')
@@ -540,8 +543,8 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
 
       {!showNavigation && (
         <div className="mb-6">
-          <h2 className="text-2xl font-bold">Calendar Events</h2>
-          <div className="mt-2">
+          <h2 className="text-2xl font-bold mb-4">Calendar Events</h2>
+          <div className="mb-4">
             <button
               onClick={() => {
                 const now = new Date()
@@ -693,26 +696,32 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
               </button>
             </div>
             </div>
-            {showGuestContent && (
             <div className="w-1/2 grid grid-cols-1 items-end">
-            <div>
-                  <label className="block text-base font-medium mb-1">Assignee</label>
-              <select
-                    value={newEvent.assignee_id || currentUser?.id || ''}
-                    onChange={(e) => setNewEvent({ ...newEvent, assignee_id: e.target.value })}
-                    className="h-[27px] text-sm border border-yellow-400/30 rounded-md px-2 bg-white/10 text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
-                    style={{ width: timeFieldWidth }}
-                  >
-                    <option value={currentUser?.id || ''}>Assign to yourself</option>
-                    {(collaborators || []).map((u) => (
+              <div>
+                <label className="block text-base font-medium mb-1">Assignee</label>
+                <select
+                  value={newEvent.assignee_id || currentUser?.id || ''}
+                  onChange={(e) => setNewEvent({ ...newEvent, assignee_id: e.target.value })}
+                  className="h-[27px] text-sm border border-yellow-400/30 rounded-md px-2 bg-white/10 text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                  style={{ width: timeFieldWidth }}
+                >
+                  <option value={currentUser?.id || ''}>Assign to yourself</option>
+                  {collaborators && collaborators.length > 0 ? (
+                    collaborators.map((u) => (
                       <option key={u.id} value={u.id}>
-                        {u.full_name || u.email || 'User'}
-                  </option>
-                ))}
-              </select>
+                        {u.full_name || u.email || 'User'} {u.id === currentUser?.id ? '(You)' : ''}
+                      </option>
+                    ))
+                  ) : (
+                    currentUser && (
+                      <option value={currentUser.id}>
+                        {currentUser.email} (You)
+                      </option>
+                    )
+                  )}
+                </select>
+              </div>
             </div>
-            </div>
-            )}
             
             
           </form>
@@ -863,6 +872,32 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         {/* Calendar Section */}
         <div className="lg:col-span-2">
           <div className="card-enhanced rounded-lg shadow">
+            {/* Calendar Navigation Controls - Centered above calendar */}
+            {!showNavigation && (
+              <div className="flex justify-center items-center space-x-4 mb-4 pt-4">
+                <button
+                  onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
+                  className="px-3 py-1 border rounded hover:bg-yellow-400/20 text-gold"
+                >
+                  Previous
+                </button>
+                <h3 className="text-lg font-semibold">
+                  {format(currentDate, 'MMMM yyyy')}
+                </h3>
+                <button
+                  onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}
+                  className="px-3 py-1 border rounded hover:bg-yellow-400/20 text-gold"
+                >
+                  Next
+                </button>
+                <button
+                  onClick={() => setCurrentDate(new Date())}
+                  className="px-3 py-1 border rounded hover:bg-yellow-400/20 text-gold ml-4"
+                >
+                  Today
+                </button>
+              </div>
+            )}
             <div className="grid grid-cols-7 gap-px bg-yellow-400/20">
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                 <div key={day} className="bg-yellow-400/30 p-2 text-center text-sm font-medium text-gold">

@@ -32,6 +32,12 @@ export const ClaimEvidenceExport = ({ claim, evidenceList, allClaims, allEvidenc
   const handleExportClaimEvidence = async (config?: PDFFieldConfig) => {
     setGenerating(true);
     try {
+      // Debug: Log the evidence list being passed to PDF generator
+      console.log('[ClaimEvidenceExport] Evidence list being exported:', evidenceList);
+      evidenceList.forEach((evidence, idx) => {
+        console.log(`[ClaimEvidenceExport] Evidence ${idx}: exhibit_number = ${(evidence as any).exhibit_number}, file_name = "${evidence.file_name}"`);
+      });
+      
       const configToUse = config || fieldConfig;
       const pdf = generateClaimEvidencePDF(claim, evidenceList, configToUse);
       const fileName = `${claim.case_number}_Evidence_Report.pdf`;
@@ -59,15 +65,19 @@ export const ClaimEvidenceExport = ({ claim, evidenceList, allClaims, allEvidenc
   };
 
   const exportEvidenceCSV = () => {
-    const headers = ['Exhibit ID', 'File Name', 'Created Date', 'Claims Count'];
+    const headers = ['Exhibit Number', 'File Name', 'Created Date', 'Claims Count'];
     const csvContent = [
       headers.join(','),
-      ...evidenceList.map(evidence => [
-        `"${evidence.exhibit_id || ''}"`,
-        `"${evidence.file_name || 'Evidence Item'}"`,
-        `"${new Date(evidence.created_at).toLocaleDateString()}"`,
-        evidence.claimIds.length
-      ].join(','))
+      ...evidenceList.map(evidence => {
+        const exhibitNum = (evidence as any).exhibit_number;
+        const exhibitValue = exhibitNum !== null && exhibitNum !== undefined ? exhibitNum : '';
+        return [
+          `"${exhibitValue}"`,
+          `"${evidence.file_name || 'Evidence Item'}"`,
+          `"${new Date(evidence.created_at).toLocaleDateString()}"`,
+          evidence.claimIds.length
+        ].join(',');
+      })
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });

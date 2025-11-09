@@ -1495,11 +1495,8 @@ const EvidenceManager = ({
           initialExhibitRef={(function(){
             const list = evidenceData?.filter(e => e.case_number === selectedClaim) || []
             const nums = list.map(e => {
-              const fromId = (e.exhibit_id || '').match(/(\d+)/)?.[1]
               const fromNum = (e as any).exhibit_number
-              const a = fromId ? parseInt(fromId,10) : 0
-              const b = typeof fromNum === 'number' ? fromNum : 0
-              return Math.max(a,b)
+              return fromNum !== null && fromNum !== undefined && typeof fromNum === 'number' ? fromNum : 0
             })
             const max = nums.length ? Math.max(...nums) : 0
             return `Exhibit ${max + 1}`

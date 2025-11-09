@@ -11,10 +11,10 @@ import {
 
 // Define column width percentages for different field types
 const FIELD_WIDTH_MAPPING = {
-  exhibitId: 0.11,    // 10% - for exhibit numbers
-  fileName: 0.29,     // 42% - for file names (with PDF icon)
-  pages: 0.08,        // 12% - for page numbers
-  method: 0.11,       // 13% - for method
+  exhibitId: 0.02,    // 2% - for exhibit numbers (minimal width, will use actual text width)
+  fileName: 0.36,     // 36% - for file names (increased to compensate)
+  pages: 0.08,        // 8% - for page numbers
+  method: 0.11,       // 11% - for method
   date: 0.17,         // 17% - for dates
   bundlePage: 0.06,   // 6% - for bundle pos (moved closer)
 };
@@ -30,6 +30,8 @@ export const generateClaimEvidencePDF = (
   evidenceList: Evidence[],
   config?: PDFFieldConfig
 ) => {
+  console.log('🔵 generateClaimEvidencePDF STARTED');
+  console.log('Evidence list length:', evidenceList.length);
   const fieldConfig = config || {
     claimFields: DEFAULT_CLAIM_FIELDS,
     evidenceFields: DEFAULT_EVIDENCE_FIELDS,
@@ -75,6 +77,7 @@ export const generateClaimEvidencePDF = (
 
   // Helper function to draw table headers with variable widths
   const drawTableHeaders = (y: number) => {
+    console.log('=== drawTableHeaders called ===');
     pdf.setFontSize(9);
     pdf.setFont('helvetica', 'bold');
     
@@ -82,7 +85,17 @@ export const generateClaimEvidencePDF = (
       .filter(([_, selected]) => selected)
       .map(([key, _]) => key);
     
+    console.log('Selected fields:', selectedFields);
     let currentX = margin;
+    console.log('Initial currentX (margin):', currentX);
+    
+    // Pre-calculate exhibit header text width
+    let exhibitHeaderWidth = 0;
+    if (selectedFields.includes('exhibitId')) {
+      const exhibitLabel = EVIDENCE_FIELD_LABELS['exhibitId'];
+      exhibitHeaderWidth = pdf.getTextWidth(exhibitLabel);
+      console.log(`[drawTableHeaders] Exhibit header: "${exhibitLabel}", textWidth: ${exhibitHeaderWidth}pt, currentX before: ${currentX}`);
+    }
     
     selectedFields.forEach((fieldKey) => {
       const label = EVIDENCE_FIELD_LABELS[fieldKey as keyof typeof EVIDENCE_FIELD_LABELS];
@@ -90,7 +103,18 @@ export const generateClaimEvidencePDF = (
       const columnWidth = tableWidth * widthPercentage;
       
       pdf.text(label, currentX, y);
-      currentX += columnWidth;
+      
+      // For exhibitId header, use pre-calculated text width to position column 2 immediately after
+      if (fieldKey === 'exhibitId') {
+        const xBefore = currentX;
+        const adjustedWidth = exhibitHeaderWidth + 0; // Use actual text width + 0pt gap (no gap)
+        currentX += adjustedWidth; // Move to end of text - column 2 starts immediately
+        console.log(`[drawTableHeaders] exhibitId: adjustedWidth=${adjustedWidth}pt, xBefore=${xBefore}, xAfter=${currentX}, columnWidth would be=${columnWidth}pt`);
+      } else if (fieldKey === 'fileName') {
+        console.log(`[drawTableHeaders] fileName starts at currentX=${currentX}, columnWidth=${columnWidth}pt`);
+      } else {
+        currentX += columnWidth; // Normal spacing for other columns
+      }
     });
     
     // Draw header underline
@@ -102,6 +126,9 @@ export const generateClaimEvidencePDF = (
 
   // Helper function to draw table row with variable widths and text wrapping
   const drawTableRow = (evidence: Evidence, y: number, bundlePageNumber: number, index: number) => {
+    if (index === 0) {
+      console.log('=== drawTableRow called for first row ===');
+    }
     pdf.setFontSize(8);
     pdf.setFont('helvetica', 'normal');
     
@@ -121,6 +148,25 @@ export const generateClaimEvidencePDF = (
       shouldCenter: boolean;
     }> = [];
     
+    // Pre-calculate exhibit text width to position fileName column closer
+    let exhibitTextWidth = 0;
+    let exhibitValue = '';
+    if (selectedFields.includes('exhibitId')) {
+      const exhibitNumber = (evidence as any).exhibit_number;
+      if (exhibitNumber !== null && exhibitNumber !== undefined && !isNaN(Number(exhibitNumber))) {
+        exhibitValue = `Exhibit ${exhibitNumber}`;
+      } else {
+        const fallbackNumber = evidence.display_order !== null && evidence.display_order !== undefined 
+          ? evidence.display_order + 1 
+          : index + 1;
+        exhibitValue = `Exhibit ${fallbackNumber}`;
+      }
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'normal');
+      exhibitTextWidth = pdf.getTextWidth(exhibitValue);
+      console.log(`[drawTableRow] Exhibit text: "${exhibitValue}", textWidth: ${exhibitTextWidth}pt, currentX before: ${currentX}`);
+    }
+
     selectedFields.forEach((fieldKey) => {
       const widthPercentage = FIELD_WIDTH_MAPPING[fieldKey as keyof typeof FIELD_WIDTH_MAPPING] || 0.15;
       const columnWidth = tableWidth * widthPercentage;
@@ -129,7 +175,8 @@ export const generateClaimEvidencePDF = (
       
       switch (fieldKey) {
         case 'exhibitId':
-          value = `Exhibit ${index + 1}`;
+          value = exhibitValue;
+          console.log(`[drawTableRow] exhibitId case - exhibit_number: ${(evidence as any).exhibit_number}, display_order: ${evidence.display_order}, index: ${index}, final value: "${value}"`);
           break;
         case 'fileName':
           // Remove .pdf extension and add PDF icon indicator
@@ -149,13 +196,23 @@ export const generateClaimEvidencePDF = (
           break;
       }
       
-      const lines = wrapTextForField(value, fieldKey, columnWidth - 2); // Small margin
+      // For exhibitId, use pre-calculated text width - ignore columnWidth percentage
+      let textWidth = (columnWidth - 2);
+      let adjustedWidth = columnWidth;
+      
+      if (fieldKey === 'exhibitId') {
+        // Use pre-calculated text width with no gap to position column 2 immediately after
+        adjustedWidth = exhibitTextWidth + 0; // No gap - column 2 starts immediately after text
+        textWidth = exhibitTextWidth;
+      }
+      
+      const lines = wrapTextForField(value, fieldKey, textWidth);
       const shouldCenter = fieldKey === 'pages' || fieldKey === 'method' || fieldKey === 'bundlePage';
       
       fieldData.push({
         fieldKey,
         x: currentX,
-        width: columnWidth,
+        width: adjustedWidth,
         lines,
         shouldCenter
       });
@@ -164,11 +221,20 @@ export const generateClaimEvidencePDF = (
       const fieldHeight = lines.length * 10; // 10 points per line
       maxRowHeight = Math.max(maxRowHeight, fieldHeight);
       
-      currentX += columnWidth;
+      // For exhibitId, use actual text width with no gap to bring column 2 immediately after
+      if (fieldKey === 'exhibitId') {
+        const xBefore = currentX;
+        currentX += adjustedWidth; // Move to end of text with no gap - column 2 starts immediately
+        console.log(`[drawTableRow] exhibitId: adjustedWidth=${adjustedWidth}pt, xBefore=${xBefore}, xAfter=${currentX}, columnWidth would be=${columnWidth}pt`);
+      } else if (fieldKey === 'fileName') {
+        console.log(`[drawTableRow] fileName starts at currentX=${currentX}, columnWidth=${columnWidth}pt`);
+      } else {
+        currentX += columnWidth; // Normal spacing for other columns
+      }
     });
     
     // Second pass: draw all text
-    fieldData.forEach(({ x, width, lines, shouldCenter }) => {
+    fieldData.forEach(({ fieldKey, x, width, lines, shouldCenter }) => {
       lines.forEach((line, lineIndex) => {
         const lineY = y + (lineIndex * 10);
         
@@ -177,7 +243,9 @@ export const generateClaimEvidencePDF = (
           const centerX = x + (width - textWidth) / 2;
           pdf.text(line, centerX, lineY);
         } else {
-          pdf.text(line, x, lineY);
+          // For exhibitId, draw text at the left edge with no extra padding
+          const textX = fieldKey === 'exhibitId' ? x : x;
+          pdf.text(line, textX, lineY);
         }
       });
     });
@@ -185,17 +253,23 @@ export const generateClaimEvidencePDF = (
     return y + maxRowHeight; // Return new Y position for next row
   };
 
-  // Sort evidence by exhibit ID in ascending order
+  // Sort evidence by exhibit_number in ascending order, or by display_order if exhibit_number is missing
   const sortedEvidence = [...evidenceList].sort((a, b) => {
-    if (!a.exhibit_id || !b.exhibit_id) return 0;
+    // First try to sort by exhibit_number if both have it
+    const aExhibitNum = (a as any).exhibit_number;
+    const bExhibitNum = (b as any).exhibit_number;
     
-    // Extract numeric part from exhibit IDs
-    const getExhibitNumber = (exhibitId: string) => {
-      const match = exhibitId.match(/(\d+)/);
-      return match ? parseInt(match[1], 10) : 0;
-    };
-    
-    return getExhibitNumber(a.exhibit_id) - getExhibitNumber(b.exhibit_id);
+    if (aExhibitNum !== null && aExhibitNum !== undefined && bExhibitNum !== null && bExhibitNum !== undefined) {
+      return aExhibitNum - bExhibitNum;
+    }
+    // Fall back to display_order if exhibit_number is missing
+    if (a.display_order !== null && b.display_order !== null) {
+      return a.display_order - b.display_order;
+    }
+    if (a.display_order !== null) return -1;
+    if (b.display_order !== null) return 1;
+    // Finally, sort by created_at
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
   });
 
   // Title
@@ -254,6 +328,9 @@ export const generateClaimEvidencePDF = (
     
     // Draw evidence rows with cumulative bundle page numbers
     sortedEvidence.forEach((evidence, index) => {
+      // Debug: Log exhibit_id to help diagnose issues
+      console.log(`PDF Export - Evidence ${index}: exhibit_id = "${evidence.exhibit_id}", file_name = "${evidence.file_name}", evidence object:`, evidence);
+      
       // Check if we need a new page (including space for headers)
       if (checkPageBreak(20)) {
         yPosition = drawTableHeaders(yPosition);

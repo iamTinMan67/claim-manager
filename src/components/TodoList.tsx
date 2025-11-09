@@ -204,7 +204,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         
         const { data: guestsData, error: guestsError } = await supabase
           .from('claim_shares')
-          .select('shared_with_id')
+          .select('shared_with_id, profiles:shared_with_id(id, email, nickname, full_name)')
           .eq('claim_id', claimId)
         
         if (guestsError) {
@@ -212,29 +212,27 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
           throw guestsError
         }
         
-        // Get guest profiles
-        const guestIds = guestsData?.map(share => share.shared_with_id) || []
-        let guestProfiles = []
-        
-        if (guestIds.length > 0) {
-          const { data: guestProfilesData, error: guestProfilesError } = await supabase
-            .from('profiles')
-            .select('id, email, nickname')
-            .in('id', guestIds)
-          
-          if (guestProfilesError) {
-            console.error('Guest profiles error:', guestProfilesError)
-            throw guestProfilesError
+        // Get guest profiles from the joined data
+        const guestProfiles = (guestsData || []).map((share: any) => {
+          const profile = share.profiles
+          return {
+            id: profile?.id || share.shared_with_id,
+            email: profile?.email || '',
+            nickname: profile?.nickname || null,
+            full_name: profile?.full_name || profile?.nickname || profile?.email || ''
           }
-          
-          guestProfiles = guestProfilesData || []
-        }
+        }).filter((profile: any) => profile.id) // Filter out any invalid profiles
         
         const participants = []
         
         // Add host first
         if (hostProfile) {
-          participants.push(hostProfile)
+          participants.push({
+            id: hostProfile.id,
+            email: hostProfile.email,
+            nickname: hostProfile.nickname || null,
+            full_name: hostProfile.nickname || hostProfile.email || ''
+          })
         }
         
         // Add guests
@@ -498,12 +496,18 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
           <h2 className="text-2xl font-bold">To-Do Lists</h2>
           <div className="mt-2">
             <button
-              onClick={() => {
-              console.log('Add New clicked, currentUser:', currentUser?.id)
-              setNewTodo(prev => ({ ...prev, responsible_user_id: currentUser?.id || '' }))
-              setShowAddForm(true)
-            }}
-              className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg hover:opacity-90 flex items-center space-x-2"
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                console.log('Add New clicked, currentUser:', currentUser?.id)
+                console.log('Setting showAddForm to true')
+                setNewTodo(prev => ({ ...prev, responsible_user_id: currentUser?.id || '' }))
+                setShowAddForm(true)
+                console.log('showAddForm should now be true')
+              }}
+              className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg hover:opacity-90 flex items-center space-x-2 cursor-pointer"
+              style={{ pointerEvents: 'auto' }}
             >
               <Plus className="w-4 h-4" />
               <span>Add New</span>
@@ -512,11 +516,16 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         </div>
       )}
 
-      {showAddForm && (!isGuest || (showGuestContent && !isGuestFrozen)) ? (
+      {showAddForm ? (
         // Form overlay - hide main content
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="p-6 rounded-[16px] shadow max-w-2xl w-full max-h-[95vh] overflow-y-auto"
-            style={{ backgroundColor: 'rgba(30, 58, 138, 0.9)', border: '2px solid #fbbf24' }}>
+        <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4" style={{ zIndex: 9999 }} onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            setShowAddForm(false)
+          }
+        }}>
+          <div className="p-6 rounded-[16px] shadow max-w-2xl w-full max-h-[95vh] overflow-y-auto relative z-[10000]"
+            style={{ backgroundColor: 'rgba(30, 58, 138, 0.9)', border: '2px solid #fbbf24', zIndex: 10000 }} onClick={(e) => e.stopPropagation()}>
+            {console.log('Modal is rendering - showAddForm is true')}
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Add New Todo</h3>
               <button
@@ -678,23 +687,29 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                 </button>
               </div>
             </div>
-            {showGuestContent && sharedUsers && sharedUsers.length > 0 && (
-              <div>
-                <label className="block text-base font-medium mb-1">Responsible User</label>
-                <select
-                  value={newTodo.responsible_user_id}
-                  onChange={(e) => setNewTodo({ ...newTodo, responsible_user_id: e.target.value })}
-                  className="w-2/3 h-12 text-base border border-yellow-400/30 rounded-md px-4 py-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
-                >
-                  <option value="">Assign to yourself</option>
-                  {sharedUsers.map((user) => (
+            <div>
+              <label className="block text-base font-medium mb-1">Responsible User</label>
+              <select
+                value={newTodo.responsible_user_id}
+                onChange={(e) => setNewTodo({ ...newTodo, responsible_user_id: e.target.value })}
+                className="w-2/3 h-12 text-base border border-yellow-400/30 rounded-md px-4 py-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+              >
+                <option value={currentUser?.id || ''}>Assign to yourself</option>
+                {sharedUsers && sharedUsers.length > 0 ? (
+                  sharedUsers.map((user) => (
                     <option key={user.id} value={user.id}>
-                      {user.full_name || user.email} {user.id === newTodo.user_id ? '(You)' : ''}
+                      {user.full_name || user.email} {user.id === currentUser?.id ? '(You)' : ''}
                     </option>
-                  ))}
-                </select>
-              </div>
-            )}
+                  ))
+                ) : (
+                  currentUser && (
+                    <option value={currentUser.id}>
+                      {currentUser.email} (You)
+                    </option>
+                  )
+                )}
+              </select>
+            </div>
           </form>
           </div>
         </div>
@@ -850,7 +865,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
 
       {/* Edit Todo Modal */}
       {editingTodo && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
           <div className="card-enhanced p-6 max-w-2xl w-full max-h-[100vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gold">Edit Task</h3>

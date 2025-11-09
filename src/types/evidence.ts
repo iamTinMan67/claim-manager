@@ -4,7 +4,7 @@ export interface Evidence {
   title: string;
   file_name: string | null;
   file_url: string | null;
-  exhibit_id: string | null;
+  exhibit_number?: number | null; // Numeric exhibit number from database
   number_of_pages: number | null;
   date_submitted: string | null;
   method: string | null;
