@@ -919,7 +919,9 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
         {/* Closed Cases navigation card - only on main private claims view */}
         {!isGuest && !statusFilter && (
           <div
+            key="closed-cases-card"
             className="card-enhanced p-4 cursor-pointer hover:shadow-lg transition-shadow max-w-xl flex flex-col items-center justify-center text-center"
+            style={{ minWidth: '200px', width: '100%', display: 'block' }}
             onClick={() => {
               try { sessionStorage.setItem('welcome_seen_session', '1') } catch {}
               navigateTo('closed-claims')

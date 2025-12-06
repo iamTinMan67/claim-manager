@@ -155,12 +155,17 @@ div.card-enhanced.max-w-6xl { max-width: 43.142787rem !important; }
 .rounded-lg.border.bg-card.max-w-5xl { max-width: 38.349144rem !important; }
 .rounded-lg.border.bg-card.max-w-6xl { max-width: 43.142787rem !important; }
 
-/* Target cards in grids - only reduce max-width, let grid control width */
+/* Target cards in grids - reduce max-width but ensure visibility */
 .grid .card-enhanced.max-w-xl,
 .grid > .card-enhanced.max-w-xl,
 div.grid .card-enhanced.max-w-xl,
 .grid [class*="card-enhanced"][class*="max-w-xl"] {
   max-width: 21.5713935rem !important;
+  min-width: 200px !important;
+  width: 100% !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 /* Target all card-enhanced elements without max-width - apply 15% width reduction */
