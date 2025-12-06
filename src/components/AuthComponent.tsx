@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
 import type { User } from '@supabase/supabase-js'
-import { Calendar, FileText, Users, CheckSquare, Download, Moon, Sun, X, Home, Crown, CalendarDays, Settings as Cog } from 'lucide-react'
+import { Calendar, FileText, Users, CheckSquare, Download, Moon, Sun, X, Home, Crown, CalendarDays, Settings as Cog, Lock } from 'lucide-react'
 import ConnectToggle from './ConnectToggle'
 import { toast } from '@/hooks/use-toast'
 import SubscriptionManager from './SubscriptionManager'
@@ -77,7 +77,8 @@ export default function AuthComponent({
     { id: 'claims', label: activeTab === 'shared' ? 'Private Claims' : 'Claims', icon: FileText },
     // Only show private events button when NOT on shared page (to avoid duplicate)
     ...(activeTab !== 'shared' ? [
-      { id: 'events-private', label: 'Events', icon: CalendarDays, requiresClaim: true }
+      { id: 'events-private', label: 'Events', icon: CalendarDays, requiresClaim: true },
+      { id: 'closed-claims', label: 'Closed Cases', icon: Lock }
     ] : []),
     { id: 'shared', label: 'Shared Claims', icon: Users },
     // Shared-specific entries appear only when activeTab === 'shared'
@@ -494,6 +495,7 @@ export default function AuthComponent({
                         (activeTab === 'events-private' && item.id === 'events-private') ||
                         (activeTab === 'events-shared' && item.id === 'events-shared') ||
                         (activeTab === 'shared' && item.id === 'shared') ||
+                        (activeTab === 'closed-claims' && item.id === 'closed-claims') ||
                         (activeTab === 'privileges' && item.id === 'privileges')) {
                       return null
                     }
