@@ -22,6 +22,7 @@ export const EditableClaimInfo = ({ claim, onUpdate }: Props) => {
       court: editedClaim.court,
       plaintiff_name: editedClaim.plaintiff_name,
       defendant_name: editedClaim.defendant_name,
+      email: editedClaim.email,
       status: editedClaim.status,
       description: editedClaim.description
     });
@@ -43,7 +44,7 @@ export const EditableClaimInfo = ({ claim, onUpdate }: Props) => {
               variant="outline"
               size="sm"
               onClick={handleCancel}
-              className="text-green-600 hover:text-green-700"
+              className="text-red-600 hover:text-red-700 border-red-600 hover:border-red-700"
             >
               <X className="w-4 h-4 mr-2" />
               Cancel
@@ -111,6 +112,16 @@ export const EditableClaimInfo = ({ claim, onUpdate }: Props) => {
               className="text-sm"
             />
           </div>
+          <div className="flex flex-col">
+            <label className="font-medium text-blue-800 mb-1">Email:</label>
+            <Input
+              type="email"
+              value={editedClaim.email || ''}
+              onChange={(e) => setEditedClaim({ ...editedClaim, email: e.target.value })}
+              placeholder="e.g., contact@example.com"
+              className="text-sm"
+            />
+          </div>
         </div>
         
         {(claim.description || isEditing) && (
@@ -163,6 +174,10 @@ export const EditableClaimInfo = ({ claim, onUpdate }: Props) => {
         <div className="flex flex-wrap">
           <span className="font-medium text-blue-800 mr-2">Defendant:</span>
           <span className="text-blue-700">{claim.defendant_name || 'N/A'}</span>
+        </div>
+        <div className="flex flex-wrap">
+          <span className="font-medium text-blue-800 mr-2">Email:</span>
+          <span className="text-blue-700">{claim.email || 'N/A'}</span>
         </div>
       </div>
       

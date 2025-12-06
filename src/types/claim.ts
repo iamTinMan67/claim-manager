@@ -5,6 +5,7 @@ export interface Claim {
   court: string | null;
   plaintiff_name: string | null;
   defendant_name: string | null;
+  email: string | null;
   description: string | null;
   status: 'Active' | 'Pending' | 'Closed';
   color?: string | null;

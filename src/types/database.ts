@@ -6,6 +6,7 @@ export interface Claim {
   court?: string
   plaintiff_name?: string
   defendant_name?: string
+  email?: string
   description?: string
   status: string
   color?: string

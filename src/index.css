@@ -173,6 +173,12 @@ div.grid .card-enhanced.max-w-xl,
   max-width: 59.9205375% !important;
   box-sizing: border-box !important;
 }
+
+/* Override for EvidenceManager to allow full width */
+.card-enhanced.w-full {
+  max-width: 100% !important;
+  width: 100% !important;
+}
   
 /* Royal Text Styling with Purple & Sky Blue Glow */
   .text-gold {

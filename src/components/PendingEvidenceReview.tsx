@@ -209,7 +209,7 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="card-enhanced p-4">
+      <div className="card-enhanced p-4" style={{ maxWidth: 'none', width: '100%' }}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gold">Pending Evidence Review</h3>
           {isOwner && (

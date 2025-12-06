@@ -929,40 +929,81 @@ const EvidenceManager = ({
 
       {/* Evidence Table - Hide when editing */}
       {!editingEvidence && (
-        <div className={`card-enhanced overflow-hidden mt-12 ${isStatic ? 'min-h-[75vh]' : ''}`}>
-        <div className="px-6 py-4 border-b border-yellow-400/20 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gold">Evidence List</h3>
-          <div className="flex items-center gap-2">
-            {/* Quick Filters */}
-            <input
-              type="text"
-              value={filterText}
-              onChange={(e) => setFilterText(e.target.value)}
-              placeholder="Search title or method"
-              className="px-2 h-8 rounded bg-white/10 border border-yellow-400/40 text-gold placeholder-yellow-300/70"
-            />
-            <select
-              value={methodFilter}
-              onChange={(e) => setMethodFilter(e.target.value)}
-              className="px-2 h-8 rounded bg-white/10 border border-yellow-400/40 text-gold"
-            >
-              <option value="">All methods</option>
-              <option value="post">Post</option>
-              <option value="email">Email</option>
-              <option value="hand">Hand</option>
-              <option value="call">Call</option>
-              <option value="todo">To-Do</option>
-            </select>
-            <select
-              value={tagFilter}
-              onChange={(e) => setTagFilter(e.target.value)}
-              className="px-2 h-8 rounded bg-white/10 border border-yellow-400/40 text-gold"
-            >
-              <option value="">All tags</option>
-              <option value="Needs review">Needs review</option>
-              <option value="Approved">Approved</option>
-              <option value="Requires action">Requires action</option>
-            </select>
+        <div className={`card-enhanced w-full mt-12 ${isStatic ? 'min-h-[75vh]' : ''}`} style={{ maxWidth: '100%', width: '100%' }}>
+        <div className="px-6 py-4 border-b border-yellow-400/20">
+          {/* Row 1: Title, Search boxes, and Buttons */}
+          <div className="flex items-center mb-3 w-full">
+            <h3 className="text-lg font-semibold text-gold flex-shrink-0 mr-4">Evidence List</h3>
+            <div className="flex items-center gap-2 justify-center flex-1" style={{ minWidth: 0, marginLeft: '-600px' }}>
+              {/* Quick Filters */}
+              <input
+                type="text"
+                value={filterText}
+                onChange={(e) => setFilterText(e.target.value)}
+                placeholder="Search title or method"
+                className="px-2 h-8 rounded bg-white/10 border border-yellow-400/40 text-gold placeholder-yellow-300/70"
+              />
+              <select
+                value={methodFilter}
+                onChange={(e) => setMethodFilter(e.target.value)}
+                className="px-2 h-8 rounded bg-white/10 border border-yellow-400/40 text-gold"
+              >
+                <option value="">All methods</option>
+                <option value="post">Post</option>
+                <option value="email">Email</option>
+                <option value="hand">Hand</option>
+                <option value="call">Call</option>
+                <option value="todo">To-Do</option>
+              </select>
+              <select
+                value={tagFilter}
+                onChange={(e) => setTagFilter(e.target.value)}
+                className="px-2 h-8 rounded bg-white/10 border border-yellow-400/40 text-gold"
+              >
+                <option value="">All tags</option>
+                <option value="Needs review">Needs review</option>
+                <option value="Approved">Approved</option>
+                <option value="Requires action">Requires action</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {/* Order: Amend, Add, then Show */}
+              {!isCollapsed && onSetAmendMode && isInteractive && (
+                <button
+                  onClick={() => onSetAmendMode(!amendMode)}
+                  className={`px-3 h-8 rounded-lg flex items-center space-x-2 bg-white/10 border border-red-400 text-red-400 hover:opacity-90`}
+                >
+                  <Settings className="w-4 h-4" />
+                  <span>{amendMode ? 'Exit Amend' : 'Amend'}</span>
+                </button>
+              )}
+              {isInteractive && (!isGuest || (isGuest && !isGuestFrozen)) && (
+                <button
+                  onClick={() => {
+                    if (!selectedClaim) {
+                      alert('Please select a claim before adding evidence. The Case Number is required.')
+                      return
+                    }
+                    setShowAddModal(true)
+                  }}
+                  disabled={!selectedClaim}
+                  className="bg-white/10 border border-green-400 text-green-400 px-3 h-8 rounded-lg flex items-center space-x-2 hover:opacity-90"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{isGuest ? 'Submit' : 'Add'}</span>
+                </button>
+              )}
+              <button
+                onClick={() => setIsCollapsed(!isCollapsed)}
+                className="bg-white/10 border border-yellow-400 text-yellow-400 px-3 h-8 rounded-lg flex items-center space-x-2 hover:opacity-90"
+                title={isCollapsed ? 'Show evidence' : 'Hide evidence'}
+              >
+                <span>{isCollapsed ? 'Show' : 'Hide'}</span>
+              </button>
+            </div>
+          </div>
+          {/* Row 2: Checkboxes centered */}
+          <div className="flex items-center justify-center gap-4 mb-3 w-full" style={{ marginLeft: '-230px' }}>
             {/* Column visibility */}
             <label className="text-xs flex items-center gap-1">
               <input type="checkbox" checked={columnPrefs.showMethod} onChange={(e) => setColumnPrefs({ ...columnPrefs, showMethod: e.target.checked })} />
@@ -977,7 +1018,7 @@ const EvidenceManager = ({
               Exhibit
             </label>
             {!isGuest && (
-              <label className="flex items-center gap-2 text-xs text-gold/80 mr-2">
+              <label className="flex items-center gap-2 text-xs text-gold/80">
                 <input
                   type="checkbox"
                   checked={!!hostGuestDownloadAllowed}
@@ -987,7 +1028,7 @@ const EvidenceManager = ({
               </label>
             )}
             {!isGuest && (
-              <label className="flex items-center gap-2 text-xs text-gold/80 mr-2">
+              <label className="flex items-center gap-2 text-xs text-gold/80">
                 <input
                   type="checkbox"
                   checked={!!autoApproveTrusted}
@@ -996,128 +1037,6 @@ const EvidenceManager = ({
                 <span>Auto-approve trusted</span>
               </label>
             )}
-            
-            {/* Order: Add, Amend, Link, then Show. Keep Add visible even when collapsed */}
-            {isInteractive && (!isGuest || (isGuest && !isGuestFrozen)) && (
-              <button
-                onClick={() => {
-                  if (!selectedClaim) {
-                    alert('Please select a claim before adding evidence. The Case Number is required.')
-                    return
-                  }
-                  setShowAddModal(true)
-                }}
-                disabled={!selectedClaim}
-                className="bg-white/10 border border-green-400 text-green-400 px-3 h-8 rounded-lg flex items-center space-x-2 hover:opacity-90"
-              >
-                <Plus className="w-4 h-4" />
-                <span>{isGuest ? 'Submit' : 'Add'}</span>
-              </button>
-            )}
-            {!isCollapsed && onSetAmendMode && isInteractive && (
-              <button
-                onClick={() => onSetAmendMode(!amendMode)}
-                className={`px-3 h-8 rounded-lg flex items-center space-x-2 bg-white/10 border border-red-400 text-red-400 hover:opacity-90`}
-              >
-                <Settings className="w-4 h-4" />
-                <span>{amendMode ? 'Exit Amend' : 'Amend'}</span>
-              </button>
-            )}
-            {!isCollapsed && isInteractive && !isGuest && false && (
-              <button
-                onClick={async () => {
-                  if (!selectedClaim) {
-                    alert('Please select a claim before linking evidence. The Case Number is required.')
-                    return
-                  }
-                  try {
-                    // Resolve claim_id
-                    const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
-                    let resolvedClaimId: string | null = null
-                    if (uuidPattern.test(selectedClaim)) {
-                      resolvedClaimId = selectedClaim
-                    } else {
-                      resolvedClaimId = await getClaimIdFromCaseNumber(selectedClaim)
-                    }
-                    if (!resolvedClaimId) {
-                      alert('Could not resolve claim ID for linking.')
-                      return
-                    }
-
-                    // Find claim owner
-                    const { data: claimInfo } = await supabase
-                      .from('claims')
-                      .select('user_id')
-                      .eq('claim_id', resolvedClaimId)
-                      .maybeSingle()
-                    const ownerId = claimInfo?.user_id || null
-
-                    // Get currently linked evidence ids for this claim
-                    const { data: existingLinks } = await supabase
-                      .from('evidence_claims')
-                      .select('evidence_id')
-                      .eq('claim_id', resolvedClaimId)
-                    const linkedIds = (existingLinks || []).map(r => r.evidence_id)
-
-                    // Fetch available evidence owned by owner and not already linked
-                    let query = supabase
-                      .from('evidence')
-                      .select('*')
-                    if (ownerId) query = query.eq('user_id', ownerId)
-                    if (linkedIds.length) query = query.not('id', 'in', `(${linkedIds.join(',')})`)
-                    const { data: avail } = await query
-
-                    setAvailableEvidence((avail as any) || [])
-                    setShowLinkModal(true)
-                  } catch (e) {
-                    console.warn('Failed to load available evidence for linking:', e)
-                    setAvailableEvidence([])
-                    setShowLinkModal(true)
-                  }
-                }}
-                disabled={!selectedClaim}
-                className="bg-white/10 border border-white text-white px-3 h-8 rounded-lg flex items-center space-x-2 hover:opacity-90"
-              >
-                <Link className="w-4 h-4" />
-                <span>Link</span>
-              </button>
-            )}
-            {!isCollapsed && !isGuest && amendMode && Object.values(selectedIds).some(Boolean) && (
-              <button
-                onClick={async () => {
-                  try {
-                    const target = window.prompt('Enter target Case Number (or claim UUID) to link selected evidence to:')
-                    if (!target) return
-                    const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
-                    const targetClaimId = uuidPattern.test(target) ? target : await getClaimIdFromCaseNumber(target)
-                    if (!targetClaimId) {
-                      alert('Could not resolve target claim')
-                      return
-                    }
-                    const ids = Object.entries(selectedIds).filter(([, v]) => v).map(([k]) => k)
-                    for (const id of ids) {
-                      await supabase.from('evidence_claims').insert({ evidence_id: id, claim_id: targetClaimId })
-                    }
-                    setSelectedIds({})
-                    toast({ title: 'Linked', description: `Linked ${ids.length} item(s)` })
-                  } catch (e) {
-                    console.warn('Bulk link failed', e)
-                    alert('Failed to link selected items')
-                  }
-                }}
-                className="bg-white/10 border border-white text-white px-3 h-8 rounded-lg flex items-center space-x-2 hover:opacity-90"
-              >
-                <Link className="w-4 h-4" />
-                <span>Link Selected</span>
-              </button>
-            )}
-            <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="bg-white/10 border border-yellow-400 text-yellow-400 px-3 h-8 rounded-lg flex items-center space-x-2 hover:opacity-90"
-              title={isCollapsed ? 'Show evidence' : 'Hide evidence'}
-            >
-              <span>{isCollapsed ? 'Show' : 'Hide'}</span>
-            </button>
           </div>
         </div>
         {amendMode && !isCollapsed && (
