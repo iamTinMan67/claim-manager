@@ -1,10 +1,17 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/integrations/supabase/client'
 import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
 import type { User } from '@supabase/supabase-js'
-import { Calendar, FileText, Users, CheckSquare, Download, Moon, Sun } from 'lucide-react'
+import { Calendar, FileText, Users, CheckSquare, Download, Moon, Sun, X, Home, Crown, CalendarDays, Settings as Cog, Lock } from 'lucide-react'
+import ConnectToggle from './ConnectToggle'
+import { toast } from '@/hooks/use-toast'
+import SubscriptionManager from './SubscriptionManager'
+import PrivilegesStatus from './PrivilegesStatus'
 import { useTheme } from 'next-themes'
+import { useQuery } from '@tanstack/react-query'
+import { useAuth } from '@/contexts/AuthContext'
+import InvitationNotifications from './InvitationNotifications'
 
 interface AuthComponentProps {
   children?: React.ReactNode
@@ -20,15 +27,14 @@ interface AuthComponentProps {
 export default function AuthComponent({ 
   children, 
   onAuthChange, 
-  activeTab = 'claims',
+  activeTab,
   onTabChange,
   selectedClaim,
   isGuest = false,
   showGuestContent = false,
   onToggleGuestContent
 }: AuthComponentProps) {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { user, loading } = useAuth()
   const [authError, setAuthError] = useState<string | null>(null)
   const [isPasswordReset, setIsPasswordReset] = useState(false)
   const [password, setPassword] = useState('')
@@ -37,14 +43,49 @@ export default function AuthComponent({
   const [resetSuccess, setResetSuccess] = useState(false)
   const [resetTokens, setResetTokens] = useState<{accessToken: string, refreshToken: string} | null>(null)
   const { theme, setTheme } = useTheme()
+  const [showAccountModal, setShowAccountModal] = useState(false)
+  const [profileNickname, setProfileNickname] = useState('')
+  const [accountEmail, setAccountEmail] = useState('')
+  const [newPassword1, setNewPassword1] = useState('')
+  const [newPassword2, setNewPassword2] = useState('')
+  const [accountSaving, setAccountSaving] = useState(false)
+  const [accountMessage, setAccountMessage] = useState<string | null>(null)
+  const [isSubscribed, setIsSubscribed] = useState<boolean>(false)
+  const [subReady, setSubReady] = useState<boolean>(false)
+  const [welcomeNever, setWelcomeNever] = useState<boolean>(false)
+  const [welcomeSeenThisSession, setWelcomeSeenThisSession] = useState<boolean>(false)
+
+  // Fetch selected claim details for navbar display
+  const { data: selectedClaimData } = useQuery({
+    queryKey: ['selected-claim-details', selectedClaim],
+    queryFn: async () => {
+      if (!selectedClaim) return null
+      const { data, error } = await supabase
+        .from('claims')
+        .select('case_number, title, court')
+        .eq('case_number', selectedClaim)
+        .single()
+      if (error) throw error
+      return data
+    },
+    enabled: Boolean(selectedClaim)
+  })
 
   // Navigation items
   const navItems = [
-    { id: 'claims', label: 'Claims', icon: FileText },
-    { id: 'todos', label: activeTab === 'shared' ? 'Shared To-Do Lists' : 'To-Do Lists', icon: CheckSquare, requiresClaim: true },
-    { id: 'calendar', label: activeTab === 'shared' ? 'Shared Calendar' : 'Calendar', icon: Calendar, requiresClaim: true },
-    { id: 'export', label: activeTab === 'shared' ? 'Shared Export' : 'Export', icon: Download, requiresClaim: true },
+    // When viewing shared claim context, label this as "Private Claims" for clarity
+    { id: 'claims', label: activeTab === 'shared' ? 'Private Claims' : 'Claims', icon: FileText },
+    // Only show private events button when NOT on shared page (to avoid duplicate)
+    ...(activeTab !== 'shared' ? [
+      { id: 'events-private', label: 'Events', icon: CalendarDays, requiresClaim: true },
+      { id: 'closed-claims', label: 'Closed Cases', icon: Lock }
+    ] : []),
     { id: 'shared', label: 'Shared Claims', icon: Users },
+    // Shared-specific entries appear only when activeTab === 'shared'
+    ...(activeTab === 'shared' ? [
+      { id: 'events-shared', label: 'Events', icon: CalendarDays, requiresClaim: true },
+      { id: 'export', label: 'Export', icon: Download, requiresClaim: true },
+    ] : [{ id: 'export', label: 'Export', icon: Download, requiresClaim: true }])
   ]
 
   useEffect(() => {
@@ -67,46 +108,158 @@ export default function AuthComponent({
       if (type === 'recovery' || (accessToken.length > 100 && refreshToken.length > 100)) {
         setIsPasswordReset(true)
         setResetTokens({ accessToken, refreshToken })
-        setLoading(false)
         // Clear the URL to prevent auto-login
         window.history.replaceState({}, document.title, window.location.pathname)
         return
       }
     }
 
-    // Only get session if it's not a password reset flow
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      onAuthChange(session?.user ?? null)
-      setLoading(false)
-    })
+    // Load welcome preferences early
+    try {
+      const never = localStorage.getItem('welcome_never') === '1'
+      setWelcomeNever(never)
+    } catch {}
+    try {
+      const seen = sessionStorage.getItem('welcome_seen_session') === '1'
+      setWelcomeSeenThisSession(seen)
+    } catch {}
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null)
-      onAuthChange(session?.user ?? null)
-      
-      // Handle auth errors
-      if (event === 'SIGNED_IN') {
-        setAuthError(null)
-      } else if (event === 'SIGNED_OUT') {
-        setAuthError(null)
-      } else if (event === 'SIGN_IN_ERROR') {
-        setAuthError('Invalid email or password. Please check your credentials or sign up if you don\'t have an account.')
-      } else if (event === 'SIGN_UP_ERROR') {
-        setAuthError('Failed to create account. Please try again.')
-      }
-    })
+    // Listen for welcome acknowledgments triggered elsewhere
+    const onPrefs = () => {
+      try {
+        setWelcomeNever(localStorage.getItem('welcome_never') === '1')
+      } catch {}
+    }
+    window.addEventListener('welcomePrefsChanged', onPrefs as EventListener)
 
-    return () => subscription.unsubscribe()
+    // Load subscription state when user changes
+    if (user?.id) {
+      supabase
+        .from('subscribers')
+        .select('subscribed')
+        .eq('user_id', user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          setIsSubscribed(!!data?.subscribed)
+          setSubReady(true)
+        })
+    } else {
+      setIsSubscribed(false)
+      setSubReady(true)
+    }
+
+    return () => {
+      window.removeEventListener('welcomePrefsChanged', onPrefs as EventListener)
+    }
   }, [onAuthChange])
 
   const handleSignOut = async () => {
     setAuthError(null)
     await supabase.auth.signOut()
   }
+
+  const handleNavClick = async (tabId: string) => {
+    // Allow all navigation since welcome screen is disabled
+    if (!subReady) return
+    console.log('AuthComponent handleNavClick:', {
+      tabId,
+      currentTab: activeTab,
+      selectedClaim,
+      isInSharedContext: activeTab === 'shared'
+    })
+
+    // When opening Shared Claims tab, clear any previously selected claim
+    if (tabId === 'shared') {
+      try {
+        window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null } }))
+      } catch {}
+    }
+
+    // When switching to Private Claims, clear any shared selection to avoid dangling selection
+    if (tabId === 'claims') {
+      try {
+        window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null } }))
+      } catch {}
+    }
+
+    onTabChange?.(tabId)
+    // Mark welcome as seen for this session when navigating away from subscription
+    try {
+      if (tabId !== 'subscription') {
+        sessionStorage.setItem('welcome_seen_session', '1')
+        setWelcomeSeenThisSession(true)
+      }
+    } catch {}
+  }
+
+  const openAccountModal = async () => {
+    // Prevent opening only on welcome screen
+    if (activeTab === 'subscription') return
+    setAccountMessage(null)
+    setShowAccountModal(true)
+    try {
+      const { data: { user: current } } = await supabase.auth.getUser()
+      if (current) {
+        setAccountEmail(current.email || '')
+        // Load profile nickname
+        const { data } = await supabase
+          .from('profiles')
+          .select('nickname')
+          .eq('id', current.id)
+          .maybeSingle()
+        setProfileNickname((data?.nickname as string) || '')
+      }
+    } catch {}
+  }
+
+  const saveAccountChanges = async () => {
+    setAccountMessage(null)
+    setAccountSaving(true)
+    try {
+      const { data: { user: current } } = await supabase.auth.getUser()
+      if (!current) throw new Error('Not authenticated')
+
+      // Update profile name
+      await supabase
+        .from('profiles')
+        .update({ nickname: profileNickname })
+        .eq('id', current.id)
+
+      // Update email if changed
+      if (accountEmail && accountEmail !== (current.email || '')) {
+        const { error: emailErr } = await supabase.auth.updateUser({ email: accountEmail })
+        if (emailErr) throw emailErr
+      }
+
+      // Update password if provided
+      if (newPassword1 || newPassword2) {
+        if (newPassword1 !== newPassword2) {
+          throw new Error('Passwords do not match')
+        }
+        if (newPassword1.length < 6) {
+          throw new Error('Password must be at least 6 characters')
+        }
+        const { error: passErr } = await supabase.auth.updateUser({ password: newPassword1 })
+        if (passErr) throw passErr
+      }
+
+      setAccountMessage('Account updated successfully')
+      // Brief toast then close modal
+      toast({ title: 'Saved', description: 'Your account settings were updated.' })
+      setTimeout(() => setShowAccountModal(false), 800)
+    } catch (e: any) {
+      setAccountMessage(e?.message || 'Failed to update account')
+    } finally {
+      setAccountSaving(false)
+    }
+  }
+
+  // Ensure account modal is closed when on welcome screen or not subscribed
+  useEffect(() => {
+    if (!isSubscribed || activeTab === 'subscription') {
+      if (showAccountModal) setShowAccountModal(false)
+    }
+  }, [isSubscribed, activeTab])
 
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -179,9 +332,9 @@ export default function AuthComponent({
       if (resetSuccess) {
         return (
           <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-            <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
+            <div className="max-w-md w-full card-enhanced rounded-lg shadow-md p-6">
               <div className="text-center">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-900/30 mb-4">
                   <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
@@ -192,7 +345,12 @@ export default function AuthComponent({
                 </p>
                 <button
                   onClick={() => window.location.href = window.location.origin}
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
+                  className="w-full py-2 px-4 rounded"
+                  style={{
+                    backgroundColor: 'rgba(30, 58, 138, 0.3)',
+                    border: '2px solid #10b981',
+                    color: '#10b981'
+                  }}
                 >
                   Go to Login
                 </button>
@@ -204,7 +362,7 @@ export default function AuthComponent({
 
       return (
         <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-          <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
+          <div className="max-w-md w-full card-enhanced rounded-lg shadow-md p-6">
             <h2 className="text-2xl font-bold text-center mb-6">Reset Your Password</h2>
             
             {authError && (
@@ -247,7 +405,12 @@ export default function AuthComponent({
               <button
                 type="submit"
                 disabled={resetLoading}
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: 'rgba(30, 58, 138, 0.3)',
+                  border: '2px solid #10b981',
+                  color: '#10b981'
+                }}
               >
                 {resetLoading ? 'Updating Password...' : 'Update Password'}
               </button>
@@ -256,7 +419,7 @@ export default function AuthComponent({
             <div className="mt-4 text-center">
               <button
                 onClick={() => window.location.href = window.location.origin}
-                className="text-blue-600 hover:text-blue-800 text-sm"
+                className="text-yellow-400 hover:text-yellow-300 text-sm"
               >
                 Back to Login
               </button>
@@ -268,15 +431,15 @@ export default function AuthComponent({
 
     // Regular login form
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
-          <h1 className="text-2xl font-bold text-center mb-6">Sign In</h1>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="max-w-md w-full card-enhanced rounded-lg shadow-md p-6">
+          <h1 className="text-2xl font-bold text-center mb-6 text-gold">Sign In</h1>
           {authError && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            <div className="mb-4 p-3 bg-red-900/30 border border-red-400 text-red-300 rounded">
               {authError}
             </div>
           )}
-          <div className="mb-4 p-3 bg-blue-100 border border-blue-400 text-blue-700 rounded text-sm">
+          <div className="mb-4 p-3 bg-blue-900/30 border border-blue-400 text-blue-300 rounded text-sm">
             <div className="mb-2">
               <strong>New user?</strong> Create an account by entering your email and password, then click "Sign up" instead of "Sign in".
             </div>
@@ -296,91 +459,247 @@ export default function AuthComponent({
     )
   }
 
+  // DISABLED: Welcome screen is disabled to fix authentication issues
+  const gating = false
+  console.log('Gating check:', { subReady, isSubscribed, activeTab, gating: false })
+
+  if (gating) {
+    // Ensure account modal is not shown over welcome screen
+    if (showAccountModal) setShowAccountModal(false)
+    // Do not auto-dismiss here; dismissal happens when user navigates away from subscription
+    return (
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+        <div className="container mx-auto px-4 py-2">
+          <SubscriptionManager />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-      <div className="card-smudge shadow-lg border-b border-yellow-400/20">
-        <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center">
-            <div className="flex space-x-8">
-              {navItems.map((item) => {
-                // Hide nav items that require a claim when on claims page and no claim selected
-                if (activeTab === 'claims' && item.requiresClaim && !selectedClaim) {
-                  return null
-                }
-                
-                // When on shared claims page, allow navigation to todos, calendar, and export
-                // but only if a claim is selected
-                if (activeTab === 'shared' && item.requiresClaim && !selectedClaim) {
-                  return null
-                }
-                
-                const Icon = item.icon
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => onTabChange?.(item.id)}
-                    className={`flex items-center space-x-2 py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-                      activeTab === item.id
-                          ? 'border-yellow-400 text-gold'
-                          : 'border-transparent text-gold-light hover:text-gold hover:border-yellow-400/50'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span>{item.label}</span>
-                  </button>
-                )
-              })}
-            </div>
-            <div className="flex items-center space-x-3">
-              {/* Guest Content Toggle - only show for claim owners when viewing todos/calendar */}
-              {!isGuest && (activeTab === 'todos' || activeTab === 'calendar') && onToggleGuestContent && (
-                <button
-                  onClick={() => onToggleGuestContent(!showGuestContent)}
-                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                    showGuestContent
-                      ? 'bg-orange-100 text-orange-800 hover:bg-orange-200'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-                  }`}
-                  title={showGuestContent ? 'Switch to your private view' : 'View guest contributions'}
-                >
-                  <Users className="w-4 h-4 inline mr-1" />
-                  {showGuestContent ? 'Guest View' : 'My View'}
-                </button>
-              )}
-              
-              {/* Guest Indicator */}
-              {isGuest && (
-                <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-lg text-sm font-medium">
-                  <Users className="w-4 h-4 inline mr-1" />
-                  Guest Access
+      <div>
+        {subReady && !gating && (
+          <div className="card-smudge shadow-lg border-b border-yellow-400/20">
+            <div className="container mx-auto px-4">
+              <div className="flex justify-between items-center">
+                <div className="flex space-x-8">
+                  {/* Show navbar items only when welcome is not visible */}
+                  {navItems.map((item) => {
+                    // Hide nav items that require a claim when no claim is selected (both private and shared)
+                    if (item.requiresClaim && !selectedClaim) {
+                      return null
+                    }
+                    // Hide only the current tab link to reduce clutter
+                    if ((activeTab === 'claims' && item.id === 'claims') ||
+                        (activeTab === 'events-private' && item.id === 'events-private') ||
+                        (activeTab === 'events-shared' && item.id === 'events-shared') ||
+                        (activeTab === 'shared' && item.id === 'shared') ||
+                        (activeTab === 'closed-claims' && item.id === 'closed-claims') ||
+                        (activeTab === 'privileges' && item.id === 'privileges')) {
+                      return null
+                    }
+                    // Hide Shared Claims link when viewing shared events (back button navigates to same destination)
+                    if ((activeTab === 'events-shared') && item.id === 'shared') {
+                      return null
+                    }
+                    const Icon = item.icon
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => handleNavClick(item.id)}
+                        className={`flex items-center space-x-2 py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                          activeTab === item.id
+                              ? 'border-yellow-400 text-gold'
+                              : 'border-transparent text-gold-light hover:text-gold hover:border-yellow-400/50'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                        <span>{item.label}</span>
+                      </button>
+                    )
+                  })}
                 </div>
-              )}
-              
+                
+                {/* Selected Claim Information - Center */}
+                <div className="flex-1 flex justify-center">
+                  <div className="text-center">
+                    {selectedClaim && selectedClaimData ? (
+                      <div className="text-lg font-semibold text-green-600">
+                        <span className="font-bold">
+                          {selectedClaimData.court || 'Unknown Court'} - {selectedClaimData.title}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="text-3xl font-bold text-green-600">
+                        <span>Claim Manager</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3">
+                  {/* Admin (owner-only) */}
+                  {user?.id === 'f41fbcf1-c378-4594-9a46-fdc198c1a38a' && (
+                    <button
+                      onClick={() => onTabChange?.('admin')}
+                      className="p-2 rounded-lg hover:bg-yellow-400/20 transition-colors text-gold"
+                      title="Admin"
+                    >
+                      <Cog className="w-5 h-5" />
+                    </button>
+                  )}
+                  {/* Collaboration toggle (navbar) - to the left of notifications */}
+                  {activeTab === 'shared' && selectedClaim && (
+                    <ConnectToggle />
+                  )}
+
+                  {/* Invitation Notifications */}
+                  <InvitationNotifications />
+                  
+                  {/* Guest Content Toggle - only show for claim owners when viewing todos/calendar */}
+                  {!isGuest && (activeTab === 'todos' || activeTab === 'calendar') && onToggleGuestContent && (
+                    <button
+                      onClick={() => onToggleGuestContent(!showGuestContent)}
+                      className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                        showGuestContent
+                          ? 'bg-orange-100 text-orange-800 hover:bg-orange-200'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                      }`}
+                      title={showGuestContent ? 'Switch to your private view' : 'View guest contributions'}
+                    >
+                      <Users className="w-4 h-4 inline mr-1" />
+                      {showGuestContent ? 'Guest View' : 'My View'}
+                    </button>
+                  )}
+                  {isGuest && (
+                    <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-lg text-sm font-medium">
+                      <Users className="w-4 h-4 inline mr-1" />
+                      Guest Access
+                    </div>
+                  )}
+                  <button
+                    onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                    className="p-2 rounded-lg hover:bg-yellow-400/20 transition-colors text-gold"
+                    title="Toggle dark mode"
+                  >
+                    {theme === 'dark' ? (
+                      <Sun className="w-5 h-5" />
+                    ) : (
+                      <Moon className="w-5 h-5" />
+                    )}
+                  </button>
+                  <button
+                    onClick={openAccountModal}
+                    className="text-sm bg-blue-900/30 border border-green-400 text-green-400 px-3 py-1 rounded hover:bg-blue-800/50"
+                    title={user?.email ? `Account: ${user.email}` : 'Account'}
+                  >
+                    <Users className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="container mx-auto px-4 py-2">
+          {children}
+        </div>
+      </div>
+
+      {showAccountModal && (
+        <div className="fixed inset-0 bg-black/50 z-[99999] flex items-center justify-center p-4">
+          <div className="p-6 rounded-[16px] shadow max-w-lg w-full card-enhanced">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gold">Account Settings</h3>
               <button
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className="p-2 rounded-lg hover:bg-yellow-400/20 transition-colors text-gold"
-                title="Toggle dark mode"
+                onClick={() => setShowAccountModal(false)}
+                className="bg-white/10 border border-red-400 text-red-400 px-2 py-1 rounded hover:opacity-90"
+                aria-label="Close"
               >
-                {theme === 'dark' ? (
-                  <Sun className="w-5 h-5" />
-                ) : (
-                  <Moon className="w-5 h-5" />
-                )}
+                <X className="w-4 h-4" />
               </button>
-              
-              <button
-                onClick={handleSignOut}
-                className="text-sm bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
-              >
-                Sign Out
-              </button>
+            </div>
+
+            {accountMessage && (
+              <div className="mb-3 text-sm text-yellow-300">{accountMessage}</div>
+            )}
+
+            {/* Privileges Status Component */}
+            <div className="mb-6">
+              <PrivilegesStatus />
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Nickname</label>
+                <input
+                  type="text"
+                  value={profileNickname}
+                  onChange={(e) => setProfileNickname(e.target.value)}
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  placeholder="Your nickname"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Email Address</label>
+                <input
+                  type="email"
+                  value={accountEmail}
+                  onChange={(e) => setAccountEmail(e.target.value)}
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  placeholder="you@example.com"
+                />
+                <p className="text-xs text-gold-light mt-1">You may need to confirm via email.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1">New Password</label>
+                  <input
+                    type="password"
+                    value={newPassword1}
+                    onChange={(e) => setNewPassword1(e.target.value)}
+                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                    placeholder="Leave blank to keep current"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Confirm Password</label>
+                  <input
+                    type="password"
+                    value={newPassword2}
+                    onChange={(e) => setNewPassword2(e.target.value)}
+                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                    placeholder="Repeat new password"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2">
+                <button
+                  onClick={() => { setShowAccountModal(false); onTabChange?.('subscription') }}
+                  className="px-4 py-2 text-slate-900 bg-gradient-to-r from-yellow-300 to-yellow-400 font-semibold rounded-lg hover:from-yellow-400 hover:to-yellow-500"
+                >
+                  Upgrade
+                </button>
+                <button
+                  onClick={handleSignOut}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                >
+                  Sign Out
+                </button>
+                <button
+                  onClick={saveAccountChanges}
+                  disabled={accountSaving}
+                  className="px-4 py-2 text-slate-900 bg-gradient-to-r from-yellow-400 to-yellow-500 font-semibold rounded-lg hover:from-yellow-500 hover:to-yellow-600 disabled:opacity-50"
+                >
+                  {accountSaving ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      <div className="container mx-auto px-4 py-2">
-        {children}
-      </div>
+      )}
     </div>
   )
 }

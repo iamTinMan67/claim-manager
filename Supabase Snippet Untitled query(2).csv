@@ -1,0 +1,19 @@
+schemaname,tablename,policyname,cmd,roles,permissive,qual
+public,evidence,Users can delete their own evidence,DELETE,{public},PERMISSIVE,(auth.uid() = user_id)
+public,evidence,Users can insert their own evidence,INSERT,{public},PERMISSIVE,null
+public,evidence,Users can update their own evidence,UPDATE,{public},PERMISSIVE,(auth.uid() = user_id)
+public,evidence,Users can view their own evidence,SELECT,{public},PERMISSIVE,(auth.uid() = user_id)
+public,evidence,select evidence via linked claims,SELECT,{public},PERMISSIVE,"((user_id = auth.uid()) OR (EXISTS ( SELECT 1
+   FROM evidence_claims ec
+  WHERE ((ec.evidence_id = evidence.id) AND is_claim_participant(ec.claim_id)))))"
+public,evidence_claims,Users can delete evidence_claims for their evidence,DELETE,{public},PERMISSIVE,"(EXISTS ( SELECT 1
+   FROM evidence
+  WHERE ((evidence.id = evidence_claims.evidence_id) AND (evidence.user_id = auth.uid()))))"
+public,evidence_claims,Users can insert evidence_claims for their evidence,INSERT,{public},PERMISSIVE,null
+public,evidence_claims,Users can update evidence_claims for their evidence,UPDATE,{public},PERMISSIVE,"(EXISTS ( SELECT 1
+   FROM evidence
+  WHERE ((evidence.id = evidence_claims.evidence_id) AND (evidence.user_id = auth.uid()))))"
+public,evidence_claims,Users can view evidence_claims for their evidence,SELECT,{public},PERMISSIVE,"(EXISTS ( SELECT 1
+   FROM evidence
+  WHERE ((evidence.id = evidence_claims.evidence_id) AND (evidence.user_id = auth.uid()))))"
+public,evidence_claims,select evidence_claims for participants (no recursion),SELECT,{public},PERMISSIVE,is_claim_participant(claim_id)

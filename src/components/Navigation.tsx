@@ -1,6 +1,7 @@
-import React from 'react'
-import { Calendar, FileText, Users, CheckSquare, Home, Upload, Download, Moon, Sun, MessageCircle, Crown } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+import { Calendar, FileText, Users, CheckSquare, Download, Moon, Sun, Lock } from 'lucide-react'
 import { useTheme } from 'next-themes'
+import { supabase } from '@/integrations/supabase/client'
 
 interface NavigationProps {
   activeTab: string
@@ -13,13 +14,42 @@ interface NavigationProps {
 
 const Navigation = ({ activeTab, onTabChange, selectedClaim, isGuest = false, showGuestContent = false, onToggleGuestContent }: NavigationProps) => {
   const { theme, setTheme } = useTheme()
+  const [isSubscribed, setIsSubscribed] = useState<boolean>(false)
+  const [subReady, setSubReady] = useState<boolean>(false)
+
+  useEffect(() => {
+    let mounted = true
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!mounted) return
+      if (!user) { setIsSubscribed(false); setSubReady(true); return }
+      const { data } = await supabase
+        .from('subscribers')
+        .select('subscribed')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      setIsSubscribed(!!data?.subscribed)
+      setSubReady(true)
+    })
+    return () => { mounted = false }
+  }, [])
+
+  // Hide entire navbar until subscribed
+  if (!subReady || !isSubscribed) {
+    return null
+  }
 
   const navItems = [
     { id: 'claims', label: 'Claims', icon: FileText },
-    { id: 'todos', label: activeTab === 'shared' ? 'Shared To-Do Lists' : 'To-Do Lists', icon: CheckSquare, requiresClaim: true },
-    { id: 'calendar', label: activeTab === 'shared' ? 'Shared Calendar' : 'Calendar', icon: Calendar, requiresClaim: true },
-    { id: 'export', label: activeTab === 'shared' ? 'Shared Export' : 'Export', icon: Download, requiresClaim: true },
+    { id: 'closed-claims', label: 'Closed Cases', icon: Lock },
+    { id: 'todos-private', label: 'To-Do Lists', icon: CheckSquare },
+    { id: 'calendar-private', label: 'Calendar', icon: Calendar },
     { id: 'shared', label: 'Shared Claims', icon: Users },
+    // Shared-specific entries appear only when activeTab === 'shared'
+    ...(activeTab === 'shared' ? [
+      { id: 'todos-shared', label: 'Shared To-Do Lists', icon: CheckSquare, requiresClaim: true },
+      { id: 'calendar-shared', label: 'Shared Calendar', icon: Calendar, requiresClaim: true },
+      { id: 'export', label: 'Export', icon: Download, requiresClaim: true },
+    ] : [{ id: 'export', label: 'Export', icon: Download, requiresClaim: true }])
   ]
 
   return (
@@ -27,15 +57,17 @@ const Navigation = ({ activeTab, onTabChange, selectedClaim, isGuest = false, sh
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center">
           <div className="flex space-x-8">
-          {navItems.map((item) => {
-            // Hide nav items that require a claim when on claims page and no claim selected
-            if (activeTab === 'claims' && item.requiresClaim && !selectedClaim) {
+          {/* Hide all navigation when on welcome screen and not subscribed */}
+          {!(activeTab === 'subscription' && !isSubscribed) && navItems.map((item) => {
+
+            // Hide only the current private tab link to reduce clutter
+            if (activeTab === 'calendar-private' && item.id === 'calendar-private') {
               return null
             }
-            
-            // When on shared claims page, allow navigation to todos, calendar, and export
-            // but only if a claim is selected
-            if (activeTab === 'shared' && item.requiresClaim && !selectedClaim) {
+            if (activeTab === 'todos-private' && item.id === 'todos-private') {
+              return null
+            }
+            if (activeTab === 'closed-claims' && item.id === 'closed-claims') {
               return null
             }
             

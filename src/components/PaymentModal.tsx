@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/integrations/supabase/client'
 import { X, CreditCard, Lock, CheckCircle, AlertCircle } from 'lucide-react'
 
 const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY 
@@ -111,7 +111,7 @@ const PaymentForm = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="bg-gray-50 p-4 rounded-lg">
+      <div className="card-smudge p-4 rounded-lg">
         <h4 className="font-medium text-gray-900 mb-2">Payment Details</h4>
         <div className="text-sm text-gray-600 space-y-1">
           <p>Amount: <span className="font-semibold">{formatAmount(amount, currency)}</span></p>
@@ -126,7 +126,7 @@ const PaymentForm = ({
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Card Information
           </label>
-          <div className="border rounded-lg p-3 bg-white">
+          <div className="border rounded-lg p-3 card-enhanced">
             <CardElement
               options={{
                 style: {
@@ -143,7 +143,7 @@ const PaymentForm = ({
           </div>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="card-smudge p-4">
           <div className="flex items-center space-x-2">
             <Lock className="w-4 h-4 text-blue-600" />
             <span className="text-sm font-medium text-blue-900">Secure Payment</span>
@@ -158,7 +158,7 @@ const PaymentForm = ({
         <button
           type="submit"
           disabled={!stripe || isProcessing || !clientSecret}
-          className="flex-1 bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+          className="flex-1 bg-blue-900/30 border-2 border-green-500 text-green-500 px-4 py-3 rounded-lg hover:bg-blue-800/50 hover:border-green-400 hover:text-green-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
         >
           {isProcessing ? (
             <>
@@ -176,7 +176,7 @@ const PaymentForm = ({
           type="button"
           onClick={onClose}
           disabled={isProcessing}
-          className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-500/20 disabled:opacity-50"
         >
           Cancel
         </button>
@@ -212,7 +212,7 @@ const PaymentModal = (props: PaymentModalProps) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="card-enhanced rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-lg font-semibold">Complete Payment</h3>
           <button
@@ -225,7 +225,7 @@ const PaymentModal = (props: PaymentModalProps) => {
         </div>
 
         {paymentStatus === 'success' && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+          <div className="card-smudge p-4 mb-4">
             <div className="flex items-center space-x-2">
               <CheckCircle className="w-5 h-5 text-green-600" />
               <span className="font-medium text-green-900">Payment Successful!</span>
@@ -235,7 +235,7 @@ const PaymentModal = (props: PaymentModalProps) => {
         )}
 
         {paymentStatus === 'error' && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+          <div className="card-smudge p-4 mb-4">
             <div className="flex items-center space-x-2">
               <AlertCircle className="w-5 h-5 text-red-600" />
               <span className="font-medium text-red-900">Payment Failed</span>
@@ -247,7 +247,7 @@ const PaymentModal = (props: PaymentModalProps) => {
         {paymentStatus === 'idle' && (
           <>
             {!import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ? (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="card-smudge p-4">
                 <div className="flex items-center space-x-2">
                   <AlertCircle className="w-5 h-5 text-yellow-600" />
                   <span className="font-medium text-yellow-900">Payment Configuration Required</span>

@@ -1,16 +1,16 @@
 # Supabase Configuration
 VITE_SUPABASE_URL=https://vwrgnlpajtwifbgyiutk.supabase.co
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3cmdubHBhanR3aWZiZ3lpdXRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgzNDI1NzMsImV4cCI6MjA2MzkxODU3M30.gFv5gbOMyVPArjySwnaQmHDHhM0L47kOX4sjjREbIZc
 
 # Daily.co Video Conferencing
-VITE_DAILY_API_KEY=your_daily_api_key_here
+VITE_DAILY_API_KEY=b7953c89e0edf7bac6047627741511095906ec9a82f1e6d08319d50ff362bfad
 
 # Instructions:
 # 1. Go to https://supabase.com/dashboard/project/vwrgnlpajtwifbgyiutk
 # 2. Click Settings > API
 # 3. Copy the "anon public" key from "Project API keys"
-# 4. Replace "your_supabase_anon_key_here" with your actual anon key
+# 4. Replace "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3cmdubHBhanR3aWZiZ3lpdXRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgzNDI1NzMsImV4cCI6MjA2MzkxODU3M30.gFv5gbOMyVPArjySwnaQmHDHhM0L47kOX4sjjREbIZc
 # 5. Go to https://dashboard.daily.co/ and create an account
 # 6. Get your API key from the dashboard
-# 7. Replace "your_daily_api_key_here" with your actual Daily.co API key
+# 7. Replace "b7953c89e0edf7bac6047627741511095906ec9a82f1e6d08319d50ff362bfad
 # 8. Rename this file to ".env"

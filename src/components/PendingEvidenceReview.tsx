@@ -1,0 +1,480 @@
+import React, { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { supabase } from '@/integrations/supabase/client'
+import { PendingEvidence, Claim } from '@/types/database'
+import { CheckCircle, XCircle, Clock, FileText, ExternalLink, Calendar, Eye, Trash } from 'lucide-react'
+import { getClaimIdFromCaseNumber } from '@/utils/claimUtils'
+
+interface PendingEvidenceReviewProps {
+  selectedClaim?: string
+  isOwner: boolean
+}
+
+const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
+  selectedClaim,
+  isOwner
+}) => {
+  const [showApproveModal, setShowApproveModal] = useState(false)
+  const [showRejectModal, setShowRejectModal] = useState(false)
+  const [showBatchRejectModal, setShowBatchRejectModal] = useState(false)
+  const [selectedPending, setSelectedPending] = useState<PendingEvidence | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({})
+  const [selectedClaimIds, setSelectedClaimIds] = useState<string[]>([])
+  const [rejectReason, setRejectReason] = useState('')
+  const [batchRejectReason, setBatchRejectReason] = useState('')
+  const queryClient = useQueryClient()
+
+  // Get pending evidence for the selected claim
+  const { data: pendingEvidence, isLoading } = useQuery({
+    queryKey: ['pending-evidence', selectedClaim],
+    queryFn: async () => {
+      if (!selectedClaim) return []
+      
+      const claimId = await getClaimIdFromCaseNumber(selectedClaim)
+      if (!claimId) return []
+      
+      const { data, error } = await supabase
+        .from('pending_evidence')
+        .select('*')
+        .eq('claim_id', claimId)
+        .eq('status', 'pending')
+        .order('submitted_at', { ascending: false })
+
+      if (error) throw error
+      return data as PendingEvidence[]
+    },
+    enabled: !!selectedClaim
+  })
+
+  const allSelected = (pendingEvidence || []).length > 0 && (pendingEvidence || []).every(p => selectedIds[p.id])
+  const toggleSelectAll = (checked: boolean) => {
+    const next: Record<string, boolean> = {}
+    if (checked) {
+      for (const p of pendingEvidence || []) next[p.id] = true
+    }
+    setSelectedIds(next)
+  }
+
+  // Get all claims for the approve modal
+  const { data: allClaims } = useQuery({
+    queryKey: ['claims'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('claims')
+        .select('case_number, title')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return data as Claim[]
+    }
+  })
+
+  // Approve mutation
+  const approveMutation = useMutation({
+    mutationFn: async ({ pendingId, claimIds }: { pendingId: string, claimIds: string[] }) => {
+      const { data, error } = await supabase.rpc('promote_pending_evidence', {
+        p_pending_id: pendingId,
+        p_claim_ids: claimIds
+      })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pending-evidence'] })
+      queryClient.invalidateQueries({ queryKey: ['evidence'] })
+      setShowApproveModal(false)
+      setSelectedPending(null)
+      setSelectedClaimIds([])
+    }
+  })
+
+  // Reject mutation
+  const rejectMutation = useMutation({
+    mutationFn: async ({ pendingId, reason }: { pendingId: string, reason: string }) => {
+      const { data, error } = await supabase.rpc('reject_pending_evidence', {
+        pending_id: pendingId,
+        reviewer_notes_param: reason
+      })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pending-evidence'] })
+      setShowRejectModal(false)
+      setSelectedPending(null)
+      setRejectReason('')
+    }
+  })
+
+  // Batch reject mutation
+  const batchRejectMutation = useMutation({
+    mutationFn: async ({ ids, reason }: { ids: string[], reason: string }) => {
+      for (const pid of ids) {
+        const { error } = await supabase.rpc('reject_pending_evidence', {
+          pending_id: pid,
+          reviewer_notes_param: reason
+        })
+        if (error) {
+          console.warn('Batch reject failed for', pid, error)
+          throw error
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pending-evidence', selectedClaim] })
+      setSelectedIds({})
+      setShowBatchRejectModal(false)
+      setBatchRejectReason('')
+    }
+  })
+
+  const handleApprove = (pending: PendingEvidence) => {
+    setSelectedPending(pending)
+    setSelectedClaimIds([pending.claim_id])
+    setShowApproveModal(true)
+  }
+
+  const handleReject = (pending: PendingEvidence) => {
+    setSelectedPending(pending)
+    setRejectReason('')
+    setShowRejectModal(true)
+  }
+
+  const handleBatchApprove = async () => {
+    if (!isOwner) return
+    const ids = Object.entries(selectedIds).filter(([, v]) => v).map(([k]) => k)
+    for (const pid of ids) {
+      try {
+        await supabase.rpc('approve_pending_evidence' as any, { pending_id: pid, reviewer_notes_param: null })
+      } catch (e) {
+        console.warn('Batch approve failed for', pid, e)
+      }
+    }
+    queryClient.invalidateQueries({ queryKey: ['pending-evidence', selectedClaim] })
+    setSelectedIds({})
+  }
+
+  const handleBatchReject = () => {
+    if (!isOwner) return
+    const ids = Object.entries(selectedIds).filter(([, v]) => v).map(([k]) => k)
+    if (ids.length === 0) {
+      alert('Please select at least one item to reject.')
+      return
+    }
+    setBatchRejectReason('')
+    setShowBatchRejectModal(true)
+  }
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+            <Clock className="w-3 h-3 mr-1" />
+            Pending
+          </span>
+        )
+      case 'approved':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            Approved
+          </span>
+        )
+      case 'rejected':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+            <XCircle className="w-3 h-3 mr-1" />
+            Rejected
+          </span>
+        )
+      default:
+        return null
+    }
+  }
+
+  if (!selectedClaim) return null
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-gray-600">Loading pending evidence...</div>
+      </div>
+    )
+  }
+
+  if (!pendingEvidence || pendingEvidence.length === 0) {
+    return null
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="card-enhanced p-4" style={{ maxWidth: 'none', width: '100%' }}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gold">Pending Evidence Review</h3>
+          {isOwner && (
+            <div className="flex items-center gap-2 text-xs">
+              <label className="flex items-center gap-1">
+                <input type="checkbox" checked={allSelected} onChange={(e) => toggleSelectAll(e.target.checked)} />
+                Select all
+              </label>
+              <button onClick={handleBatchApprove} className="px-2 py-1 rounded bg-white/10 border border-green-500 text-green-500">Approve selected</button>
+              <button onClick={handleBatchReject} className="px-2 py-1 rounded bg-white/10 border border-red-500 text-red-500">Reject selected</button>
+            </div>
+          )}
+        </div>
+        
+        {pendingEvidence.map((evidence) => (
+          <div key={evidence.id} className="card-smudge p-3 mb-3">
+            <div className="flex justify-between items-start mb-2">
+              <div className="space-y-1 w-full">
+                <h4 className="text-base font-medium text-gold">
+                  {evidence.title || evidence.description || 'Evidence Item'}
+                </h4>
+                {/* Single row with labels over values; Description first */}
+                <div className="grid grid-cols-4 gap-3 text-sm items-start">
+                  <div>
+                    <div className="text-gold">Description</div>
+                    <div className="text-white mt-0.5 leading-snug">{evidence.description || '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-gold">Submitted</div>
+                    <div className="text-white leading-snug">{new Date(evidence.submitted_at).toLocaleDateString()}</div>
+                  </div>
+                  <div>
+                    <div className="text-gold">Method</div>
+                    <div className="text-white leading-snug">{evidence.method || '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-gold flex items-center gap-1"><Calendar className="w-4 h-4" /> Date</div>
+                    <div className="text-white leading-snug">{evidence.date_submitted ? new Date(evidence.date_submitted).toLocaleDateString() : '-'}</div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-2">
+                <div className="pt-1">{getStatusBadge(evidence.status)}</div>
+                {/* Align icons to badge's right edge */}
+                {evidence.file_url && (
+                  <a
+                    href={evidence.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gold hover:text-yellow-300"
+                    title="View file"
+                  >
+                    <Eye className="w-5 h-5" />
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {/* Description now included in the single-row grid above */}
+
+            {/* Removed duplicate view link (now in grid row 2 col 4) */}
+
+            <div className="flex space-x-3">
+              {isOwner ? (
+                <>
+                  <button
+                    onClick={() => handleApprove(evidence)}
+                    disabled={approveMutation.isPending}
+                    className="px-4 py-2 rounded-lg flex items-center space-x-2 disabled:opacity-50"
+                    style={{ 
+                      backgroundColor: 'rgba(30, 58, 138, 0.3)',
+                      border: '2px solid #10b981',
+                      color: '#10b981'
+                    }}
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    <span>Approve</span>
+                  </button>
+                  <button
+                    onClick={() => handleReject(evidence)}
+                    disabled={rejectMutation.isPending}
+                    className="px-4 py-2 rounded-lg flex items-center space-x-2 disabled:opacity-50"
+                    style={{ 
+                      backgroundColor: 'rgba(30, 58, 138, 0.3)',
+                      border: '2px solid #ef4444',
+                      color: '#ef4444'
+                    }}
+                  >
+                    <XCircle className="w-4 h-4" />
+                    <span>Reject</span>
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={async () => {
+                    try {
+                      await supabase
+                        .from('pending_evidence')
+                        .update({ status: 'withdrawn' })
+                        .eq('id', evidence.id)
+                        .eq('status', 'pending')
+                      queryClient.invalidateQueries({ queryKey: ['pending-evidence'] })
+                    } catch {}
+                  }}
+                  className="px-4 py-2 rounded-lg flex items-center space-x-2 bg-white/10 border border-red-500 text-red-500 hover:bg-red-500/20"
+                  title="Withdraw request"
+                >
+                  <Trash className="w-4 h-4" />
+                  <span>Withdraw</span>
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Approve Modal */}
+      {showApproveModal && selectedPending && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]" style={{ zIndex: 9999 }}>
+          <div className="card-enhanced p-6 max-w-md w-full mx-4 relative z-[10000]" style={{ zIndex: 10000 }} onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-gold mb-4">Approve Evidence</h3>
+            <p className="text-white mb-4">
+              Link "{selectedPending.file_name || selectedPending.description}" to which claims?
+            </p>
+            
+            <div className="space-y-2 mb-4 max-h-40 overflow-y-auto">
+              {allClaims?.map((claim) => (
+                <label key={claim.case_number} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedClaimIds.includes(claim.case_number)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedClaimIds([...selectedClaimIds, claim.case_number])
+                      } else {
+                        setSelectedClaimIds(selectedClaimIds.filter(id => id !== claim.case_number))
+                      }
+                    }}
+                    className="rounded"
+                  />
+                  <span className="text-white">{claim.case_number} - {claim.title}</span>
+                </label>
+              ))}
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => approveMutation.mutate({ 
+                  pendingId: selectedPending.id, 
+                  claimIds: selectedClaimIds 
+                })}
+                disabled={approveMutation.isPending || selectedClaimIds.length === 0}
+                className="px-4 py-2 rounded-lg disabled:opacity-50"
+                style={{ 
+                  backgroundColor: 'rgba(30, 58, 138, 0.3)',
+                  border: '2px solid #10b981',
+                  color: '#10b981'
+                }}
+              >
+                {approveMutation.isPending ? 'Approving...' : 'Approve'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowApproveModal(false)
+                  setSelectedPending(null)
+                  setSelectedClaimIds([])
+                }}
+                className="bg-yellow-400/20 text-gold px-4 py-2 rounded-lg hover:bg-yellow-400/30"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Modal */}
+      {showRejectModal && selectedPending && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]" style={{ zIndex: 9999 }} onClick={() => { setShowRejectModal(false); setSelectedPending(null); setRejectReason('') }}>
+          <div className="card-enhanced p-6 max-w-md w-full mx-4 relative z-[10000]" style={{ zIndex: 10000 }} onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-gold mb-4">Reject Evidence</h3>
+            <p className="text-white mb-4">
+              Why are you rejecting "{selectedPending.file_name || selectedPending.description}"?
+            </p>
+            
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Enter rejection reason..."
+              className="w-full p-3 border border-yellow-400/30 bg-white/10 text-gold rounded-lg focus:border-yellow-400 focus:outline-none"
+              rows={3}
+            />
+
+            <div className="flex space-x-3 mt-4">
+              <button
+                onClick={() => rejectMutation.mutate({ 
+                  pendingId: selectedPending.id, 
+                  reason: rejectReason 
+                })}
+                disabled={rejectMutation.isPending || !rejectReason.trim()}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {rejectMutation.isPending ? 'Rejecting...' : 'Reject'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowRejectModal(false)
+                  setSelectedPending(null)
+                  setRejectReason('')
+                }}
+                className="bg-yellow-400/20 text-gold px-4 py-2 rounded-lg hover:bg-yellow-400/30"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Reject Modal */}
+      {showBatchRejectModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]" style={{ zIndex: 9999 }} onClick={() => { setShowBatchRejectModal(false); setBatchRejectReason('') }}>
+          <div className="card-enhanced p-6 max-w-md w-full mx-4 relative z-[10000]" style={{ zIndex: 10000 }} onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-gold mb-4">Reject Selected Evidence</h3>
+            <p className="text-white mb-4">
+              You are about to reject {Object.entries(selectedIds).filter(([, v]) => v).length} item(s). Please provide a reason:
+            </p>
+            
+            <textarea
+              value={batchRejectReason}
+              onChange={(e) => setBatchRejectReason(e.target.value)}
+              placeholder="Enter rejection reason..."
+              className="w-full p-3 border border-yellow-400/30 bg-white/10 text-gold rounded-lg focus:border-yellow-400 focus:outline-none"
+              rows={3}
+            />
+
+            <div className="flex space-x-3 mt-4">
+              <button
+                onClick={() => {
+                  const ids = Object.entries(selectedIds).filter(([, v]) => v).map(([k]) => k)
+                  batchRejectMutation.mutate({ 
+                    ids, 
+                    reason: batchRejectReason 
+                  })
+                }}
+                disabled={batchRejectMutation.isPending || !batchRejectReason.trim()}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {batchRejectMutation.isPending ? 'Rejecting...' : 'Reject All'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowBatchRejectModal(false)
+                  setBatchRejectReason('')
+                }}
+                className="bg-yellow-400/20 text-gold px-4 py-2 rounded-lg hover:bg-yellow-400/30"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default PendingEvidenceReview

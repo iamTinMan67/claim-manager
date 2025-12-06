@@ -1,6 +1,6 @@
 import React from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/integrations/supabase/client'
 import { Evidence } from '@/types/database'
 
 const EvidenceTable = () => {
@@ -37,7 +37,7 @@ const EvidenceTable = () => {
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+      <div className="card-smudge p-4">
         <div className="text-red-800">Error loading evidence: {error.message}</div>
       </div>
     )
@@ -45,20 +45,20 @@ const EvidenceTable = () => {
 
   if (!evidence || evidence.length === 0) {
     return (
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+      <div className="card-enhanced p-8 text-center">
         <div className="text-gray-600">No evidence found</div>
       </div>
     )
   }
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
+    <div className="card-enhanced rounded-lg shadow overflow-hidden">
       <div className="px-6 py-4 border-b border-gray-200">
         <h2 className="text-lg font-semibold text-gray-900">Evidence</h2>
       </div>
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+          <thead className="card-smudge">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 File Name
@@ -80,14 +80,14 @@ const EvidenceTable = () => {
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="card-enhanced divide-y divide-gray-200">
             {evidence.map((item) => (
-              <tr key={item.id} className="hover:bg-gray-50">
+              <tr key={item.id} className="hover:bg-gray-500/20">
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {item.file_name || '-'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {item.exhibit_id || '-'}
+                  {(item as any).exhibit_number || '-'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {item.method || '-'}

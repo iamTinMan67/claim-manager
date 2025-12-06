@@ -1,6 +1,6 @@
 import React from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/integrations/supabase/client'
 import { Lock, Crown, AlertTriangle, CreditCard } from 'lucide-react'
 
 interface AccessControlProps {
@@ -116,7 +116,7 @@ const AccessControl = ({
       if (!user) return null
 
       const [claimsResult, guestsResult, evidenceResult] = await Promise.all([
-        supabase.from('claims').select('case_number', { count: 'exact' }).eq('user_id', user.id),
+        supabase.from('claims').select('claim_id', { count: 'exact' }).eq('user_id', user.id),
         supabase.from('claim_shares').select('id', { count: 'exact' }).eq('owner_id', user.id),
         supabase.from('evidence').select('id', { count: 'exact' }).eq('user_id', user.id)
       ])
@@ -140,7 +140,7 @@ const AccessControl = ({
   // Check claim access first
   if (claimId && claimAccess === false) {
     return fallback || (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+      <div className="card-smudge p-6 text-center">
         <Lock className="w-12 h-12 text-red-400 mx-auto mb-4" />
         <h3 className="text-lg font-semibold text-red-900 mb-2">Access Denied</h3>
         <p className="text-red-700 mb-4">
@@ -158,7 +158,7 @@ const AccessControl = ({
   // Check subscription status
   if (subscription?.status === 'past_due' || subscription?.status === 'unpaid') {
     return fallback || (
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+      <div className="card-smudge p-6 text-center">
         <AlertTriangle className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
         <h3 className="text-lg font-semibold text-yellow-900 mb-2">Payment Required</h3>
         <p className="text-yellow-700 mb-4">
@@ -176,7 +176,7 @@ const AccessControl = ({
   const currentTier = subscription?.subscription_tiers
   if (!currentTier) {
     return fallback || (
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+      <div className="card-smudge p-6 text-center">
         <Lock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Subscription Required</h3>
         <p className="text-gray-700 mb-4">
@@ -189,7 +189,7 @@ const AccessControl = ({
   // Check feature access
   if (requiredFeature && !currentTier.features[requiredFeature]) {
     return fallback || (
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+      <div className="card-smudge p-6 text-center">
         <Crown className="w-12 h-12 text-blue-400 mx-auto mb-4" />
         <h3 className="text-lg font-semibold text-blue-900 mb-2">Premium Feature</h3>
         <p className="text-blue-700 mb-4">

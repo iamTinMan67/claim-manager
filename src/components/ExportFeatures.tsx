@@ -1,46 +1,88 @@
 import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
-import { Download, FileText, Calendar, Users, CheckSquare } from 'lucide-react'
+import { supabase } from '@/integrations/supabase/client'
+import { Download, FileText, Calendar, Users, CheckSquare, Home, ChevronLeft, Eye, X } from 'lucide-react'
+import { useNavigation } from '@/contexts/NavigationContext'
 import jsPDF from 'jspdf'
-import html2canvas from 'html2canvas'
 import JSZip from 'jszip'
+import { getClaimIdFromCaseNumber } from '@/utils/claimUtils'
 
 interface ExportFeaturesProps {
   selectedClaim: string | null
   claimColor?: string
+  isGuest?: boolean
+  showGuestContent?: boolean
+  isGuestFrozen?: boolean
 }
 
 const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeaturesProps) => {
+  const { navigateBack, navigateTo } = useNavigation()
   const [exportType, setExportType] = useState<'evidence' | 'todos' | 'calendar'>('evidence')
   const [isExporting, setIsExporting] = useState(false)
   const [isDownloadingZip, setIsDownloadingZip] = useState(false)
+  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null)
+  const [previewType, setPreviewType] = useState<'evidence' | 'todos' | 'calendar'>('evidence')
 
   const { data: evidence } = useQuery({
     queryKey: ['evidence-export', selectedClaim],
     queryFn: async () => {
-      let query = supabase
+      // If no claim selected, return all evidence for the user
+      if (!selectedClaim) {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return []
+        
+        const { data, error } = await supabase
         .from('evidence')
-        .select(`
-          *,
-          date_submitted::text
-        `)
-      
-      if (selectedClaim) {
-        query = query.eq('case_number', selectedClaim)
+          .select('*')
+          .eq('user_id', user.id)
+          .order('display_order', { ascending: true, nullsFirst: false })
+          .order('created_at', { ascending: true })
+        
+        if (error) throw error
+        
+        // Clean up empty string dates
+        return (data || []).map((item: any) => ({
+          ...item,
+          date_submitted: item.date_submitted === '' ? null : item.date_submitted
+        }))
       }
+
+      // Get claim_id from case_number
+      const claimId = await getClaimIdFromCaseNumber(selectedClaim)
+      if (!claimId) {
+        console.warn('ExportFeatures: Could not find claim_id for case_number:', selectedClaim)
+        return []
+      }
+
+      // Fetch linked evidence ids via evidence_claims for the selected claim
+      const { data: linkRows, error: linkErr } = await supabase
+        .from('evidence_claims')
+        .select('evidence_id')
+        .eq('claim_id', claimId)
       
-      const { data, error } = await query
-        .order('display_order', { ascending: true, nullsLast: true })
+      if (linkErr) throw linkErr
+      
+      const linkedIds = (linkRows || []).map(r => r.evidence_id).filter(Boolean)
+
+      // Fetch evidence by linked ids
+      if (linkedIds.length === 0) {
+        return []
+      }
+
+      const { data, error } = await supabase
+        .from('evidence')
+        .select('*')
+        .in('id', linkedIds)
+        .order('display_order', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: true })
       
       if (error) throw error
       
       // Clean up empty string dates
-      return data?.map(item => ({
+      return (data || []).map((item: any) => ({
         ...item,
         date_submitted: item.date_submitted === '' ? null : item.date_submitted
-      })) || []
+      }))
     }
   })
 
@@ -71,7 +113,10 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         .select('*')
       
       if (selectedClaim) {
-        query = query.eq('claim_id', selectedClaim)
+        const claimId = await getClaimIdFromCaseNumber(selectedClaim)
+        if (claimId) {
+          query = query.eq('claim_id', claimId)
+        }
       }
       
       const { data, error } = await query
@@ -104,15 +149,16 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
     document.body.removeChild(link)
   }
 
-  const exportToPDF = async (data: any[], title: string, filename: string) => {
+  const exportToPDF = async (data: any[], title: string, filename: string, type: 'evidence' | 'todos' | 'calendar' = exportType) => {
     setIsExporting(true)
     try {
       const pdf = new jsPDF()
       const pageHeight = pdf.internal.pageSize.height
+      const leftMargin = 15 // Page left margin (adjustable)
       let yPosition = 10
 
       // Add claim details for evidence export (moved down 2 rows)
-      if (exportType === 'evidence' && selectedClaim) {
+      if (type === 'evidence' && selectedClaim) {
         yPosition += 10 // Move down 1 row
         
         const { data: claimDetails } = await supabase
@@ -124,18 +170,18 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         if (claimDetails) {
           pdf.setFontSize(12)
           // Two column layout for claim details
-          pdf.text(`Case: ${claimDetails.case_number}`, 20, yPosition)
+          pdf.text(`Case: ${claimDetails.case_number}`, leftMargin, yPosition)
           pdf.text(`Title: ${claimDetails.title}`, 110, yPosition)
           yPosition += 10
           
           if (claimDetails.court || claimDetails.plaintiff_name) {
-            pdf.text(`Court: ${claimDetails.court || 'N/A'}`, 20, yPosition)
+            pdf.text(`Court: ${claimDetails.court || 'N/A'}`, leftMargin, yPosition)
             pdf.text(`Plaintiff: ${claimDetails.plaintiff_name || 'N/A'}`, 110, yPosition)
             yPosition += 10
           }
           
           if (claimDetails.defendant_name) {
-            pdf.text(`Defendant: ${claimDetails.defendant_name}`, 20, yPosition)
+            pdf.text(`Defendant: ${claimDetails.defendant_name}`, leftMargin, yPosition)
             yPosition += 10
           }
           
@@ -143,36 +189,64 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         }
       }
 
-      // Add column headers for evidence export
-      if (exportType === 'evidence') {
+      // Calculate column positions for evidence export (used in both headers and data)
+      let methodCenterX = 100
+      let dateCenterX = 130
+      let pagesCenterX = 155
+      let bundleCenterX = 175
+      let clcRefCenterX = 195
+      
+      if (type === 'evidence') {
         pdf.setFontSize(10)
-        pdf.setFont(undefined, 'bold')
-        pdf.text('EXHIBIT #', 20, yPosition, { align: 'center' })
-        pdf.text('FILE NAME', 50, yPosition)
-        pdf.text('METHOD', 100, yPosition, { align: 'center' })
-        pdf.text('DATE', 130, yPosition, { align: 'center' })
-        pdf.text('PAGES', 155, yPosition, { align: 'center' })
-        pdf.text('BUNDLE POS', 175, yPosition, { align: 'center' })
-        pdf.text('CLC REF#', 195, yPosition, { align: 'center' })
-        pdf.setFont(undefined, 'normal')
+        pdf.setFont('helvetica', 'bold')
+        const pageWidth = pdf.internal.pageSize.width
+        const spacingPercent = 0.02 // 2%
+        const spacing = pageWidth * spacingPercent
+        
+        // Calculate positions for columns 3-7 with 2% spacing
+        const methodHeaderX = 100
+        const methodHeaderWidth = pdf.getTextWidth('METHOD')
+        methodCenterX = methodHeaderX + (methodHeaderWidth / 2)
+        const dateHeaderX = methodCenterX + (methodHeaderWidth / 2) + spacing
+        const dateHeaderWidth = pdf.getTextWidth('DATE')
+        dateCenterX = dateHeaderX + (dateHeaderWidth / 2)
+        const pagesHeaderX = dateCenterX + (dateHeaderWidth / 2) + spacing
+        const pagesHeaderWidth = pdf.getTextWidth('PAGES')
+        pagesCenterX = pagesHeaderX + (pagesHeaderWidth / 2)
+        const bundleHeaderX = pagesCenterX + (pagesHeaderWidth / 2) + spacing
+        const bundleHeaderWidth = pdf.getTextWidth('BUNDLE')
+        bundleCenterX = bundleHeaderX + (bundleHeaderWidth / 2)
+        const clcRefHeaderX = bundleCenterX + (bundleHeaderWidth / 2) + spacing
+        const clcRefHeaderWidth = pdf.getTextWidth('CLC REF#')
+        clcRefCenterX = clcRefHeaderX + (clcRefHeaderWidth / 2)
+      }
+
+      // Add column headers for evidence export
+      if (type === 'evidence') {
+        // Calculate exhibit header text width and position FILE NAME with 2% spacing after
+        const exhibitHeaderText = 'EXHIBIT #'
+        const exhibitHeaderX = leftMargin
+        const exhibitHeaderWidth = pdf.getTextWidth(exhibitHeaderText)
+        const pageWidth = pdf.internal.pageSize.width
+        const spacingPercent = 0.02 // 2%
+        const spacing = pageWidth * spacingPercent
+        const fileNameHeaderX = exhibitHeaderX + exhibitHeaderWidth + spacing
+        
+        pdf.text(exhibitHeaderText, exhibitHeaderX, yPosition)
+        pdf.text('FILE NAME', fileNameHeaderX, yPosition)
+        pdf.text('METHOD', methodCenterX, yPosition, { align: 'center' })
+        pdf.text('DATE', dateCenterX, yPosition, { align: 'center' })
+        pdf.text('PAGES', pagesCenterX, yPosition, { align: 'center' })
+        pdf.text('BUNDLE', bundleCenterX, yPosition, { align: 'center' })
+        pdf.text('CLC REF#', clcRefCenterX, yPosition, { align: 'center' })
+        pdf.setFont('helvetica', 'normal')
         yPosition += 10
       }
 
-      // Add column headers for table of contents export
-      if (exportType === 'table_of_contents') {
-        pdf.setFontSize(10)
-        pdf.setFont(undefined, 'bold')
-        pdf.text('EXHIBIT #', 20, yPosition, { align: 'center' })
-        pdf.text('FILE NAME', 60, yPosition)
-        pdf.text('PAGES', 120, yPosition, { align: 'center' })
-        pdf.text('BUNDLE POS', 150, yPosition, { align: 'center' })
-        pdf.setFont(undefined, 'normal')
-        yPosition += 10
-      }
 
       // Calculate bundle positions for evidence
       let bundlePositions: { [key: string]: number } = {}
-      if (exportType === 'evidence' && data) {
+      if (type === 'evidence' && data) {
         let currentPos = 1
         // Sort data by display_order first, then by created_at to ensure correct sequence
         const sortedData = [...data].sort((a, b) => {
@@ -205,31 +279,59 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
           yPosition = 20
           
           // Add column headers on new page for evidence reports
-          if (exportType === 'evidence') {
-            pdf.setFont(undefined, 'bold')
-            pdf.text('EXHIBIT #', 20, yPosition, { align: 'center' })
-            pdf.text('FILE NAME', 50, yPosition)
-            pdf.text('METHOD', 100, yPosition, { align: 'center' })
-            pdf.text('DATE', 130, yPosition, { align: 'center' })
-            pdf.text('PAGES', 155, yPosition, { align: 'center' })
-            pdf.text('BUNDLE POS', 175, yPosition, { align: 'center' })
-            pdf.text('CLC REF#', 195, yPosition, { align: 'center' })
-            pdf.setFont(undefined, 'normal')
+          if (type === 'evidence') {
+            pdf.setFontSize(10)
+            pdf.setFont('helvetica', 'bold')
+            
+            // Calculate exhibit header text width and position FILE NAME with 2% spacing after
+            const exhibitHeaderText = 'EXHIBIT #'
+            const exhibitHeaderX = leftMargin
+            const exhibitHeaderWidth = pdf.getTextWidth(exhibitHeaderText)
+            const pageWidth = pdf.internal.pageSize.width
+            const spacingPercent = 0.02 // 2%
+            const spacing = pageWidth * spacingPercent
+            const fileNameHeaderX = exhibitHeaderX + exhibitHeaderWidth + spacing
+            
+            pdf.text(exhibitHeaderText, exhibitHeaderX, yPosition)
+            pdf.text('FILE NAME', fileNameHeaderX, yPosition)
+            pdf.text('METHOD', methodCenterX, yPosition, { align: 'center' })
+            pdf.text('DATE', dateCenterX, yPosition, { align: 'center' })
+            pdf.text('PAGES', pagesCenterX, yPosition, { align: 'center' })
+            pdf.text('BUNDLE', bundleCenterX, yPosition, { align: 'center' })
+            pdf.text('CLC REF#', clcRefCenterX, yPosition, { align: 'center' })
+            pdf.setFont('helvetica', 'normal')
             yPosition += 10
           }
         }
 
         let text = ''
         
-        if (exportType === 'evidence') {
+        if (type === 'evidence') {
           // For evidence, display in columns
-         pdf.text(item.exhibit_id || '', 17, yPosition, { align: 'center' })
-          pdf.text(item.file_name || '', 45, yPosition)
-          pdf.text(item.method || '', 100, yPosition, { align: 'center' })
-          pdf.text(item.date_submitted ? new Date(item.date_submitted).toLocaleDateString() : '', 130, yPosition, { align: 'center' })
-          pdf.text((item.number_of_pages || '').toString(), 155, yPosition, { align: 'center' })
-          pdf.text(bundlePositions[item.id]?.toString() || '', 175, yPosition, { align: 'center' })
-          pdf.text(item.book_of_deeds_ref || '', 195, yPosition, { align: 'center' })
+          // Use exhibit_number field
+          pdf.setFontSize(10)
+          pdf.setFont('helvetica', 'normal')
+          
+          const exhibitNumber = (item as any).exhibit_number;
+          const exhibitValue = exhibitNumber !== null && exhibitNumber !== undefined 
+            ? `Exhibit ${exhibitNumber}` 
+            : '';
+          
+          // Calculate exhibit text width and position FILE NAME with 2% spacing after
+          const exhibitTextX = leftMargin
+          const exhibitTextWidth = exhibitValue ? pdf.getTextWidth(exhibitValue) : 0
+          const pageWidth = pdf.internal.pageSize.width
+          const spacingPercent = 0.02 // 2%
+          const spacing = pageWidth * spacingPercent
+          const fileNameX = exhibitTextX + exhibitTextWidth + spacing
+          
+          pdf.text(exhibitValue, exhibitTextX, yPosition)
+          pdf.text(item.file_name || '', fileNameX, yPosition)
+          pdf.text(item.method || '', methodCenterX, yPosition, { align: 'center' })
+          pdf.text(item.date_submitted ? new Date(item.date_submitted).toLocaleDateString() : '', dateCenterX, yPosition, { align: 'center' })
+          pdf.text((item.number_of_pages || '').toString(), pagesCenterX, yPosition, { align: 'center' })
+          pdf.text(bundlePositions[item.id]?.toString() || '', bundleCenterX, yPosition, { align: 'center' })
+          pdf.text(item.book_of_deeds_ref || '', clcRefCenterX, yPosition, { align: 'center' })
           yPosition += 8
         } else {
           // For other exports, use existing logic but exclude unwanted fields
@@ -247,17 +349,33 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
             .join(' | ')
 
           const lines = pdf.splitTextToSize(text, 170)
-          pdf.text(lines, 20, yPosition)
+          pdf.text(lines, leftMargin, yPosition)
           yPosition += lines.length * 5 + 10
         }
       })
 
-      // Open PDF in browser instead of downloading
+      // Return PDF data URL for preview (avoids blob URL warning) or blob URL for download
       const pdfBlob = pdf.output('blob')
-      const pdfUrl = URL.createObjectURL(pdfBlob)
-      window.open(pdfUrl, '_blank')
+      // Convert blob to data URL to avoid PDF.js warning about blob URLs
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          if (typeof reader.result === 'string') {
+            resolve(reader.result)
+          } else {
+            // Fallback to blob URL if data URL conversion fails
+            resolve(URL.createObjectURL(pdfBlob))
+          }
+        }
+        reader.onerror = () => {
+          // Fallback to blob URL on error
+          resolve(URL.createObjectURL(pdfBlob))
+        }
+        reader.readAsDataURL(pdfBlob)
+      })
     } catch (error) {
       // Handle PDF generation error silently
+      return null
     } finally {
       setIsExporting(false)
     }
@@ -272,7 +390,10 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
           if (format === 'csv') {
             exportToCSV(evidence, 'evidence', ['File Name', 'Exhibit ID', 'Method', 'Number of Pages', 'Date Submitted'])
           } else {
-            await exportToPDF(evidence, 'Evidence Report', 'evidence')
+              const pdfUrl = await exportToPDF(evidence, 'Evidence Report', 'evidence', 'evidence')
+              if (pdfUrl) {
+                window.open(pdfUrl, '_blank')
+              }
           }
         }
         break
@@ -281,7 +402,10 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
           if (format === 'csv') {
             exportToCSV(todos, 'todos', ['Title', 'Description', 'Due Date', 'Priority', 'Completed'])
           } else {
-            await exportToPDF(todos, 'Todo List Report', 'todos')
+              const pdfUrl = await exportToPDF(todos, 'Todo List Report', 'todos', 'todos')
+              if (pdfUrl) {
+                window.open(pdfUrl, '_blank')
+              }
           }
         }
         break
@@ -290,11 +414,88 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
           if (format === 'csv') {
             exportToCSV(events, 'calendar', ['Title', 'Description', 'Start Time', 'End Time', 'All Day'])
           } else {
-            await exportToPDF(events, 'Calendar Events Report', 'calendar')
+              const pdfUrl = await exportToPDF(events, 'Calendar Events Report', 'calendar', 'calendar')
+              if (pdfUrl) {
+                window.open(pdfUrl, '_blank')
+              }
           }
         }
         break
     }
+  }
+
+  const generatePreview = async (type: 'evidence' | 'todos' | 'calendar') => {
+    setIsExporting(true)
+    try {
+      let pdfUrl: string | null = null
+
+      switch (type) {
+        case 'evidence':
+          if (evidence) {
+            pdfUrl = await exportToPDF(evidence, 'Evidence Report', 'evidence', 'evidence')
+          }
+          break
+        case 'todos':
+          if (todos) {
+            pdfUrl = await exportToPDF(todos, 'Todo List Report', 'todos', 'todos')
+          }
+          break
+        case 'calendar':
+          if (events) {
+            pdfUrl = await exportToPDF(events, 'Calendar Events Report', 'calendar', 'calendar')
+          }
+          break
+      }
+
+      if (pdfUrl) {
+        // Clean up previous preview URL if it exists (only blob URLs need revoking)
+        if (previewPdfUrl && previewPdfUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(previewPdfUrl)
+        }
+        setPreviewPdfUrl(pdfUrl)
+        setPreviewType(type)
+      }
+    } catch (error) {
+      // Handle preview error silently
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const handlePreview = async () => {
+    console.log('handlePreview called, exportType:', exportType)
+    console.log('Evidence:', evidence)
+    console.log('Evidence count:', evidence?.length)
+    console.log('Todos:', todos)
+    console.log('Todos count:', todos?.length)
+    console.log('Events:', events)
+    console.log('Events count:', events?.length)
+    console.log('getDataCount():', getDataCount())
+    console.log('hasDataForType:', hasDataForType(exportType))
+    
+    // Check if there's data for the current export type
+    const hasData = hasDataForType(exportType)
+    if (!hasData) {
+      alert(`No ${exportType} data available to preview. Please add some ${exportType} data first.`)
+      return
+    }
+    
+    console.log('Calling generatePreview with type:', exportType)
+    await generatePreview(exportType)
+  }
+
+  const handlePreviewTypeChange = async (type: 'evidence' | 'todos' | 'calendar') => {
+    await generatePreview(type)
+  }
+
+  const closePreview = () => {
+    if (previewPdfUrl) {
+      // Only revoke blob URLs, not data URLs
+      if (previewPdfUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewPdfUrl)
+      }
+    }
+    setPreviewPdfUrl(null)
   }
 
   const downloadDocumentsZip = async () => {
@@ -322,11 +523,12 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
           }
           
           const blob = await response.blob()
-          const fileName = item.file_name || `exhibit-${item.exhibit_id || index + 1}`
+          const exhibitNumber = (item as any).exhibit_number;
+          const fileName = item.file_name || `exhibit-${exhibitNumber || index + 1}`
           
-          // Add exhibit ID prefix to filename for organization
-          const prefixedFileName = item.exhibit_id 
-            ? `${item.exhibit_id} - ${fileName}`
+          // Add exhibit number prefix to filename for organization
+          const prefixedFileName = exhibitNumber !== null && exhibitNumber !== undefined
+            ? `Exhibit ${exhibitNumber} - ${fileName}`
             : fileName
           
           documentsFolder?.file(prefixedFileName, blob)
@@ -369,32 +571,48 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
 
   const getDataCount = () => {
     switch (exportType) {
-      case 'evidence': return evidence?.length || 0
-      case 'todos': return todos?.length || 0
-      case 'calendar': return events?.length || 0
+      case 'evidence': return evidence?.length ?? 0
+      case 'todos': return todos?.length ?? 0
+      case 'calendar': return events?.length ?? 0
       default: return 0
+    }
+  }
+
+  const hasDataForType = (type: 'evidence' | 'todos' | 'calendar') => {
+    switch (type) {
+      case 'evidence': return (evidence?.length ?? 0) > 0
+      case 'todos': return (todos?.length ?? 0) > 0
+      case 'calendar': return (events?.length ?? 0) > 0
+      default: return false
     }
   }
 
   return (
     <div className="space-y-6">
-      {selectedClaim && (
-        <div className="border-l-4 rounded-lg p-4" style={{ 
-          borderLeftColor: claimColor,
-          backgroundColor: `${claimColor}10`
-        }}>
-          <p style={{ color: claimColor }}>
-            Exporting data for selected claim: <strong>{selectedClaim}</strong>
-          </p>
+      <div className="flex justify-between items-center">
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={navigateBack}
+            className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span>Back</span>
+          </button>
+          <button
+            onClick={() => navigateTo('claims')}
+            className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
+          >
+            <Home className="w-4 h-4" />
+            <span>Home</span>
+          </button>
         </div>
-      )}
-      <div>
-        <h2 className="text-2xl font-bold mb-2">Export Features</h2>
-        <p className="text-gray-600">
-          Export your legal data in various formats for backup or sharing.
-          {selectedClaim ? ' Currently showing data for the selected claim only.' : ' Showing all data.'}
-        </p>
+        <h2 className="text-2xl font-bold mb-2 text-center flex-1">Export Features</h2>
+        <div />
       </div>
+      <p className="text-gray-600">
+        Export your legal data in various formats for backup or sharing.
+        {selectedClaim ? ` Currently showing data for the selected claim: ${selectedClaim}.` : ' Showing all data.'}
+      </p>
 
       <div className="card-enhanced p-6 rounded-lg shadow border">
         <h3 className="text-lg font-semibold mb-4">Export Options</h3>
@@ -456,64 +674,76 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
                 <div className="text-sm font-medium">Calendar</div>
                 <div className="text-xs text-gray-500">{events?.length || 0} items</div>
               </button>
-              
-              <button
-                onClick={() => setExportType('table_of_contents')}
-                className={`p-4 border rounded-lg text-center transition-colors ${
-                  exportType === 'table_of_contents' 
-                    ? 'text-white' 
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                style={exportType === 'table_of_contents' ? { 
-                  borderColor: claimColor, 
-                  backgroundColor: `${claimColor}20`,
-                  color: claimColor
-                } : {}}
-              >
-                <FileText className="w-6 h-6 mx-auto mb-2" />
-                <div className="text-sm font-medium">Table of Contents</div>
-                <div className="text-xs text-gray-500">{evidence?.length || 0} items</div>
-              </button>
             </div>
           </div>
 
           <div className="border-t pt-4">
             <h4 className="font-medium mb-3">Export Format</h4>
             <div className="flex space-x-4">
+              {/* Preview button - show for all content types when selected */}
               <button
-                onClick={() => handleExport('csv')}
-                disabled={isExporting || getDataCount() === 0}
-                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  console.log('Preview button clicked')
+                  console.log('isExporting:', isExporting)
+                  console.log('exportType:', exportType)
+                  if (isExporting) {
+                    console.log('Button click ignored - isExporting is true')
+                    return
+                  }
+                  handlePreview()
+                }}
+                disabled={isExporting}
+                className={`bg-blue-900/30 border-2 border-green-500 text-green-500 px-6 py-3 rounded-lg flex items-center space-x-2 transition-all ${
+                  isExporting 
+                    ? 'opacity-50 cursor-not-allowed' 
+                    : 'hover:bg-blue-800/50 hover:border-green-400 hover:text-green-400 cursor-pointer'
+                }`}
+                title="Preview PDF"
               >
-                <Download className="w-4 h-4" />
-                <span>Export as CSV</span>
+                <Eye className="w-4 h-4" />
+                <span>{isExporting ? 'Generating Preview...' : 'Preview PDF'}</span>
               </button>
               
+              {/* Export as PDF button - show for all content types */}
               <button
                 onClick={() => handleExport('pdf')}
                 disabled={isExporting || getDataCount() === 0}
-                className="text-white px-6 py-3 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                style={{ backgroundColor: claimColor }}
+                className="bg-blue-900/30 border-2 border-green-500 text-green-500 px-6 py-3 rounded-lg hover:bg-blue-800/50 hover:border-green-400 hover:text-green-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
               >
                 <Download className="w-4 h-4" />
                 <span>{isExporting ? 'Generating PDF...' : 'Export as PDF'}</span>
               </button>
               
+              {/* Export as CSV and Download Documents ZIP - only show for evidence */}
               {exportType === 'evidence' && (
+                <>
+                  <button
+                    onClick={() => handleExport('csv')}
+                    disabled={isExporting || getDataCount() === 0}
+                    className="bg-blue-900/30 border-2 border-green-500 text-green-500 px-6 py-3 rounded-lg hover:bg-blue-800/50 hover:border-green-400 hover:text-green-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Export as CSV</span>
+                  </button>
+                  
                 <button
                   onClick={downloadDocumentsZip}
                   disabled={isDownloadingZip || !evidence || evidence.length === 0}
-                  className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  className="bg-blue-900/30 border-2 border-green-500 text-green-500 px-6 py-3 rounded-lg hover:bg-blue-800/50 hover:border-green-400 hover:text-green-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                 >
                   <Download className="w-4 h-4" />
                   <span>{isDownloadingZip ? 'Creating ZIP...' : 'Download Documents ZIP'}</span>
                 </button>
+                </>
               )}
             </div>
           </div>
 
           {getDataCount() === 0 && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="card-smudge p-4">
               <p className="text-yellow-800 text-sm">
                 No data available for the selected export type. Add some data first to enable exports.
               </p>
@@ -530,9 +760,10 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         </div>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="card-smudge p-4">
         <h4 className="font-medium text-blue-900 mb-2">Export Information</h4>
         <ul className="text-sm text-blue-800 space-y-1">
+          <li>• Preview PDF before exporting to verify the format</li>
           <li>• CSV exports are ideal for importing into spreadsheet applications</li>
           <li>• PDF exports provide formatted reports suitable for printing or sharing</li>
           <li>• ZIP downloads include all uploaded documents organized by exhibit ID</li>
@@ -540,6 +771,94 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
           <li>• Large datasets may take a moment to process</li>
         </ul>
       </div>
+
+      {/* PDF Preview Modal */}
+      {previewPdfUrl && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]" onClick={closePreview} style={{ zIndex: 9999 }}>
+          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full h-[90vh] flex flex-col relative z-[10000]" onClick={(e) => e.stopPropagation()} style={{ zIndex: 10000 }}>
+            <div className="flex justify-between items-center p-4 border-b">
+              <div className="flex items-center space-x-4">
+                <h3 className="text-lg font-semibold">PDF Preview</h3>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => handlePreviewTypeChange('evidence')}
+                    disabled={isExporting || !evidence || evidence.length === 0}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      previewType === 'evidence'
+                        ? 'bg-green-500 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    <FileText className="w-4 h-4 inline mr-2" />
+                    Evidence ({evidence?.length || 0})
+                  </button>
+                  <button
+                    onClick={() => handlePreviewTypeChange('todos')}
+                    disabled={isExporting || !todos || todos.length === 0}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      previewType === 'todos'
+                        ? 'bg-green-500 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    <CheckSquare className="w-4 h-4 inline mr-2" />
+                    Todos ({todos?.length || 0})
+                  </button>
+                  <button
+                    onClick={() => handlePreviewTypeChange('calendar')}
+                    disabled={isExporting || !events || events.length === 0}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      previewType === 'calendar'
+                        ? 'bg-green-500 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    <Calendar className="w-4 h-4 inline mr-2" />
+                    Calendar ({events?.length || 0})
+                  </button>
+                </div>
+              </div>
+              <button
+                onClick={closePreview}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              {isExporting ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Generating preview...</p>
+                  </div>
+                </div>
+              ) : (
+                <object
+                  data={previewPdfUrl}
+                  type="application/pdf"
+                  className="w-full h-full"
+                  aria-label="PDF Preview"
+                >
+                  <div className="flex items-center justify-center h-full bg-gray-100">
+                    <div className="text-center">
+                      <p className="text-gray-600 mb-4">Unable to display PDF preview.</p>
+                      <a
+                        href={previewPdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline"
+                      >
+                        Open PDF in new tab
+                      </a>
+                    </div>
+                  </div>
+                </object>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
