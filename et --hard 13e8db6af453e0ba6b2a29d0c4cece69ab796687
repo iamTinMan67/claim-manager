@@ -1,0 +1,125 @@
+[33mcommit 13e8db6af453e0ba6b2a29d0c4cece69ab796687[m
+Merge: 153edf1 870c3e8
+Author: iamTinMan67 <tomboyce01@gmail.com>
+Date:   Sat Dec 6 13:24:36 2025 +0000
+
+    Merge branch 'Merged'
+
+ ...\357\200\272VITE_SUPABASE_ANON_KEY\357\200\242" |  314 [32m+[m
+ HOST_VIDEO_CONFERENCING_GUIDE.md                   |  213 [32m+[m
+ Notes.txt                                          |    0
+ PDF_MODIFICATION_GUIDE.md                          |  124 [32m+[m
+ README.md                                          |  328 [32m+[m[31m-[m
+ Supabase Snippet Untitled query(2).csv             |   19 [32m+[m
+ VIDEO_CONFERENCING_SETUP.md                        |  143 [32m+[m
+ check_evidence_data.sql                            |   15 [31m-[m
+ column spacing.png                                 |  Bin [31m0[m -> [32m56374[m bytes
+ compare_evidence_tables.sql                        |   69 [31m-[m
+ create_pending_invitations_table.sql               |   67 [32m+[m
+ env-template.txt                                   |    8 [32m+[m[31m-[m
+ et --hard 92b7ba2                                  |   10 [32m+[m
+ exhibit screenshot.png                             |  Bin [31m0[m -> [32m87481[m bytes
+ fix_evidence_field_mapping.sql                     |   47 [31m-[m
+ index.html                                         |    9 [32m+[m[31m-[m
+ legal-evidence-harvester-00-main.zip               |  Bin [31m448162[m -> [32m0[m bytes
+ merge_evidence_exhibits.sql                        |   73 [31m-[m
+ package-lock.json                                  |  821 [32m+[m[31m--[m
+ package.json                                       |    1 [31m-[m
+ public/favicon.svg                                 |   20 [32m+[m
+ .../public => public}/og-image.png                 |  Bin
+ .../public => public}/placeholder.svg              |    0
+ .../src => src}/App.css                            |    0
+ src/App.tsx                                        |  179 [32m+[m[31m-[m
+ src/components/AccessControl.tsx                   |   12 [32m+[m[31m-[m
+ .../components/AddCalendarEventModal.tsx           |   46 [32m+[m[31m-[m
+ .../src => src}/components/AddClaimModal.tsx       |   62 [32m+[m[31m-[m
+ src/components/AddEvidenceModal.tsx                |  313 [32m+[m
+ .../AddEvidenceModal/DateMethodFields.tsx          |   16 [32m+[m[31m-[m
+ .../AddEvidenceModal/EvidenceFormFields.tsx        |   50 [32m+[m
+ .../AddEvidenceModal/FileUploadSection.tsx         |   69 [32m+[m
+ .../src => src}/components/AddTodoModal.tsx        |   47 [32m+[m[31m-[m
+ .../src => src}/components/AlarmNotification.tsx   |    4 [32m+[m[31m-[m
+ src/components/AuthComponent.tsx                   |  555 [32m+[m[31m-[m
+ .../src => src}/components/AuthDebugPanel.tsx      |    0
+ src/components/Calendar.tsx                        |  739 [32m+[m[31m-[m
+ .../src => src}/components/CaseInformation.tsx     |    0
+ .../src => src}/components/ChatWindow.tsx          |    0
+ .../src => src}/components/ClaimEvidenceExport.tsx |   24 [32m+[m[31m-[m
+ .../components/ClaimEvidenceManager.tsx            |   12 [32m+[m[31m-[m
+ .../src => src}/components/ClaimSharingTab.tsx     |   26 [31m-[m
+ .../src => src}/components/ClaimTodoList.tsx       |    0
+ .../src => src}/components/ClaimsList.tsx          |   29 [32m+[m[31m-[m
+ src/components/ClaimsTable.tsx                     |  870 [32m++[m[31m-[m
+ src/components/CollaborationHub.tsx                |  400 [32m+[m[31m-[m
+ src/components/ConnectToggle.tsx                   |   42 [32m+[m
+ .../components/EditEvidenceFileModal.tsx           |    0
+ .../src => src}/components/EditableClaimInfo.tsx   |   19 [32m+[m[31m-[m
+ .../components/EditableExhibitSelector.tsx         |   89 [32m+[m[31m-[m
+ .../src => src}/components/EnhancedTodoList.tsx    |    0
+ src/components/EnhancedWhiteboard.tsx              |  577 [31m--[m
+ .../components/EvidenceItemsSection.tsx            |    4 [32m+[m[31m-[m
+ src/components/EvidenceManager.tsx                 | 1589 [32m++[m[31m--[m
+ .../src => src}/components/EvidenceSummary.tsx     |    2 [32m+[m[31m-[m
+ src/components/EvidenceTable.tsx                   |   16 [32m+[m[31m-[m
+ .../src => src}/components/ExhibitManagement.tsx   |    0
+ .../src => src}/components/ExhibitSelector.tsx     |    2 [32m+[m[31m-[m
+ src/components/ExportFeatures.tsx                  |  555 [32m+[m[31m-[m
+ .../src => src}/components/InHouseCalendar.tsx     |    8 [32m+[m[31m-[m
+ .../src => src}/components/Index/LoadingScreen.tsx |    0
+ .../src => src}/components/Index/MainDashboard.tsx |    2 [32m+[m[31m-[m
+ .../src => src}/components/Index/WelcomeScreen.tsx |    0
+ src/components/InvitationNotifications.tsx         |  428 [32m++[m
+ src/components/JitsiCall.tsx                       |   91 [32m+[m
+ .../src => src}/components/LinkEvidenceModal.tsx   |    0
+ src/components/Navigation.tsx                      |   56 [32m+[m[31m-[m
+ .../src => src}/components/PDFFieldSelector.tsx    |    0
+ .../src => src}/components/PDFViewer.tsx           |    0
+ src/components/PaymentModal.tsx                    |   20 [32m+[m[31m-[m
+ src/components/PendingEvidenceReview.tsx           |  480 [32m++[m
+ src/components/PrivilegesStatus.tsx                |  121 [32m+[m
+ .../src => src}/components/ShareClaimModal.tsx     |    0
+ src/components/SharedClaims.tsx                    | 1277 [32m+[m[31m---[m
+ .../src => src}/components/SharedClaimsList.tsx    |   66 [32m+[m[31m-[m
+ src/components/SharedClaims_backup.tsx             |   81 [32m+[m
+ src/components/SubscriptionManager.tsx             |  331 [32m+[m[31m-[m
+ .../src => src}/components/SubscriptionStatus.tsx  |    0
+ src/components/TodoList.tsx                        |  958 [32m++[m[31m-[m
+ .../components/UnlinkedEvidenceModal.tsx           |    2 [32m+[m[31m-[m
+ src/components/VideoConference.tsx                 |  364 [32m+[m[31m-[m
+ .../src => src}/components/ui/accordion.tsx        |    0
+ .../src => src}/components/ui/alert-dialog.tsx     |    0
+ .../src => src}/components/ui/alert.tsx            |    0
+ .../src => src}/components/ui/aspect-ratio.tsx     |    0
+ .../src => src}/components/ui/avatar.tsx           |    0
+ .../src => src}/components/ui/badge.tsx            |    0
+ .../src => src}/components/ui/breadcrumb.tsx       |    0
+ .../src => src}/components/ui/button.tsx           |    0
+ .../src => src}/components/ui/calendar.tsx         |    0
+ .../src => src}/components/ui/card.tsx             |    0
+ .../src => src}/components/ui/carousel.tsx         |    0
+ .../src => src}/components/ui/chart.tsx            |    0
+ .../src => src}/components/ui/checkbox.tsx         |    0
+ .../src => src}/components/ui/collapsible.tsx      |    0
+ .../src => src}/components/ui/command.tsx          |    0
+ .../src => src}/components/ui/context-menu.tsx     |    0
+ .../src => src}/components/ui/dialog.tsx           |    4 [31m-[m
+ .../src => src}/components/ui/drawer.tsx           |    0
+ .../src => src}/components/ui/dropdown-menu.tsx    |    0
+ .../src => src}/components/ui/form.tsx             |    0
+ .../src => src}/components/ui/hover-card.tsx       |    0
+ .../src => src}/components/ui/input-otp.tsx        |    0
+ .../src => src}/components/ui/input.tsx            |    0
+ .../src => src}/components/ui/label.tsx            |    0
+ .../src => src}/components/ui/menubar.tsx          |    0
+ .../src => src}/components/ui/navigation-menu.tsx  |    0
+ .../src => src}/components/ui/pagination.tsx       |    0
+ .../src => src}/components/ui/popover.tsx          |    0
+ .../src => src}/components/ui/progress.tsx         |    0
+ .../src => src}/components/ui/radio-group.tsx      |    0
+ .../src => src}/components/ui/resizable.tsx        |    0
+ .../src => src}/components/ui/scroll-area.tsx      |    0
+ .../src => src}/components/ui/select.tsx           |    0
+ .../src => src}/components/ui/separator.tsx        |    0
+ .../src => src}/components/ui/sheet.tsx            |    0
+ .../src => src}/components/ui/sidebar.tsx          |    0
+ .../src => src}/components/ui/skeleton.tsx         |    
