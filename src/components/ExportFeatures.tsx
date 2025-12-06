@@ -26,17 +26,53 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
   const { data: evidence } = useQuery({
     queryKey: ['evidence-export', selectedClaim],
     queryFn: async () => {
-      // @ts-ignore - Type instantiation depth issue with Supabase query builder
-      let queryBuilder: any
-      if (selectedClaim) {
-        // @ts-ignore
-        queryBuilder = supabase.from('evidence').select('*').eq('case_number', selectedClaim)
-      } else {
-        // @ts-ignore
-        queryBuilder = supabase.from('evidence').select('*')
+      // If no claim selected, return all evidence for the user
+      if (!selectedClaim) {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return []
+        
+        const { data, error } = await supabase
+        .from('evidence')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('display_order', { ascending: true, nullsFirst: false })
+          .order('created_at', { ascending: true })
+        
+        if (error) throw error
+        
+        // Clean up empty string dates
+        return (data || []).map((item: any) => ({
+          ...item,
+          date_submitted: item.date_submitted === '' ? null : item.date_submitted
+        }))
       }
+
+      // Get claim_id from case_number
+      const claimId = await getClaimIdFromCaseNumber(selectedClaim)
+      if (!claimId) {
+        console.warn('ExportFeatures: Could not find claim_id for case_number:', selectedClaim)
+        return []
+      }
+
+      // Fetch linked evidence ids via evidence_claims for the selected claim
+      const { data: linkRows, error: linkErr } = await supabase
+        .from('evidence_claims')
+        .select('evidence_id')
+        .eq('claim_id', claimId)
       
-      const { data, error } = await queryBuilder
+      if (linkErr) throw linkErr
+      
+      const linkedIds = (linkRows || []).map(r => r.evidence_id).filter(Boolean)
+
+      // Fetch evidence by linked ids
+      if (linkedIds.length === 0) {
+        return []
+      }
+
+      const { data, error } = await supabase
+        .from('evidence')
+        .select('*')
+        .in('id', linkedIds)
         .order('display_order', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: true })
       
@@ -318,10 +354,25 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         }
       })
 
-      // Return PDF blob URL for preview or download
+      // Return PDF data URL for preview (avoids blob URL warning) or blob URL for download
       const pdfBlob = pdf.output('blob')
-      const pdfUrl = URL.createObjectURL(pdfBlob)
-      return pdfUrl
+      // Convert blob to data URL to avoid PDF.js warning about blob URLs
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          if (typeof reader.result === 'string') {
+            resolve(reader.result)
+          } else {
+            // Fallback to blob URL if data URL conversion fails
+            resolve(URL.createObjectURL(pdfBlob))
+          }
+        }
+        reader.onerror = () => {
+          // Fallback to blob URL on error
+          resolve(URL.createObjectURL(pdfBlob))
+        }
+        reader.readAsDataURL(pdfBlob)
+      })
     } catch (error) {
       // Handle PDF generation error silently
       return null
@@ -333,44 +384,44 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
   const handleExport = async (format: 'csv' | 'pdf') => {
     if (!evidence && !todos && !events) return
 
-      switch (exportType) {
-        case 'evidence':
-          if (evidence) {
-            if (format === 'csv') {
-              exportToCSV(evidence, 'evidence', ['File Name', 'Exhibit ID', 'Method', 'Number of Pages', 'Date Submitted'])
-            } else {
+    switch (exportType) {
+      case 'evidence':
+        if (evidence) {
+          if (format === 'csv') {
+            exportToCSV(evidence, 'evidence', ['File Name', 'Exhibit ID', 'Method', 'Number of Pages', 'Date Submitted'])
+          } else {
               const pdfUrl = await exportToPDF(evidence, 'Evidence Report', 'evidence', 'evidence')
               if (pdfUrl) {
                 window.open(pdfUrl, '_blank')
               }
-            }
           }
-          break
-        case 'todos':
-          if (todos) {
-            if (format === 'csv') {
-              exportToCSV(todos, 'todos', ['Title', 'Description', 'Due Date', 'Priority', 'Completed'])
-            } else {
+        }
+        break
+      case 'todos':
+        if (todos) {
+          if (format === 'csv') {
+            exportToCSV(todos, 'todos', ['Title', 'Description', 'Due Date', 'Priority', 'Completed'])
+          } else {
               const pdfUrl = await exportToPDF(todos, 'Todo List Report', 'todos', 'todos')
               if (pdfUrl) {
                 window.open(pdfUrl, '_blank')
               }
-            }
           }
-          break
-        case 'calendar':
-          if (events) {
-            if (format === 'csv') {
-              exportToCSV(events, 'calendar', ['Title', 'Description', 'Start Time', 'End Time', 'All Day'])
-            } else {
+        }
+        break
+      case 'calendar':
+        if (events) {
+          if (format === 'csv') {
+            exportToCSV(events, 'calendar', ['Title', 'Description', 'Start Time', 'End Time', 'All Day'])
+          } else {
               const pdfUrl = await exportToPDF(events, 'Calendar Events Report', 'calendar', 'calendar')
               if (pdfUrl) {
                 window.open(pdfUrl, '_blank')
               }
-            }
           }
-          break
-      }
+        }
+        break
+    }
   }
 
   const generatePreview = async (type: 'evidence' | 'todos' | 'calendar') => {
@@ -397,8 +448,8 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
       }
 
       if (pdfUrl) {
-        // Clean up previous preview URL if it exists
-        if (previewPdfUrl) {
+        // Clean up previous preview URL if it exists (only blob URLs need revoking)
+        if (previewPdfUrl && previewPdfUrl.startsWith('blob:')) {
           URL.revokeObjectURL(previewPdfUrl)
         }
         setPreviewPdfUrl(pdfUrl)
@@ -439,7 +490,10 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
 
   const closePreview = () => {
     if (previewPdfUrl) {
-      URL.revokeObjectURL(previewPdfUrl)
+      // Only revoke blob URLs, not data URLs
+      if (previewPdfUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewPdfUrl)
+      }
     }
     setPreviewPdfUrl(null)
   }
@@ -675,14 +729,14 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
                     <span>Export as CSV</span>
                   </button>
                   
-                  <button
-                    onClick={downloadDocumentsZip}
-                    disabled={isDownloadingZip || !evidence || evidence.length === 0}
-                    className="bg-blue-900/30 border-2 border-green-500 text-green-500 px-6 py-3 rounded-lg hover:bg-blue-800/50 hover:border-green-400 hover:text-green-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>{isDownloadingZip ? 'Creating ZIP...' : 'Download Documents ZIP'}</span>
-                  </button>
+                <button
+                  onClick={downloadDocumentsZip}
+                  disabled={isDownloadingZip || !evidence || evidence.length === 0}
+                  className="bg-blue-900/30 border-2 border-green-500 text-green-500 px-6 py-3 rounded-lg hover:bg-blue-800/50 hover:border-green-400 hover:text-green-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>{isDownloadingZip ? 'Creating ZIP...' : 'Download Documents ZIP'}</span>
+                </button>
                 </>
               )}
             </div>
@@ -780,11 +834,26 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
                   </div>
                 </div>
               ) : (
-                <iframe
-                  src={previewPdfUrl}
+                <object
+                  data={previewPdfUrl}
+                  type="application/pdf"
                   className="w-full h-full"
-                  title="PDF Preview"
-                />
+                  aria-label="PDF Preview"
+                >
+                  <div className="flex items-center justify-center h-full bg-gray-100">
+                    <div className="text-center">
+                      <p className="text-gray-600 mb-4">Unable to display PDF preview.</p>
+                      <a
+                        href={previewPdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline"
+                      >
+                        Open PDF in new tab
+                      </a>
+                    </div>
+                  </div>
+                </object>
               )}
             </div>
           </div>

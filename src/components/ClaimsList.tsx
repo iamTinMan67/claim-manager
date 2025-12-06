@@ -32,7 +32,7 @@ export const ClaimsList = ({ claims, selectedClaimId, onSelectClaim, evidenceLis
           <div
             key={claim.case_number}
             onClick={() => onSelectClaim(claim.case_number)}
-            className={`p-4 border-l-4 rounded-lg cursor-pointer transition-all hover:shadow-md ${claimColor.border} ${
+            className={`p-4 border-l-4 rounded-lg cursor-pointer transition-all hover:shadow-md max-w-xl ${claimColor.border} ${
               selectedClaimId === claim.case_number 
                 ? `${claimColor.bg} border-2 shadow-md` 
                 : "border bg-white hover:border-gray-300"
@@ -43,12 +43,29 @@ export const ClaimsList = ({ claims, selectedClaimId, onSelectClaim, evidenceLis
                 <div className={`w-3 h-3 rounded-full ${claimColor.border.replace('border', 'bg')}`}></div>
                 <h3 className="font-semibold text-gray-900 text-sm">{claim.title}</h3>
               </div>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(claim.status)}`}>
-                {claim.status}
-              </span>
+              <div className="flex flex-col items-end space-y-1">
+                {claim.defendant_name && (
+                  <p className="text-xs text-gray-600 text-right">
+                    Defendant: {claim.defendant_name}
+                  </p>
+                )}
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(claim.status)}`}>
+                  {claim.status}
+                </span>
+              </div>
             </div>
-            
-            <p className="text-xs text-gray-600 mb-2">{claim.case_number}</p>
+
+            <div className="flex items-baseline justify-between gap-2 mb-2 whitespace-nowrap">
+              <p className="text-xs text-gray-600 truncate">
+                {claim.court ? `${claim.court} — ${claim.case_number}` : `Case: ${claim.case_number}`}
+              </p>
+              {claim.plaintiff_name && (
+                <p className="text-xs text-gray-600 text-right truncate">
+                  Plaintiff: {claim.plaintiff_name}
+                </p>
+              )}
+            </div>
+
             <p className="text-xs text-gray-500 mb-3 line-clamp-2">{claim.description}</p>
             
             <div className="flex justify-between items-center text-xs text-gray-500">

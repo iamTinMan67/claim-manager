@@ -103,6 +103,7 @@ html::before {
   border-radius: 24px !important;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
   position: relative !important;
+  border-bottom: 3px solid rgba(139, 92, 246, 0.6) !important;
   }
   
   .card-enhanced:hover {
@@ -111,6 +112,62 @@ html::before {
     0 20px 60px rgba(139, 92, 246, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
   }
+
+/* Reduce all card widths by 15% - High specificity to override Tailwind */
+[class*="card-enhanced"][class*="max-w-sm"] { max-width: 14.380929rem !important; }
+[class*="card-enhanced"][class*="max-w-md"] { max-width: 16.7777505rem !important; }
+[class*="card-enhanced"][class*="max-w-lg"] { max-width: 19.184572rem !important; }
+[class*="card-enhanced"][class*="max-w-xl"] { max-width: 21.5713935rem !important; }
+[class*="card-enhanced"][class*="max-w-2xl"] { max-width: 25.16662575rem !important; }
+[class*="card-enhanced"][class*="max-w-3xl"] { max-width: 28.761858rem !important; }
+[class*="card-enhanced"][class*="max-w-4xl"] { max-width: 33.555501rem !important; }
+[class*="card-enhanced"][class*="max-w-5xl"] { max-width: 38.349144rem !important; }
+[class*="card-enhanced"][class*="max-w-6xl"] { max-width: 43.142787rem !important; }
+
+/* Direct class selectors with higher specificity */
+.card-enhanced.max-w-sm,
+div.card-enhanced.max-w-sm { max-width: 14.380929rem !important; }
+.card-enhanced.max-w-md,
+div.card-enhanced.max-w-md { max-width: 16.7777505rem !important; }
+.card-enhanced.max-w-lg,
+div.card-enhanced.max-w-lg { max-width: 19.184572rem !important; }
+.card-enhanced.max-w-xl,
+div.card-enhanced.max-w-xl { max-width: 21.5713935rem !important; }
+.card-enhanced.max-w-2xl,
+div.card-enhanced.max-w-2xl { max-width: 25.16662575rem !important; }
+.card-enhanced.max-w-3xl,
+div.card-enhanced.max-w-3xl { max-width: 28.761858rem !important; }
+.card-enhanced.max-w-4xl,
+div.card-enhanced.max-w-4xl { max-width: 33.555501rem !important; }
+.card-enhanced.max-w-5xl,
+div.card-enhanced.max-w-5xl { max-width: 38.349144rem !important; }
+.card-enhanced.max-w-6xl,
+div.card-enhanced.max-w-6xl { max-width: 43.142787rem !important; }
+
+/* Target Card component (rounded-lg border bg-card) with max-width classes */
+.rounded-lg.border.bg-card.max-w-sm { max-width: 14.380929rem !important; }
+.rounded-lg.border.bg-card.max-w-md { max-width: 16.7777505rem !important; }
+.rounded-lg.border.bg-card.max-w-lg { max-width: 19.184572rem !important; }
+.rounded-lg.border.bg-card.max-w-xl { max-width: 21.5713935rem !important; }
+.rounded-lg.border.bg-card.max-w-2xl { max-width: 25.16662575rem !important; }
+.rounded-lg.border.bg-card.max-w-3xl { max-width: 28.761858rem !important; }
+.rounded-lg.border.bg-card.max-w-4xl { max-width: 33.555501rem !important; }
+.rounded-lg.border.bg-card.max-w-5xl { max-width: 38.349144rem !important; }
+.rounded-lg.border.bg-card.max-w-6xl { max-width: 43.142787rem !important; }
+
+/* Target cards in grids - only reduce max-width, let grid control width */
+.grid .card-enhanced.max-w-xl,
+.grid > .card-enhanced.max-w-xl,
+div.grid .card-enhanced.max-w-xl,
+.grid [class*="card-enhanced"][class*="max-w-xl"] {
+  max-width: 21.5713935rem !important;
+}
+
+/* Target all card-enhanced elements without max-width - apply 15% width reduction */
+.card-enhanced:not([class*="max-w"]):not(.w-full) {
+  max-width: 59.9205375% !important;
+  box-sizing: border-box !important;
+}
   
 /* Royal Text Styling with Purple & Sky Blue Glow */
   .text-gold {

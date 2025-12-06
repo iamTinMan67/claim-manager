@@ -118,32 +118,6 @@ export const ClaimSharingTab = ({ claimId }: Props) => {
         </Button>
       </div>
 
-      {/* Sharing Summary */}
-      <Card className="bg-blue-50 border-blue-200">
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <div className="text-2xl font-bold text-green-600">{freeSharesCount}</div>
-              <div className="text-sm text-muted-foreground">Free Collaborators</div>
-              <div className="text-xs text-muted-foreground">(2 max)</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-blue-600">{paidSharesCount}</div>
-              <div className="text-sm text-muted-foreground">Paid Collaborators</div>
-              <div className="text-xs text-muted-foreground">(£5 each)</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-orange-600">{unpaidSharesCount}</div>
-              <div className="text-sm text-muted-foreground">Pending Payment</div>
-              <div className="text-xs text-muted-foreground">(requires donation)</div>
-            </div>
-          </div>
-          <div className="mt-4 text-center text-sm text-muted-foreground">
-            You can share with up to 2 collaborators for free. Additional collaborators require a £5 donation each.
-          </div>
-        </CardContent>
-      </Card>
-
       {loading ? (
         <div className="text-center py-8">
           <p>Loading sharing information...</p>

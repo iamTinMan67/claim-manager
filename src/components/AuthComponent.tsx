@@ -73,7 +73,12 @@ export default function AuthComponent({
 
   // Navigation items
   const navItems = [
-    { id: 'events-private', label: 'Events', icon: CalendarDays, requiresClaim: true },
+    // When viewing shared claim context, label this as "Private Claims" for clarity
+    { id: 'claims', label: activeTab === 'shared' ? 'Private Claims' : 'Claims', icon: FileText },
+    // Only show private events button when NOT on shared page (to avoid duplicate)
+    ...(activeTab !== 'shared' ? [
+      { id: 'events-private', label: 'Events', icon: CalendarDays, requiresClaim: true }
+    ] : []),
     { id: 'shared', label: 'Shared Claims', icon: Users },
     // Shared-specific entries appear only when activeTab === 'shared'
     ...(activeTab === 'shared' ? [
@@ -485,7 +490,8 @@ export default function AuthComponent({
                       return null
                     }
                     // Hide only the current tab link to reduce clutter
-                    if ((activeTab === 'events-private' && item.id === 'events-private') ||
+                    if ((activeTab === 'claims' && item.id === 'claims') ||
+                        (activeTab === 'events-private' && item.id === 'events-private') ||
                         (activeTab === 'events-shared' && item.id === 'events-shared') ||
                         (activeTab === 'shared' && item.id === 'shared') ||
                         (activeTab === 'privileges' && item.id === 'privileges')) {

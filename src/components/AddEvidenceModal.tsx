@@ -190,11 +190,11 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
             Access Frozen - You cannot add evidence at this time.
           </div>
         )}
-        <form onSubmit={handleSubmit} className="space-y-6 p-6" style={{ opacity: isGuest && isGuestFrozen ? 0.5 : 1, paddingTop: '12px', paddingRight: '6px' }}>
-          {/* Row 1: File Upload (2/5), Pages (1/5), Method (1/5) */}
+        <form onSubmit={handleSubmit} className="space-y-6" style={{ opacity: isGuest && isGuestFrozen ? 0.5 : 1, paddingTop: '12px', paddingRight: '24px', paddingBottom: '24px', paddingLeft: '24px' }}>
+          {/* Row 1: File Upload, Pages */}
           <div className="grid grid-cols-5 gap-6 items-start">
             {/* File Upload */}
-            <div className="space-y-3 col-span-2">
+            <div className="space-y-2 col-span-2">
               <FileUploadSection
                 ref={fileInputRef}
                 selectedFile={selectedFile}
@@ -204,8 +204,13 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
                 disabled={isGuest && isGuestFrozen}
               />
             </div>
-            <div className="space-y-2 col-span-1">
-              <label htmlFor="number-of-pages" className="text-base font-medium">Pages</label>
+            <div className="space-y-2 col-span-1 flex flex-col justify-end items-end">
+              <label
+                htmlFor="number-of-pages"
+                className="text-base font-medium self-end"
+              >
+                Pages
+              </label>
               <input
                 id="number-of-pages"
                 type="number"
@@ -213,32 +218,15 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
                 onChange={(e) => setNumberOfPages(e.target.value)}
                 disabled={isGuest && isGuestFrozen}
                 min="1"
-                className="h-8 text-base w-full px-3 pt-1 pb-2 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                className="h-8 text-base px-3 pt-1 pb-2 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 mt-4"
+                style={{ width: '50%' }}
               />
-            </div>
-            
-            <div className="space-y-2 col-span-1">
-              <label htmlFor="method" className="text-base font-medium">Method</label>
-              <select
-                id="method"
-                value={method}
-                onChange={(e) => setMethod(e.target.value)}
-                disabled={isGuest && isGuestFrozen}
-                className="h-8 text-base w-full px-3 pt-1 pb-2 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
-              >
-                <option value="Post">Post</option>
-                <option value="Email">Email</option>
-                <option value="Hand">Hand</option>
-                
-                <option value="Online">Online</option>
-                <option value="To-Do">To-Do</option>
-              </select>
             </div>
           </div>
 
-          {/* Row 2: Date, Book of Deeds, Exhibit, Add Button (5 columns to match Row 1) */}
+          {/* Row 2: Date, Method */}
           <div className="grid grid-cols-5 gap-6 items-start">
-            <div className="space-y-3">
+            <div className="space-y-2 col-span-1">
               <label htmlFor="date-submitted" className="text-base font-medium">Date Submitted</label>
               <input
                 id="date-submitted"
@@ -246,22 +234,42 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
                 value={dateSubmitted}
                 onChange={(e) => setDateSubmitted(e.target.value)}
                 disabled={isGuest && isGuestFrozen}
-                className="h-8 text-base px-3 pt-1 pb-2 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
-                style={{ width: 'calc(100% + 15px)', fontSize: '16px' }}
+                className="h-8 text-base w-full px-3 pt-1 pb-2 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                style={{ fontSize: '16px' }}
               />
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2 col-span-1 flex flex-col justify-end items-end">
+              <label htmlFor="method" className="text-base font-medium self-end">Method</label>
+              <select
+                id="method"
+                value={method}
+                onChange={(e) => setMethod(e.target.value)}
+                disabled={isGuest && isGuestFrozen}
+                className="h-8 text-base px-3 pt-1 pb-2 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 mt-4"
+                style={{ width: '50%' }}
+              >
+                <option value="Post">Post</option>
+                <option value="Email">Email</option>
+                <option value="Hand">Hand</option>
+                <option value="Online">Online</option>
+                <option value="To-Do">To-Do</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Row 3: Book of Deeds, Exhibit */}
+          <div className="grid grid-cols-5 gap-6 items-start">
+            <div className="space-y-2 col-span-1">
               <label htmlFor="book-of-deeds-ref" className="text-base font-medium">Book-Of-Deeds #</label>
               <input
                 id="book-of-deeds-ref"
                 value={bookOfDeedsRef}
                 onChange={(e) => setBookOfDeedsRef(e.target.value)}
                 disabled={false}
-                className={`h-8 text-base px-3 py-2 border border-yellow-400/30 rounded-md bg-white/10 ${bookOfDeedsRef ? 'text-yellow-300' : 'text-yellow-300'} placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 cursor-text opacity-100 disabled:opacity-100 caret-yellow-300`}
-                style={{ width: 'calc(100% + 6px)' }}
+                className={`h-8 text-base w-full px-3 pt-1 pb-2 border border-yellow-400/30 rounded-md bg-white/10 ${bookOfDeedsRef ? 'text-yellow-300' : 'text-yellow-300'} placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 cursor-text opacity-100 disabled:opacity-100 caret-yellow-300`}
               />
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2 col-span-1">
               <label htmlFor="exhibit-ref" className="text-base font-medium">Exhibit #</label>
               <input
                 id="exhibit-ref"
@@ -269,21 +277,14 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
                 onChange={(e) => setExhibitRef(e.target.value)}
                 disabled={isGuest && isGuestFrozen}
                 placeholder="Enter exhibit reference"
-                className="h-8 text-base px-3 pt-1 pb-2 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
-                style={{ width: 'calc(100% - 6px)', marginLeft: '3px' }}
+                className="h-8 text-base w-full px-3 pt-1 pb-2 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
               />
-            </div>
-            <div className="col-span-1 flex items-end pt-9">
-              <Button className="bg-white/10 border border-green-400 text-green-400 min-w-[100px] h-8 flex items-center justify-center w-full" type="submit" disabled={uploading || (isGuest && isGuestFrozen)}>
-                <Plus className="w-4 h-4 mr-2" />
-                {uploading ? "Uploading..." : isGuest ? "Submit for Review" : "Add"}
-              </Button>
             </div>
           </div>
 
-          {/* Row 3: Title field */}
-          <div className="grid grid-cols-3 gap-6">
-            <div className="space-y-3 col-span-1">
+          {/* Row 4: Title and Add button */}
+          <div className="grid grid-cols-5 gap-6 items-start">
+            <div className="space-y-2 col-span-2">
               <label htmlFor="title" className="text-base font-medium">Title</label>
               <input
                 id="title"
@@ -294,6 +295,12 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
                 placeholder="Evidence title"
                 className="h-8 text-base w-full px-3 pt-1 pb-2 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
               />
+            </div>
+            <div className="col-span-1 flex items-end">
+              <Button className="bg-white/10 border border-green-400 text-green-400 h-8 flex items-center justify-center px-4" type="submit" disabled={uploading || (isGuest && isGuestFrozen)}>
+                <Plus className="w-4 h-4 mr-2" />
+                {uploading ? "Uploading..." : isGuest ? "Submit for Review" : "Add"}
+              </Button>
             </div>
           </div>
 

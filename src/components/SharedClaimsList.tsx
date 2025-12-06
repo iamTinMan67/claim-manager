@@ -59,34 +59,52 @@ export const SharedClaimsList = ({ onSelectClaim }: Props) => {
         const permissionIcons = getPermissionIcons(share);
         
         return (
-          <Card key={share.id} className="hover:shadow-md transition-shadow">
+          <Card key={share.id} className="hover:shadow-md transition-shadow max-w-2xl">
             <CardHeader>
-              <div className="flex justify-between items-start">
-                <div className="space-y-1">
-                  <CardTitle className="text-lg">
-                    {share.claim?.title || 'Unknown Claim'}
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Case: {share.claim?.case_number}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Shared by: {share.owner?.full_name || share.owner?.email}
-                  </p>
+              <div className="space-y-2">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-1">
+                    <CardTitle className="text-lg">
+                      {share.claim?.title || 'Unknown Claim'}
+                    </CardTitle>
+                  </div>
+                  <div className="flex flex-col items-end space-y-1">
+                    {share.claim?.defendant_name && (
+                      <p className="text-xs text-muted-foreground text-right">
+                        Defendant: {share.claim.defendant_name}
+                      </p>
+                    )}
+                    <div className="flex items-center space-x-2">
+                      <Badge variant={share.claim?.status === 'Active' ? 'default' : 'secondary'}>
+                        {share.claim?.status}
+                      </Badge>
+                      {onSelectClaim && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onSelectClaim(share.claim_id)}
+                        >
+                          View Claim
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Badge variant={share.claim?.status === 'Active' ? 'default' : 'secondary'}>
-                    {share.claim?.status}
-                  </Badge>
-                  {onSelectClaim && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onSelectClaim(share.claim_id)}
-                    >
-                      View Claim
-                    </Button>
+                <div className="flex items-baseline justify-between gap-2 whitespace-nowrap">
+                  <p className="text-sm text-muted-foreground truncate">
+                    {share.claim?.court
+                      ? `${share.claim.court} — ${share.claim.case_number}`
+                      : `Case: ${share.claim?.case_number}`}
+                  </p>
+                  {share.claim?.plaintiff_name && (
+                    <p className="text-xs text-muted-foreground text-right truncate">
+                      Plaintiff: {share.claim.plaintiff_name}
+                    </p>
                   )}
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Shared by: {share.owner?.full_name || share.owner?.email}
+                </p>
               </div>
             </CardHeader>
             <CardContent>

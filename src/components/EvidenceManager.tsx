@@ -1518,23 +1518,56 @@ const EvidenceManager = ({
               const maxDisplayOrder = maxOrderData?.[0]?.display_order || 0
               const newDisplayOrder = maxDisplayOrder + 1
 
-              // Clean the data before submission
-              const cleanData = {
-                ...evidence,
+              // Clean the data before submission - only include valid evidence table fields
+              // Explicitly exclude exhibit_id and other invalid fields
+              const { exhibit_id, id, claimIds, ...evidenceWithoutInvalidFields } = evidence as any
+              
+              const cleanData: any = {
+                title: evidence.title || 'Untitled Evidence',
+                file_name: evidence.file_name || null,
+                file_url: evidence.file_url || null,
+                description: evidence.description || null,
                 user_id: user.id,
-                display_order: newDisplayOrder,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
               }
 
+              // Only include these fields if they exist in the evidence object and are valid
+              if (evidence.exhibit_number !== undefined && evidence.exhibit_number !== null) {
+                cleanData.exhibit_number = evidence.exhibit_number
+              }
+              if (evidence.number_of_pages !== undefined && evidence.number_of_pages !== null) {
+                cleanData.number_of_pages = evidence.number_of_pages
+              }
+              if (evidence.date_submitted) {
+                cleanData.date_submitted = evidence.date_submitted
+              }
+              if (evidence.method) {
+                cleanData.method = evidence.method
+              }
+              if (evidence.url_link) {
+                cleanData.url_link = evidence.url_link
+              }
+              if (evidence.book_of_deeds_ref) {
+                cleanData.book_of_deeds_ref = evidence.book_of_deeds_ref
+              }
+              if (newDisplayOrder !== undefined) {
+                cleanData.display_order = newDisplayOrder
+              }
+
+              // Debug: Log what we received vs what we're inserting
+              console.log('EvidenceManager: Original evidence object keys:', Object.keys(evidence))
+              if ((evidence as any).exhibit_id) {
+                console.warn('EvidenceManager: WARNING - evidence object contains exhibit_id (invalid field):', (evidence as any).exhibit_id)
+              }
+              console.log('EvidenceManager: Inserting evidence with cleanData keys:', Object.keys(cleanData))
               console.log('EvidenceManager: Inserting evidence with data:', cleanData)
               console.log('EvidenceManager: User ID:', user.id)
-              console.log('EvidenceManager: Auth UID check:', await supabase.auth.getUser())
 
               const { data: insertedEvidence, error } = await supabase
                 .from('evidence')
                 .insert([cleanData])
-                .select()
+                .select('id, title, file_name, file_url, exhibit_number, number_of_pages, date_submitted, method, url_link, book_of_deeds_ref, description, created_at, updated_at, user_id, display_order')
                 .single()
 
               if (error) {

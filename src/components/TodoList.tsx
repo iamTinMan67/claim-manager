@@ -500,12 +500,12 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
-                console.log('Add New clicked, currentUser:', currentUser?.id)
+              console.log('Add New clicked, currentUser:', currentUser?.id)
                 console.log('Setting showAddForm to true')
-                setNewTodo(prev => ({ ...prev, responsible_user_id: currentUser?.id || '' }))
-                setShowAddForm(true)
+              setNewTodo(prev => ({ ...prev, responsible_user_id: currentUser?.id || '' }))
+              setShowAddForm(true)
                 console.log('showAddForm should now be true')
-              }}
+            }}
               className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg hover:opacity-90 flex items-center space-x-2 cursor-pointer"
               style={{ pointerEvents: 'auto' }}
             >
@@ -687,13 +687,13 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                 </button>
               </div>
             </div>
-            <div>
-              <label className="block text-base font-medium mb-1">Responsible User</label>
-              <select
-                value={newTodo.responsible_user_id}
-                onChange={(e) => setNewTodo({ ...newTodo, responsible_user_id: e.target.value })}
-                className="w-2/3 h-12 text-base border border-yellow-400/30 rounded-md px-4 py-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
-              >
+              <div>
+                <label className="block text-base font-medium mb-1">Responsible User</label>
+                <select
+                  value={newTodo.responsible_user_id}
+                  onChange={(e) => setNewTodo({ ...newTodo, responsible_user_id: e.target.value })}
+                  className="w-2/3 h-12 text-base border border-yellow-400/30 rounded-md px-4 py-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                >
                 <option value={currentUser?.id || ''}>Assign to yourself</option>
                 {sharedUsers && sharedUsers.length > 0 ? (
                   sharedUsers.map((user) => (
@@ -708,8 +708,8 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                     </option>
                   )
                 )}
-              </select>
-            </div>
+                </select>
+              </div>
           </form>
           </div>
         </div>

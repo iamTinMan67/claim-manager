@@ -53,18 +53,15 @@ const InvitationNotifications = () => {
       if (!user) return []
 
       try {
+        // First, try to fetch invitations with joins
         const { data, error } = await supabase
           .from('pending_invitations')
           .select(`
             *,
-            claims:claim_id (
+            claims!claim_id (
               title,
               case_number,
               color
-            ),
-            owner:owner_id (
-              email,
-              nickname
             )
           `)
           .eq('invited_user_id', user.id)
@@ -80,7 +77,27 @@ const InvitationNotifications = () => {
           console.warn('Error fetching pending invitations received:', error)
           return []
         }
-        return data as PendingInvitation[]
+
+        // Fetch owner profiles separately if we have invitations
+        if (data && data.length > 0) {
+          const ownerIds = Array.from(new Set(data.map((inv: any) => inv.owner_id).filter(Boolean)))
+          if (ownerIds.length > 0) {
+            const { data: profiles } = await supabase
+              .from('profiles')
+              .select('id, email, nickname')
+              .in('id', ownerIds)
+            
+            const profilesMap = new Map((profiles || []).map((p: any) => [p.id, p]))
+            
+            // Attach owner data to each invitation
+            return data.map((inv: any) => ({
+              ...inv,
+              owner: profilesMap.get(inv.owner_id) || null
+            })) as PendingInvitation[]
+          }
+        }
+
+        return (data || []) as PendingInvitation[]
       } catch (err) {
         console.warn('Exception fetching pending invitations received:', err)
         return []
@@ -102,7 +119,7 @@ const InvitationNotifications = () => {
           .from('pending_invitations')
           .select(`
             *,
-            claims:claim_id (
+            claims!claim_id (
               title,
               case_number,
               color
@@ -121,7 +138,7 @@ const InvitationNotifications = () => {
           console.warn('Error fetching pending invitations sent:', error)
           return []
         }
-        return data as PendingInvitation[]
+        return (data || []) as PendingInvitation[]
       } catch (err) {
         console.warn('Exception fetching pending invitations sent:', err)
         return []

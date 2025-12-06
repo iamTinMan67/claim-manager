@@ -697,20 +697,20 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
             </div>
             </div>
             <div className="w-1/2 grid grid-cols-1 items-end">
-              <div>
-                <label className="block text-base font-medium mb-1">Assignee</label>
-                <select
-                  value={newEvent.assignee_id || currentUser?.id || ''}
-                  onChange={(e) => setNewEvent({ ...newEvent, assignee_id: e.target.value })}
-                  className="h-[27px] text-sm border border-yellow-400/30 rounded-md px-2 bg-white/10 text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
-                  style={{ width: timeFieldWidth }}
-                >
-                  <option value={currentUser?.id || ''}>Assign to yourself</option>
+            <div>
+                  <label className="block text-base font-medium mb-1">Assignee</label>
+              <select
+                    value={newEvent.assignee_id || currentUser?.id || ''}
+                    onChange={(e) => setNewEvent({ ...newEvent, assignee_id: e.target.value })}
+                    className="h-[27px] text-sm border border-yellow-400/30 rounded-md px-2 bg-white/10 text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                    style={{ width: timeFieldWidth }}
+                  >
+                    <option value={currentUser?.id || ''}>Assign to yourself</option>
                   {collaborators && collaborators.length > 0 ? (
                     collaborators.map((u) => (
                       <option key={u.id} value={u.id}>
                         {u.full_name || u.email || 'User'} {u.id === currentUser?.id ? '(You)' : ''}
-                      </option>
+                  </option>
                     ))
                   ) : (
                     currentUser && (
@@ -719,8 +719,8 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                       </option>
                     )
                   )}
-                </select>
-              </div>
+              </select>
+            </div>
             </div>
             
             

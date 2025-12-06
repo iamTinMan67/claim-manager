@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { useNavigation } from '@/contexts/NavigationContext'
 import CollaborationHub from './CollaborationHub'
 import EvidenceManager from './EvidenceManager'
-import { Users, Crown, Edit, Trash2 } from 'lucide-react'
+import { Users, Crown, Edit, Trash2, Plus, UserPlus } from 'lucide-react'
 
 interface SharedClaimsProps {
   selectedClaim: string | null
@@ -14,7 +14,13 @@ interface SharedClaimsProps {
   prioritizeGuestClaims?: boolean
 }
 
-const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, isGuest = false, prioritizeGuestClaims = false }: SharedClaimsProps) => {
+const SharedClaims = ({
+  selectedClaim,
+  claimColor = '#3B82F6',
+  currentUserId,
+  isGuest = false,
+  prioritizeGuestClaims = false
+}: SharedClaimsProps) => {
   const { navigateBack, navigateTo } = useNavigation()
   const [showCollaboration, setShowCollaboration] = useState(false)
 
@@ -44,6 +50,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
               title,
               court,
               color,
+              status,
               user_id
             )
           `)
@@ -60,6 +67,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
               title,
               court,
               color,
+              status,
               user_id
             )
           `)
@@ -73,7 +81,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
       // Combine both results, prioritizing guest claims if requested
       const allShares = [...ownedData, ...sharedData]
 
-      const sharesOrdered = prioritizeGuestClaims
+      let sharesOrdered = prioritizeGuestClaims
         ? [...sharedData, ...ownedData]
         : allShares
 
@@ -84,7 +92,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
         if (claimIds.length) {
           const { data: claimsInfo } = await supabase
             .from('claims')
-            .select('claim_id, case_number, title, court, color, user_id')
+            .select('claim_id, case_number, title, court, color, status, user_id')
             .in('claim_id', claimIds as any)
           const byId: Record<string, any> = {}
           for (const c of claimsInfo || []) byId[c.claim_id] = c
@@ -95,6 +103,9 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
           }
         }
       }
+
+      // Filter out closed claims from shared view; closed claims become private-only
+      sharesOrdered = sharesOrdered.filter((s: any) => s.claims?.status !== 'Closed')
 
       // Fetch display profiles (nickname/email) for owners and guests
       const userIds = Array.from(new Set(
@@ -146,8 +157,7 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
           (sharedClaimsResult as any).shares.map((share: any, index: number) => (
             <div 
               key={share.id} 
-              className="card-enhanced p-4 cursor-pointer hover:shadow-lg transition-shadow"
-              style={{ width: 'calc(80% - 28px)' }}
+              className="card-enhanced p-4 cursor-pointer hover:shadow-lg transition-shadow max-w-2xl"
               onClick={async () => {
                 console.log('Selected shared claim:', share)
                 console.log('Claims data:', share.claims)
@@ -196,39 +206,18 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                 }
               }}
             >
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <div 
-                      className="w-4 h-4 rounded-full" 
-                      style={{ backgroundColor: share.claims?.color || '#3B82F6' }}
-                    />
-                    <h3 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
-                      <span>{share.claims?.court || 'Unknown Court'}</span>
-                      {share.owner_id === currentUserId && (
-                        <Crown className="w-4 h-4" style={{ color: '#7C3AED' }} aria-label="Private (Owned)" />
-                      )}
-                    </h3>
-                  </div>
-                  <div className="mb-1">
-                    <span className="text-sm text-gray-600">{share.claims?.title || `Claim ${share.claim_id}`}</span>
-                  </div>
-                  <p className="text-sm text-gray-600 truncate">
-                    Case: {share.claims?.case_number || share.claim_id}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1 truncate">
-                    {(() => {
-                      const profilesById = (sharedClaimsResult as any)?.profilesById || {}
-                      const otherUserId = share.owner_id === currentUserId ? share.shared_with_id : share.owner_id
-                      const other = otherUserId ? profilesById[otherUserId] : null
-                      const name = other?.nickname || other?.full_name || other?.email || 'Unknown user'
-                      return share.owner_id === currentUserId 
-                        ? `Shared with: ${name}`
-                        : `Owner: ${name}`
-                    })()}
-                  </p>
+              {/* Header row: title + owner/shared icons */}
+              <div className="flex justify-between items-start mb-2">
+                <div className="flex items-center space-x-2 min-w-0">
+                  <div 
+                    className="w-4 h-4 rounded-full" 
+                    style={{ backgroundColor: share.claims?.color || '#3B82F6' }}
+                  />
+                  <h3 className="text-lg font-semibold text-gray-900 truncate">
+                    {share.claims?.title || `Claim ${share.claim_id}`}
+                  </h3>
                 </div>
-                <div className="flex items-center space-x-2 ml-3 flex-shrink-0">
+                <div className="flex items-center space-x-2 flex-shrink-0">
                   {share.owner_id !== currentUserId && (
                     <Users className="w-4 h-4 text-green-500" aria-label="Shared with you" />
                   )}
@@ -283,12 +272,72 @@ const SharedClaims = ({ selectedClaim, claimColor = '#3B82F6', currentUserId, is
                   )}
                 </div>
               </div>
+
+              {/* Row 2: Court (left) + Defendant (right, aligned with card edge) */}
+              <div className="flex items-baseline justify-between gap-2 whitespace-nowrap">
+                <p className="text-sm text-gray-600 truncate">
+                  {share.claims?.court || 'Unknown Court'}
+                </p>
+                {share.claims?.defendant_name && (
+                  <p className="text-xs text-gray-600 text-right truncate">
+                    Defendant: {share.claims.defendant_name}
+                  </p>
+                )}
+              </div>
+              {/* Row 3: Case Number (left) + Plaintiff (right, aligned with Defendant/date) */}
+              <div className="flex items-baseline justify-between gap-2 mt-1 whitespace-nowrap">
+                <p className="text-sm text-gray-600 truncate">
+                  Case: {share.claims?.case_number || share.claim_id}
+                </p>
+                {share.claims?.plaintiff_name && (
+                  <p className="text-xs text-gray-600 text-right truncate">
+                    Plaintiff: {share.claims.plaintiff_name}
+                  </p>
+                )}
+              </div>
+
+              <p className="text-xs text-gray-500 mt-1 truncate">
+                {(() => {
+                  const profilesById = (sharedClaimsResult as any)?.profilesById || {}
+                  const otherUserId = share.owner_id === currentUserId ? share.shared_with_id : share.owner_id
+                  const other = otherUserId ? profilesById[otherUserId] : null
+                  const name = other?.nickname || other?.full_name || other?.email || 'Unknown user'
+                  return share.owner_id === currentUserId 
+                    ? `Shared with: ${name}`
+                    : `Owner: ${name}`
+                })()}
+              </p>
             </div>
           ))
         ) : (
           <div className="text-center py-8 text-gray-500">
             <p>No shared claims found</p>
             <p className="text-sm mt-2">Claims you share or that are shared with you will appear here</p>
+          </div>
+        )}
+
+        {/* "Share a Claim" card on shared page – navigates to private claims to create/share */}
+        {true && (
+          <div
+            className="card-enhanced p-4 cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-dashed border-gray-300 hover:border-gray-400 flex flex-col items-center justify-center text-center"
+            onClick={() => {
+              try {
+                window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null } }))
+                sessionStorage.setItem('welcome_seen_session', '1')
+              } catch {}
+              navigateTo('claims')
+            }}
+          >
+            <div className="flex items-center space-x-2 mb-3">
+              <div className="w-4 h-4 rounded-full bg-gray-300" />
+              <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400">Share a Claim</h3>
+            </div>
+            <div className="flex justify-center mb-2">
+              <UserPlus className="w-12 h-12 text-green-500" />
+            </div>
+            <div className="text-sm text-gray-500 dark:text-gray-500">
+              Click to share a private claim
+            </div>
           </div>
         )}
       </div>

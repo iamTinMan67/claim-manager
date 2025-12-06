@@ -1,16 +1,32 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ClaimShare, SharePermissions, UserProfile } from '@/types/collaboration';
+import { getClaimIdFromCaseNumber } from '@/utils/claimUtils';
 
 export class CollaborationService {
   // Get all shares for a claim (for claim owners)
   static async getClaimShares(claimId: string): Promise<ClaimShare[]> {
+    // Convert case_number to claim_id (UUID) if needed
+    const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    let claimIdUuid: string;
+    
+    if (uuidPattern.test(claimId)) {
+      claimIdUuid = claimId;
+    } else {
+      // It's a case_number, convert to claim_id
+      const resolvedClaimId = await getClaimIdFromCaseNumber(claimId);
+      if (!resolvedClaimId) {
+        return [];
+      }
+      claimIdUuid = resolvedClaimId;
+    }
+
     const { data, error } = await supabase
       .from('claim_shares')
       .select(`
         *,
-        shared_with:profiles!shared_with_id(email, full_name)
+        shared_with:profiles!claim_shares_shared_with_id_fkey(email, nickname)
       `)
-      .eq('claim_id', claimId);
+      .eq('claim_id', claimIdUuid);
 
     if (error) throw error;
     return data || [];
@@ -23,7 +39,7 @@ export class CollaborationService {
       .select(`
         *,
         claim:claims(id, title, case_number, status),
-        owner:profiles!owner_id(email, full_name)
+        owner:profiles!claim_shares_owner_id_fkey(email, nickname)
       `)
       .eq('shared_with_id', (await supabase.auth.getUser()).data.user?.id);
 
@@ -53,11 +69,26 @@ export class CollaborationService {
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     if (!currentUser) throw new Error('Not authenticated');
 
+    // Convert case_number to claim_id (UUID) if needed
+    const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    let claimIdUuid: string;
+    
+    if (uuidPattern.test(claimId)) {
+      claimIdUuid = claimId;
+    } else {
+      // It's a case_number, convert to claim_id
+      const resolvedClaimId = await getClaimIdFromCaseNumber(claimId);
+      if (!resolvedClaimId) {
+        throw new Error('Claim not found');
+      }
+      claimIdUuid = resolvedClaimId;
+    }
+
     // SECURITY: Verify current user owns the claim they're trying to share
     const { data: claimOwner, error: ownerError } = await supabase
       .from('claims')
-      .select('user_id')
-      .eq('case_number', claimId)
+      .select('user_id, case_number')
+      .eq('claim_id', claimIdUuid)
       .single();
 
     if (ownerError || !claimOwner) {
@@ -83,7 +114,7 @@ export class CollaborationService {
     const { data: existingShare } = await supabase
       .from('claim_shares')
       .select('*')
-      .eq('claim_id', claimId)
+      .eq('claim_id', claimIdUuid)
       .eq('shared_with_id', user.id)
       .single();
 
@@ -95,14 +126,14 @@ export class CollaborationService {
     const { count: currentCount } = await supabase
       .from('claim_shares')
       .select('*', { count: 'exact' })
-      .eq('claim_id', claimId);
+      .eq('claim_id', claimIdUuid);
 
     const newCollaboratorCount = (currentCount || 0) + 1;
 
     // Check collaborator limit
     const { data: limitCheck, error: limitError } = await supabase
       .rpc('check_collaborator_limit' as any, {
-        claim_id_param: claimId, 
+        claim_id_param: claimIdUuid, 
         new_collaborator_count: newCollaboratorCount 
       });
 
@@ -119,7 +150,7 @@ export class CollaborationService {
       try {
         await supabase.functions.invoke('send-collaborator-notification', {
           body: {
-            claimId,
+            claimId: claimIdUuid,
             collaboratorCount: newCollaboratorCount,
             donationAmount: limitResult.amount
           }
@@ -133,13 +164,13 @@ export class CollaborationService {
 
     // Check if donation is required for normal tiered pricing (under 50)
     const { data: donationRequired } = await supabase
-      .rpc('is_donation_required_for_share' as any, { claim_id_param: claimId });
+      .rpc('is_donation_required_for_share' as any, { claim_id_param: claimIdUuid });
 
     // Create the share
     const { data, error } = await supabase
       .from('claim_shares')
       .insert({
-        claim_id: claimId,
+        claim_id: claimIdUuid,
         owner_id: currentUser.id,
         shared_with_id: user.id,
         permission: 'view',
@@ -149,7 +180,7 @@ export class CollaborationService {
       })
       .select(`
         *,
-        shared_with:profiles!shared_with_id(email, full_name)
+        shared_with:profiles!claim_shares_shared_with_id_fkey(email, nickname)
       `)
       .single();
 
@@ -159,8 +190,23 @@ export class CollaborationService {
 
   // Create donation payment session
   static async createDonationPayment(claimId: string, shareId: string): Promise<string> {
+    // Convert case_number to claim_id (UUID) if needed
+    const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    let claimIdUuid: string;
+    
+    if (uuidPattern.test(claimId)) {
+      claimIdUuid = claimId;
+    } else {
+      // It's a case_number, convert to claim_id
+      const resolvedClaimId = await getClaimIdFromCaseNumber(claimId);
+      if (!resolvedClaimId) {
+        throw new Error('Claim not found');
+      }
+      claimIdUuid = resolvedClaimId;
+    }
+
     const { data, error } = await supabase.functions.invoke('create-donation-payment', {
-      body: { claimId, shareId }
+      body: { claimId: claimIdUuid, shareId }
     });
 
     if (error) {
@@ -236,11 +282,29 @@ export class CollaborationService {
       };
     }
 
+    // Convert case_number to claim_id (UUID) if needed
+    const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    let claimIdUuid: string | null = null;
+    
+    if (uuidPattern.test(claimId)) {
+      claimIdUuid = claimId;
+    } else {
+      // It's a case_number, convert to claim_id
+      claimIdUuid = await getClaimIdFromCaseNumber(claimId);
+      if (!claimIdUuid) {
+        return {
+          canEdit: false,
+          canViewEvidence: false,
+          canSubmitEvidence: false,
+        };
+      }
+    }
+
     // Check if user owns the claim
     const { data: claim } = await supabase
       .from('claims')
       .select('user_id')
-      .eq('case_number', claimId)
+      .eq('claim_id', claimIdUuid)
       .single();
 
     if (claim?.user_id === user.id) {
@@ -256,7 +320,7 @@ export class CollaborationService {
     const { data: share } = await supabase
       .from('claim_shares')
       .select('*')
-      .eq('claim_id', claimId)
+      .eq('claim_id', claimIdUuid)
       .eq('shared_with_id', user.id)
       .single();
 

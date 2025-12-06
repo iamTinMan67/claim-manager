@@ -246,6 +246,9 @@ function LoggedInContent({
     switch (activeTab) {
       case 'claims':
         return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} onClaimColorChange={setSelectedClaimColor} isGuest={false} />
+      case 'closed-claims':
+        // Private closed claims view
+        return <ClaimsTable onClaimSelect={setSelectedClaim} selectedClaim={selectedClaim} onClaimColorChange={setSelectedClaimColor} isGuest={false} statusFilter="Closed" />
       case 'subscription':
         return <SubscriptionManager />
       case 'privileges':
