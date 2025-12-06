@@ -157,6 +157,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
         query = query.eq('status', statusFilter)
       } else {
         // On the main private claims view, hide Closed claims (they live in the Closed Cases page)
+        // For guests viewing shared claims, also exclude closed claims
         query = query.neq('status', 'Closed')
       }
       
@@ -168,10 +169,20 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
         throw error
       }
       
-      console.log('ClaimsTable: Claims data received:', data)
+      // Additional filter: ensure closed claims are never shown in shared/guest view
+      // This is a safety net in case the database query doesn't catch all cases
+      let filteredData = data || []
+      if (isGuest && !statusFilter) {
+        filteredData = filteredData.filter((claim: Claim) => {
+          const status = claim.status?.toString().toLowerCase()
+          return status !== 'closed'
+        })
+      }
+      
+      console.log('ClaimsTable: Claims data received:', filteredData)
       console.log('ClaimsTable: Query was for isGuest:', isGuest)
       console.log('ClaimsTable: User ID:', user.id)
-      return data as Claim[]
+      return filteredData as Claim[]
     }
   })
 
@@ -296,8 +307,12 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
       if (error) throw error
       return result
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['claims'] })
+      // Always invalidate shared-claims when a claim is updated
+      // This ensures closed claims are immediately removed from shared view
+      // when a private claim's status is changed to "Closed"
+      queryClient.invalidateQueries({ queryKey: ['shared-claims'] })
       setEditingClaim(null)
     }
   })

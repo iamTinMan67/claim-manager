@@ -105,7 +105,12 @@ const SharedClaims = ({
       }
 
       // Filter out closed claims from shared view; closed claims become private-only
-      sharesOrdered = sharesOrdered.filter((s: any) => s.claims?.status !== 'Closed')
+      // Check status case-insensitively and also filter out shares where claim data is missing
+      sharesOrdered = sharesOrdered.filter((s: any) => {
+        const status = s.claims?.status
+        if (!status || !s.claims) return false // Filter out shares with missing claim data
+        return status.toString().toLowerCase() !== 'closed'
+      })
 
       // Fetch display profiles (nickname/email) for owners and guests
       const userIds = Array.from(new Set(
