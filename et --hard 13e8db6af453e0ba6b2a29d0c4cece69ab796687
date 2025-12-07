@@ -122,4 +122,185 @@ Date:   Sat Dec 6 13:24:36 2025 +0000
  .../src => src}/components/ui/separator.tsx        |    0
  .../src => src}/components/ui/sheet.tsx            |    0
  .../src => src}/components/ui/sidebar.tsx          |    0
- .../src => src}/components/ui/skeleton.tsx         |    
+ .../src => src}/components/ui/skeleton.tsx         |    0
+ .../src => src}/components/ui/slider.tsx           |    0
+ .../src => src}/components/ui/sonner.tsx           |    0
+ .../src => src}/components/ui/switch.tsx           |    0
+ .../src => src}/components/ui/table.tsx            |    0
+ .../src => src}/components/ui/tabs.tsx             |    0
+ .../src => src}/components/ui/textarea.tsx         |    0
+ .../src => src}/components/ui/toast.tsx            |    0
+ .../src => src}/components/ui/toaster.tsx          |    0
+ .../src => src}/components/ui/toggle-group.tsx     |    0
+ .../src => src}/components/ui/toggle.tsx           |    0
+ .../src => src}/components/ui/tooltip.tsx          |    0
+ .../src => src}/components/ui/use-toast.ts         |    0
+ .../src => src}/contexts/AuthContext.tsx           |  113 [32m+[m[31m-[m
+ src/contexts/NavigationContext.tsx                 |   74 [32m+[m
+ .../src => src}/hooks/use-mobile.tsx               |    0
+ .../src => src}/hooks/use-toast.ts                 |    0
+ .../src => src}/hooks/useCalendarEvents.ts         |    0
+ .../src => src}/hooks/useChat.ts                   |    0
+ .../src => src}/hooks/useClaimPermissions.ts       |    0
+ .../src => src}/hooks/useClaimTodos.ts             |    0
+ .../src => src}/hooks/useClaims.ts                 |    3 [32m+[m
+ .../src => src}/hooks/useCollaboration.ts          |    0
+ .../src => src}/hooks/useEvidence.ts               |    0
+ .../src => src}/hooks/useEvidenceErrors.ts         |    0
+ .../src => src}/hooks/useEvidenceUpload.ts         |   35 [32m+[m[31m-[m
+ .../src => src}/hooks/useExhibits.ts               |    9 [32m+[m[31m-[m
+ .../src => src}/hooks/useGoogleCalendar.ts         |    0
+ src/hooks/usePrivileges.ts                         |   79 [32m+[m
+ .../src => src}/hooks/useSubscription.ts           |    0
+ .../src => src}/hooks/useTodos.ts                  |    0
+ src/index.css                                      |  599 [32m+[m[31m-[m
+ .../src => src}/integrations/supabase/client.ts    |   11 [32m+[m[31m-[m
+ src/integrations/supabase/types.ts                 |  Bin [31m0[m -> [32m47126[m bytes
+ src/lib/supabase.ts                                |   10 [31m-[m
+ .../src => src}/lib/utils.ts                       |    0
+ src/pages/Admin.tsx                                |  124 [32m+[m
+ src/pages/Auth.tsx                                 |  243 [32m+[m
+ .../src => src}/pages/Calendar.tsx                 |    0
+ .../src => src}/pages/DonationPayment.tsx          |    1 [31m-[m
+ .../src => src}/pages/DonationSuccess.tsx          |    0
+ src/pages/Events.tsx                               |   93 [32m+[m
+ src/pages/Events_new.tsx                           |   93 [32m+[m
+ .../src => src}/pages/Index.tsx                    |    0
+ .../src => src}/pages/Shared.tsx                   |    4 [32m+[m[31m-[m
+ .../src => src}/pages/Todos.tsx                    |    0
+ .../src => src}/services/chatService.ts            |    0
+ .../src => src}/services/collaborationService.ts   |  113 [32m+[m[31m-[m
+ .../src => src}/services/evidenceService.ts        |   37 [32m+[m[31m-[m
+ .../src => src}/services/googleCalendar.ts         |    0
+ .../src => src}/services/pendingEvidenceService.ts |    0
+ .../src => src}/types/calendarEvent.ts             |    0
+ .../src => src}/types/chat.ts                      |    0
+ .../src => src}/types/claim.ts                     |    6 [32m+[m[31m-[m
+ .../src => src}/types/collaboration.ts             |    0
+ src/types/database.ts                              |   32 [32m+[m[31m-[m
+ .../src => src}/types/evidence.ts                  |    4 [32m+[m[31m-[m
+ .../src => src}/types/pdfConfig.ts                 |    0
+ .../src => src}/types/pendingEvidence.ts           |    0
+ .../src => src}/types/todo.ts                      |    0
+ .../src => src}/utils/authUtils.ts                 |    0
+ .../src => src}/utils/claimColors.ts               |    0
+ .../src => src}/utils/claimDataExport.ts           |    2 [32m+[m[31m-[m
+ src/utils/claimUtils.ts                            |  218 [32m+[m
+ .../src => src}/utils/pdfExport.ts                 |  117 [32m+[m[31m-[m
+ .../src => src}/vite-env.d.ts                      |    0
+ supabase/.temp/cli-latest                          |    1 [32m+[m
+ supabase/.temp/gotrue-version                      |    1 [32m+[m
+ supabase/.temp/pooler-url                          |    1 [32m+[m
+ supabase/.temp/postgres-version                    |    1 [32m+[m
+ supabase/.temp/project-ref                         |    1 [32m+[m
+ supabase/.temp/rest-version                        |    1 [32m+[m
+ supabase/.temp/storage-version                     |    1 [32m+[m
+ .../supabase => supabase}/config.toml              |    6 [31m-[m
+ .../functions/check-subscription/index.ts          |    0
+ .../functions/create-checkout/index.ts             |   32 [32m+[m[31m-[m
+ .../functions/create-donation-payment/index.ts     |   88 [32m+[m[31m-[m
+ .../functions/customer-portal/index.ts             |    0
+ .../send-collaborator-notification/index.ts        |    0
+ supabase/functions/stripe-webhook/index.ts         |   39 [32m+[m
+ .../functions/verify-donation-payment/index.ts     |    0
+ test_add_claim.html                                |   68 [32m+[m
+ .../legal-evidence-harvester-main/.gitignore       |   24 [31m-[m
+ .../legal-evidence-harvester-main/README.md        |   69 [31m-[m
+ .../legal-evidence-harvester-main/bun.lockb        |  Bin [31m187199[m -> [32m0[m bytes
+ .../legal-evidence-harvester-main/components.json  |   20 [31m-[m
+ .../legal-evidence-harvester-main/eslint.config.js |   29 [31m-[m
+ .../legal-evidence-harvester-main/index.html       |   17 [31m-[m
+ .../package-lock.json                              | 7607 [31m--------------------[m
+ .../legal-evidence-harvester-main/package.json     |   89 [31m-[m
+ .../postcss.config.js                              |    6 [31m-[m
+ .../public/favicon.ico                             |  Bin [31m15086[m -> [32m0[m bytes
+ .../legal-evidence-harvester-main/src/App.tsx      |   40 [31m-[m
+ .../src/components/AddEvidenceModal.tsx            |  102 [31m-[m
+ .../AddEvidenceModal/EvidenceFormFields.tsx        |   80 [31m-[m
+ .../AddEvidenceModal/FileUploadSection.tsx         |   57 [31m-[m
+ .../src/components/CollaborationHub.tsx            |   21 [31m-[m
+ .../src/components/EvidenceTable.tsx               |  680 [31m--[m
+ .../src/components/Navigation.tsx                  |   87 [31m-[m
+ .../src/components/PendingEvidenceReview.tsx       |  271 [31m-[m
+ .../src/components/TodoList.tsx                    |  214 [31m-[m
+ .../legal-evidence-harvester-main/src/index.css    |  101 [31m-[m
+ .../src/integrations/supabase/types.ts             |  651 [31m--[m
+ .../legal-evidence-harvester-main/src/main.tsx     |    5 [31m-[m
+ .../src/pages/Auth.tsx                             |  166 [31m-[m
+ ...231433-3f509dae-034d-448b-95b4-d031d4239f38.sql |    4 [31m-[m
+ ...001742-1c8ac557-58bc-441a-828f-6ec095188954.sql |    4 [31m-[m
+ ...141447-ac3ab955-f090-4221-b1b0-626fd65999e7.sql |   17 [31m-[m
+ ...214951-92e5b949-d70d-4fa2-8c3a-949adbf67f01.sql |    3 [31m-[m
+ ...230910-e6ffc7f4-e8d8-4f87-bdca-fa3061bc3188.sql |  202 [31m-[m
+ ...230937-d9fa0bf0-c22e-4cc4-9571-4c664922de57.sql |   56 [31m-[m
+ ...232350-683d2245-b6eb-4989-92ce-15690fd48548.sql |  195 [31m-[m
+ ...232637-561cbdfe-bbb0-4ac2-8438-5e07fab47ae9.sql |   25 [31m-[m
+ ...234354-3934c305-6d68-445d-891c-e181d73b9ebd.sql |   54 [31m-[m
+ ...003408-409c62fa-1c98-4902-8d51-ebd711ea6b38.sql |   30 [31m-[m
+ ...004832-0d6f72fd-9070-4f1a-a227-2e4956af3d4e.sql |   33 [31m-[m
+ ...004935-070daa22-1206-42e5-ad00-6d31b30a7c1a.sql |   33 [31m-[m
+ ...010422-734e0019-b425-46dd-9d01-e8049a984595.sql |   29 [31m-[m
+ ...011348-b474713a-0c15-4b8b-aaeb-f44671eb0e16.sql |   48 [31m-[m
+ ...015950-6476db81-3d40-40c0-a21d-a9bce54e9f1b.sql |   24 [31m-[m
+ ...102640-d1b08f69-3c84-4a4d-b166-aa14536b2d77.sql |  294 [31m-[m
+ ...102915-76e76feb-7e41-44ea-9eb8-81c19188a7c6.sql |  325 [31m-[m
+ ...102943-7ce9b72c-1c5a-4191-8aee-27ac35e4d653.sql |   20 [31m-[m
+ ...111731-dcca27d9-fd7c-4811-ab7f-ff75dc43f9bc.sql |   43 [31m-[m
+ ...112039-0bcdbded-e7c0-43f2-9249-eb3eeafe5553.sql |   10 [31m-[m
+ ...115446-8dabac4e-76cf-4634-a4df-26d7b450b891.sql |   33 [31m-[m
+ ...122245-5ecf6f1f-b9b5-44bd-86fe-679df254154b.sql |   32 [31m-[m
+ ...122911-3a05af38-641f-4046-a8fe-00a1e7bbe2a9.sql |   23 [31m-[m
+ ...122943-40dc88bf-96e2-47fb-bcef-bcea07b2d1c9.sql |   54 [31m-[m
+ ...123014-959d3dd6-9734-45ee-84b1-3cd20b003de3.sql |   55 [31m-[m
+ ...124202-5dad9226-c64a-4a01-9a71-b18578eef396.sql |  216 [31m-[m
+ ...124522-26657be2-4fb5-492f-9e16-a41248c8dae7.sql |  156 [31m-[m
+ ...124612-96231917-1786-42a0-a326-6ebae053c927.sql |   37 [31m-[m
+ ...124949-f643191b-b877-4e55-b3fe-8dae77349303.sql |  233 [31m-[m
+ ...125556-ff3440c3-42c2-4712-bdf6-626f3c488724.sql |   86 [31m-[m
+ ...125623-5e0a79ae-3815-4a09-bb79-00606cb36947.sql |   15 [31m-[m
+ ...125654-12a6150b-25a8-4a20-826a-4a9bb5775f98.sql |   15 [31m-[m
+ ...130006-a6f6daff-e182-46aa-86f3-4d94371f06e4.sql |   18 [31m-[m
+ ...130112-e6a3775c-adc5-4f1a-8b47-49330cad81bb.sql |   15 [31m-[m
+ ...130152-770202dc-e5ed-4d94-b00e-da8ad1ff004c.sql |   27 [31m-[m
+ ...130257-674afa63-a309-453a-a4ba-d605869d7cb0.sql |   13 [31m-[m
+ ...131212-d393f723-bd11-4a0c-850f-4a20acf347d2.sql |   72 [31m-[m
+ ...131251-54f2fcde-ae7a-49bf-aa8c-81a35ea0c6ef.sql |   65 [31m-[m
+ ...132907-38fbfdcc-2c30-4c3e-abe3-73921a80b836.sql |   71 [31m-[m
+ ...132954-cbc8464b-afab-4068-bc66-d74210ea8cbd.sql |   90 [31m-[m
+ ...165543-13fa84c1-af57-474b-b50c-e1580677a0d5.sql |   34 [31m-[m
+ ...170502-e4ec81d4-7e5b-454e-8010-bc30e85c5283.sql |   34 [31m-[m
+ ...213725-8aba93a7-b8e2-4248-a11b-6a917022e42d.sql |  292 [31m-[m
+ ...213920-e4592089-2419-4cba-9d88-455e79369384.sql |  292 [31m-[m
+ ...215314-8fe1bbd1-263c-4a27-9ecc-b309cbd2e918.sql |   27 [31m-[m
+ ...221017-9658fdc8-5312-4300-804c-30675170f4a9.sql |  125 [31m-[m
+ ...224034-f44e6186-27f2-47b0-b870-9173789af112.sql |   35 [31m-[m
+ ...234328-eab5622c-6ff9-4957-b025-d634357c11fd.sql |   10 [31m-[m
+ ...234340-d9c0895c-0c77-476d-8779-7eecbc8bab9c.sql |   10 [31m-[m
+ ...234351-ade2c288-1dd8-434d-945f-1c85ce5f2bec.sql |   12 [31m-[m
+ ...234405-f36f8450-4ce5-41c5-a6af-fd2afb3d037f.sql |   12 [31m-[m
+ ...234419-15897540-bad3-445c-9e69-387fb8752a54.sql |   41 [31m-[m
+ ...234433-17e25fbc-0c60-4602-8f26-393385473d8f.sql |   10 [31m-[m
+ ...234453-0a61b576-7d3d-45ee-9f2b-af72b71a5893.sql |   15 [31m-[m
+ ...235054-4dcb7ad1-3601-4e45-b542-2d9a2fad8a32.sql |   15 [31m-[m
+ ...235155-c79d4efc-cd75-481d-ae8d-ef5b800bad3c.sql |    2 [31m-[m
+ ...235928-6911092c-9f17-40e5-803a-8212a6d2b62f.sql |   30 [31m-[m
+ ...000017-429d92aa-b1a4-43e8-8c51-1ba1ecf19fa0.sql |   29 [31m-[m
+ ...002539-bb6f36d7-512e-4e16-b453-a8cdf514a19d.sql |   44 [31m-[m
+ ...084832-033293f7-00dc-428f-9e7e-80087b4d33dc.sql |    5 [31m-[m
+ .../tailwind.config.ts                             |   96 [31m-[m
+ .../tsconfig.app.json                              |   30 [31m-[m
+ .../legal-evidence-harvester-main/tsconfig.json    |   19 [31m-[m
+ .../tsconfig.node.json                             |   22 [31m-[m
+ .../legal-evidence-harvester-main/vite.config.ts   |   22 [31m-[m
+ .../src/features/billing/PaymentModal.tsx          |  281 [31m-[m
+ .../src/features/claims/ClaimsList.tsx             |  530 [31m--[m
+ .../src/features/claims/Collaboration.tsx          |  706 [31m--[m
+ .../src/features/claims/CollaborationHub.tsx       |  540 [31m--[m
+ .../src/features/claims/SharedClaims.tsx           |  937 [31m---[m
+ .../src/features/evidence/EvidenceUploader.tsx     |  904 [31m---[m
+ unified-claim-app/src/lib/auth/AccessControl.tsx   |  256 [31m-[m
+ unified-claim-app/src/utils/export.ts              |  550 [31m--[m
+ upgrade_account.sql                                |   44 [32m+[m
+ vercel.json                                        |   14 [32m+[m
+ vite.config.ts                                     |   16 [32m+[m[31m-[m
+ 298 files changed, 10537 insertions(+), 23793 deletions(-)

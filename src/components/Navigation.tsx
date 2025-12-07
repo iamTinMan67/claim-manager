@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Calendar, FileText, Users, CheckSquare, Download, Moon, Sun, Lock } from 'lucide-react'
+import { Calendar, FileText, Users, CheckSquare, Download, Moon, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { supabase } from '@/integrations/supabase/client'
 
@@ -40,7 +40,6 @@ const Navigation = ({ activeTab, onTabChange, selectedClaim, isGuest = false, sh
 
   const navItems = [
     { id: 'claims', label: 'Claims', icon: FileText },
-    { id: 'closed-claims', label: 'Closed Cases', icon: Lock },
     { id: 'todos-private', label: 'To-Do Lists', icon: CheckSquare },
     { id: 'calendar-private', label: 'Calendar', icon: Calendar },
     { id: 'shared', label: 'Shared Claims', icon: Users },
@@ -65,9 +64,6 @@ const Navigation = ({ activeTab, onTabChange, selectedClaim, isGuest = false, sh
               return null
             }
             if (activeTab === 'todos-private' && item.id === 'todos-private') {
-              return null
-            }
-            if (activeTab === 'closed-claims' && item.id === 'closed-claims') {
               return null
             }
             
