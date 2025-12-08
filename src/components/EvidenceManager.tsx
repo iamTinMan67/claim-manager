@@ -54,14 +54,45 @@ const EvidenceManager = ({
   const [filterText, setFilterText] = useState('')
   const [methodFilter, setMethodFilter] = useState<string>('')
   const [tagFilter, setTagFilter] = useState<string>('')
-  const [columnPrefs, setColumnPrefs] = useState<{ showMethod: boolean; showPages: boolean; showExhibit: boolean }>(() => {
-    try {
-      const raw = localStorage.getItem('evidence_column_prefs')
-      if (raw) return JSON.parse(raw)
-    } catch {}
-    return { showMethod: true, showPages: true, showExhibit: true }
+  const [columnPrefs, setColumnPrefs] = useState<{ showMethod: boolean; showPages: boolean; showBookOfDeeds: boolean; showCLCRef: boolean }>(() => {
+    return { showMethod: true, showPages: true, showBookOfDeeds: false, showCLCRef: false }
   })
   const [autoApproveTrusted, setAutoApproveTrusted] = useState<boolean>(false)
+
+  // Load column preferences per-claim (by case_number)
+  useEffect(() => {
+    try {
+      if (!selectedClaim) return
+      const raw = localStorage.getItem(`evidence_column_prefs_${selectedClaim}`)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        // Migrate old showExhibit to showBookOfDeeds
+        if (parsed.showExhibit !== undefined && parsed.showBookOfDeeds === undefined) {
+          parsed.showBookOfDeeds = parsed.showExhibit
+          delete parsed.showExhibit
+        }
+        setColumnPrefs(parsed)
+      } else {
+        // Check for old global preferences and migrate them, then use defaults
+        const globalRaw = localStorage.getItem('evidence_column_prefs')
+        if (globalRaw) {
+          try {
+            const globalParsed = JSON.parse(globalRaw)
+            if (globalParsed.showExhibit !== undefined && globalParsed.showBookOfDeeds === undefined) {
+              globalParsed.showBookOfDeeds = globalParsed.showExhibit
+              delete globalParsed.showExhibit
+            }
+            setColumnPrefs(globalParsed)
+            // Save to per-claim storage
+            localStorage.setItem(`evidence_column_prefs_${selectedClaim}`, JSON.stringify(globalParsed))
+          } catch {}
+        } else {
+          // Use defaults
+          setColumnPrefs({ showMethod: true, showPages: true, showBookOfDeeds: false, showCLCRef: false })
+        }
+      }
+    } catch {}
+  }, [selectedClaim])
 
   // Persist collapsed state per-claim (by case_number)
   useEffect(() => {
@@ -379,7 +410,10 @@ const EvidenceManager = ({
       console.log('EvidenceManager: Final merged evidence result:', merged.length, 'items')
       console.log('EvidenceManager: Evidence items:', merged)
       return merged
-    }
+    },
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false
   })
 
   // Derived: filtered evidence based on search and method
@@ -411,9 +445,13 @@ const EvidenceManager = ({
     return list
   }, [evidenceData, filterText, methodFilter])
 
+  // Persist column preferences per-claim (by case_number)
   useEffect(() => {
-    try { localStorage.setItem('evidence_column_prefs', JSON.stringify(columnPrefs)) } catch {}
-  }, [columnPrefs])
+    try {
+      if (!selectedClaim) return
+      localStorage.setItem(`evidence_column_prefs_${selectedClaim}`, JSON.stringify(columnPrefs))
+    } catch {}
+  }, [columnPrefs, selectedClaim])
 
   // Try to load auto-approve flag from DB; fallback to localStorage
   useEffect(() => {
@@ -613,29 +651,112 @@ const EvidenceManager = ({
       console.log('EvidenceManager: Updating evidence with data:', data)
       console.log('EvidenceManager: Original filename:', data.file_name)
 
-      // Clean the data before submission
-      const cleanData = {
-        ...data,
-        number_of_pages: data.number_of_pages ? parseInt(String(data.number_of_pages)) : null,
-        date_submitted: data.date_submitted || null
+      // Clean the data - only include fields that can be updated
+      // Exclude: id, created_at, updated_at, user_id, claimIds, display_order
+      const { id: _, created_at: __, updated_at: ___, user_id: ____, claimIds: _____, display_order: ______, ...restData } = data as any
+      
+      // Convert date_submitted to yyyy-MM-dd format if it exists
+      let formattedDate = null
+      if (restData.date_submitted) {
+        // If it's already in yyyy-MM-dd format, use it directly
+        if (typeof restData.date_submitted === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(restData.date_submitted)) {
+          formattedDate = restData.date_submitted
+        } else {
+          // Otherwise, parse and format it
+          const date = new Date(restData.date_submitted)
+          if (!isNaN(date.getTime())) {
+            // Format as yyyy-MM-dd
+            formattedDate = date.toISOString().split('T')[0]
+          }
+        }
       }
       
-      console.log('EvidenceManager: Clean data filename:', cleanData.file_name)
+      // Handle number_of_pages - ensure it's always included if it exists (including 0)
+      let number_of_pages_value: number | null = null
+      if (restData.number_of_pages !== undefined && restData.number_of_pages !== null) {
+        if (typeof restData.number_of_pages === 'number') {
+          number_of_pages_value = restData.number_of_pages
+        } else {
+          const parsed = parseInt(String(restData.number_of_pages))
+          number_of_pages_value = isNaN(parsed) ? null : parsed
+        }
+      }
+      
+      const cleanData: any = {
+        title: restData.title || null,
+        file_name: restData.file_name || null,
+        file_url: restData.file_url || null,
+        exhibit_number: restData.exhibit_number !== undefined && restData.exhibit_number !== null ? parseInt(String(restData.exhibit_number)) : null,
+        number_of_pages: number_of_pages_value,
+        date_submitted: formattedDate,
+        method: restData.method || null,
+        url_link: restData.url_link || null,
+        book_of_deeds_ref: restData.book_of_deeds_ref || null,
+        description: restData.description || null
+        // Don't manually set updated_at - let Supabase handle it via triggers
+      }
+      
+      console.log('EvidenceManager: number_of_pages - original:', restData.number_of_pages, 'type:', typeof restData.number_of_pages, '-> cleaned:', cleanData.number_of_pages, 'type:', typeof cleanData.number_of_pages)
+      console.log('EvidenceManager: Full cleanData being sent:', JSON.stringify(cleanData, null, 2))
 
-      const { data: result, error } = await supabase
+      console.log('EvidenceManager: Clean data being sent:', cleanData)
+      console.log('EvidenceManager: Updating evidence with id:', id)
+
+      // Perform the update without select to avoid 400 errors
+      // We'll rely on refetch to get the updated data
+      const { error: updateError, status, statusText } = await supabase
         .from('evidence')
         .update(cleanData)
         .eq('id', id)
-        .select()
-        .single()
-
-      if (error) throw error
-      console.log('EvidenceManager: Database returned filename:', result?.file_name)
-      return result
+      
+      console.log('EvidenceManager: Update response status:', status, statusText)
+      
+      if (updateError) {
+        console.error('EvidenceManager: Update error:', updateError)
+        console.error('EvidenceManager: Update error details:', JSON.stringify(updateError, null, 2))
+        throw updateError
+      }
+      
+      console.log('EvidenceManager: Update successful, waiting briefly for database to process...')
+      // Small delay to ensure database has processed the update
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Return the original data with updates applied - the refetch will get the real data from the database
+      return { ...data, ...cleanData, id } as Evidence
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evidence'] })
+    onSuccess: async (data) => {
+      console.log('EvidenceManager: Update mutation onSuccess called with data:', data)
+      console.log('EvidenceManager: Refetching evidence list...')
+      
+      // Invalidate queries to trigger refetch
+      await queryClient.invalidateQueries({ queryKey: ['evidence', selectedClaim] })
+      await queryClient.invalidateQueries({ queryKey: ['evidence'] })
+      
+      // Manually refetch the query
+      try {
+        const queryCache = queryClient.getQueryCache()
+        const query = queryCache.find({ queryKey: ['evidence', selectedClaim] })
+        if (query) {
+          await queryClient.refetchQueries({ 
+            queryKey: ['evidence', selectedClaim],
+            type: 'active'
+          })
+          console.log('EvidenceManager: Refetch completed successfully')
+        } else {
+          console.warn('EvidenceManager: Query not found in cache, invalidating instead')
+        }
+      } catch (err) {
+        console.error('EvidenceManager: Error during refetch:', err)
+      }
+      
+      // Close the form
       setEditingEvidence(null)
+      setExpandedEvidence(null)
+      
+      toast({
+        title: "Success",
+        description: "Evidence updated successfully!",
+      })
     },
     onError: (error: any) => {
       console.error('Evidence update error:', error)
@@ -645,15 +766,453 @@ const EvidenceManager = ({
 
   const deleteEvidenceMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
+      console.log('EvidenceManager: Deleting evidence with id:', id)
+      
+      // Get current user to verify permissions
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        throw new Error('Not authenticated')
+      }
+      
+      // Check if current user is the owner of the selected claim
+      let userIsClaimOwner = false
+      if (selectedClaim) {
+        try {
+          const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+          let claimId: string | null = null
+          if (uuidPattern.test(selectedClaim)) {
+            claimId = selectedClaim
+          } else {
+            claimId = await getClaimIdFromCaseNumber(selectedClaim)
+          }
+          if (claimId) {
+            const { data: claim } = await supabase
+              .from('claims')
+              .select('user_id')
+              .eq('claim_id', claimId)
+              .maybeSingle()
+            userIsClaimOwner = claim?.user_id === user.id
+          }
+        } catch (e) {
+          console.warn('EvidenceManager: Error checking claim ownership:', e)
+        }
+      }
+      
+      // First, check if evidence exists and get its user_id
+      const { data: evidenceCheck, error: checkError } = await supabase
         .from('evidence')
+        .select('id, user_id')
+        .eq('id', id)
+        .maybeSingle()
+      
+      if (checkError) {
+        console.error('EvidenceManager: Error checking evidence:', checkError)
+        throw checkError
+      }
+      
+      if (!evidenceCheck) {
+        console.log('EvidenceManager: Evidence not found, may already be deleted')
+        return id
+      }
+      
+      // Verify permissions: user must either own the evidence OR be the claim owner (host)
+      const userOwnsEvidence = evidenceCheck.user_id === user.id
+      if (!userOwnsEvidence && !userIsClaimOwner) {
+        console.error('EvidenceManager: User does not have permission to delete this evidence', { 
+          evidenceUserId: evidenceCheck.user_id, 
+          currentUserId: user.id,
+          userIsClaimOwner
+        })
+        throw new Error('You do not have permission to delete this evidence')
+      }
+      
+      console.log('EvidenceManager: Deletion authorized', { 
+        userOwnsEvidence, 
+        userIsClaimOwner,
+        evidenceUserId: evidenceCheck.user_id,
+        currentUserId: user.id
+      })
+      
+      // If user is claim owner but doesn't own evidence, verify the evidence is linked to their claim
+      if (userIsClaimOwner && !userOwnsEvidence && selectedClaim) {
+        try {
+          const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+          let claimId: string | null = null
+          if (uuidPattern.test(selectedClaim)) {
+            claimId = selectedClaim
+          } else {
+            claimId = await getClaimIdFromCaseNumber(selectedClaim)
+          }
+          
+          if (claimId) {
+            // Verify evidence is linked to this claim
+            const { data: linkCheck, error: linkCheckError } = await supabase
+              .from('evidence_claims')
+              .select('id')
+              .eq('evidence_id', id)
+              .eq('claim_id', claimId)
+              .maybeSingle()
+            
+            if (linkCheckError) {
+              console.error('EvidenceManager: Error checking evidence_claims link:', linkCheckError)
+            }
+            
+            if (!linkCheck) {
+              throw new Error('This evidence is not linked to your claim. You cannot delete it.')
+            }
+            
+            console.log('EvidenceManager: Verified evidence is linked to claim owned by user')
+          }
+        } catch (e: any) {
+          if (e.message) {
+            throw e
+          }
+        }
+      }
+      
+      // Delete from pending_evidence first (if exists)
+      try {
+        const { error: pendingError } = await supabase
+          .from('pending_evidence')
         .delete()
+          .eq('evidence_id', id)
+        
+        if (pendingError && pendingError.code !== 'PGRST116') { // Ignore "table not found" errors
+          console.warn('EvidenceManager: Could not delete from pending_evidence:', pendingError)
+        }
+      } catch (e) {
+        console.warn('EvidenceManager: Error deleting from pending_evidence (may not exist):', e)
+      }
+
+      // Also clear case_number field if it exists (for legacy support)
+      // Do this BEFORE deleting from evidence_claims so RLS can still check the link
+      try {
+        const { error: updateError } = await supabase
+          .from('evidence')
+          .update({ case_number: null })
         .eq('id', id)
 
-      if (error) throw error
+        if (updateError && !updateError.message?.includes('column') && !updateError.message?.includes('does not exist')) {
+          console.warn('EvidenceManager: Could not clear case_number:', updateError)
+        }
+      } catch (e) {
+        console.warn('EvidenceManager: Error clearing case_number (column may not exist):', e)
+      }
+
+      // Try to use an RPC function if available for claim owner deletions
+      // Otherwise, attempt direct deletion
+      let deleteSuccess = false
+      let deleteError: any = null
+      let deleteData: any = null
+      
+      // If user is claim owner but doesn't own evidence, try RPC function first
+      if (userIsClaimOwner && !userOwnsEvidence && selectedClaim) {
+        try {
+          const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+          let claimId: string | null = null
+          if (uuidPattern.test(selectedClaim)) {
+            claimId = selectedClaim
+          } else {
+            claimId = await getClaimIdFromCaseNumber(selectedClaim)
+          }
+          
+          if (claimId) {
+            // Try RPC function for claim owner deletion (if it exists)
+            try {
+              const { data: rpcData, error: rpcError } = await supabase.rpc(
+                'delete_evidence_as_claim_owner' as any,
+                { 
+                  evidence_id_param: id,
+                  claim_id_param: claimId
+                }
+              )
+              
+              if (!rpcError && rpcData) {
+                console.log('EvidenceManager: Successfully deleted via RPC function')
+                deleteSuccess = true
+                deleteData = rpcData
+              } else if (rpcError && rpcError.code !== '42883') { // 42883 = function does not exist
+                console.warn('EvidenceManager: RPC function exists but returned error:', rpcError)
+              }
+            } catch (rpcErr: any) {
+              // Function doesn't exist or other error - continue with direct deletion
+              if (rpcErr.code !== '42883') {
+                console.warn('EvidenceManager: RPC call failed:', rpcErr)
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('EvidenceManager: Error attempting RPC deletion:', e)
+        }
+      }
+      
+      // If RPC didn't work, try direct deletion
+      if (!deleteSuccess) {
+        // Delete from evidence table
+        // If user owns the evidence, use user_id filter for RLS
+        // If user is claim owner (host), try without user_id filter - RLS should allow based on claim ownership
+        let deleteQuery = supabase
+          .from('evidence')
+          .delete()
+          .eq('id', id)
+        
+        // Add user_id filter only if user owns the evidence
+        // If user is claim owner but doesn't own evidence, RLS policy should allow deletion based on claim ownership
+        if (userOwnsEvidence) {
+          deleteQuery = deleteQuery.eq('user_id', user.id)
+        }
+        // Note: If userIsClaimOwner && !userOwnsEvidence, we don't add user_id filter
+        // The RLS policy should check if the user owns a claim that the evidence is linked to
+        
+        const result = await deleteQuery.select()
+        deleteError = result.error
+        deleteData = result.data
+      }
+      
+      // Delete from evidence_claims junction table
+      // Do this regardless of whether evidence deletion succeeded, to clean up the link
+      const { error: linkError, data: linkData } = await supabase
+        .from('evidence_claims')
+        .delete()
+        .eq('evidence_id', id)
+        .select()
+
+      if (linkError) {
+        console.error('Error deleting evidence_claims links:', linkError)
+        // Continue even if this fails, as the evidence deletion might still work
+      } else {
+        console.log('EvidenceManager: Deleted evidence_claims links:', linkData?.length || 0)
+      }
+      
+      const error = deleteError
+      const data = deleteData
+
+      if (error) {
+        console.error('EvidenceManager: Error deleting evidence:', error)
+        console.error('EvidenceManager: Error details:', JSON.stringify(error, null, 2))
+        
+        // If error and user is claim owner, the RLS policy is blocking
+        // Provide detailed error message with SQL instructions
+        if (userIsClaimOwner && !userOwnsEvidence) {
+          const errorMsg = error.message || 'Unknown error'
+          const detailedError = `Failed to delete guest-submitted evidence. The Row Level Security (RLS) policy on the 'evidence' table is preventing deletion.
+
+Error: ${errorMsg}
+
+To fix this, run the following SQL in your Supabase SQL Editor:
+
+-- First, drop the existing DELETE policy if it exists (adjust name if different)
+DROP POLICY IF EXISTS "Users can delete their own evidence" ON evidence;
+DROP POLICY IF EXISTS "Claim owners can delete evidence linked to their claims" ON evidence;
+
+-- Create a new policy that allows both:
+-- 1. Users to delete their own evidence
+-- 2. Claim owners to delete evidence linked to their claims
+CREATE POLICY "Users and claim owners can delete evidence"
+ON evidence FOR DELETE
+USING (
+  -- User owns the evidence
+  user_id = auth.uid()
+  OR
+  -- User owns a claim that the evidence is linked to
+  EXISTS (
+    SELECT 1 FROM evidence_claims ec
+    JOIN claims c ON c.claim_id = ec.claim_id
+    WHERE ec.evidence_id = evidence.id
+    AND c.user_id = auth.uid()
+  )
+);`
+          
+          console.error('EvidenceManager: RLS Policy Error - Detailed instructions:', detailedError)
+          throw new Error(detailedError)
+        }
+        throw error
+      }
+      
+      console.log('EvidenceManager: Deleted evidence response:', { data, dataLength: data?.length || 0 })
+      
+      // Note: Supabase delete with .select() may return empty array even on success
+      // So we verify by checking if the item still exists
+      await new Promise(resolve => setTimeout(resolve, 300))
+      
+      const { data: checkData, error: checkErr } = await supabase
+        .from('evidence')
+        .select('id')
+        .eq('id', id)
+        .maybeSingle()
+      
+      if (checkErr) {
+        console.error('EvidenceManager: Error checking if evidence exists:', checkErr)
+        // If we can't check, assume deletion worked if no error was thrown
+        return id
+      }
+      
+      if (checkData) {
+        console.error('EvidenceManager: ERROR - Evidence still exists after delete attempt!')
+        
+        // If user is claim owner but doesn't own evidence, try a different approach
+        // Check if evidence is linked to the claim via evidence_claims
+        if (userIsClaimOwner && !userOwnsEvidence && selectedClaim) {
+          try {
+            const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+            let claimId: string | null = null
+            if (uuidPattern.test(selectedClaim)) {
+              claimId = selectedClaim
+            } else {
+              claimId = await getClaimIdFromCaseNumber(selectedClaim)
+            }
+            
+            if (claimId) {
+              // Verify evidence is linked to this claim
+              const { data: linkCheck } = await supabase
+                .from('evidence_claims')
+                .select('id')
+                .eq('evidence_id', id)
+                .eq('claim_id', claimId)
+                .maybeSingle()
+              
+              if (linkCheck) {
+                console.log('EvidenceManager: Evidence is linked to claim, but deletion failed due to RLS policy')
+                // The RLS policy is preventing deletion - provide SQL instructions
+                const detailedError = `Failed to delete guest-submitted evidence. The Row Level Security (RLS) policy on the 'evidence' table is preventing deletion.
+
+The evidence is linked to your claim, but the database policy is blocking the deletion.
+
+To fix this, run the following SQL in your Supabase SQL Editor:
+
+-- First, drop the existing DELETE policy if it exists (adjust name if different)
+DROP POLICY IF EXISTS "Users can delete their own evidence" ON evidence;
+DROP POLICY IF EXISTS "Claim owners can delete evidence linked to their claims" ON evidence;
+
+-- Create a new policy that allows both:
+-- 1. Users to delete their own evidence
+-- 2. Claim owners to delete evidence linked to their claims
+CREATE POLICY "Users and claim owners can delete evidence"
+ON evidence FOR DELETE
+USING (
+  -- User owns the evidence
+  user_id = auth.uid()
+  OR
+  -- User owns a claim that the evidence is linked to
+  EXISTS (
+    SELECT 1 FROM evidence_claims ec
+    JOIN claims c ON c.claim_id = ec.claim_id
+    WHERE ec.evidence_id = evidence.id
+    AND c.user_id = auth.uid()
+  )
+);`
+                
+                console.error('EvidenceManager: RLS Policy Error - Detailed instructions:', detailedError)
+                throw new Error(detailedError)
+              }
+            }
+          } catch (e: any) {
+            if (e.message) {
+              throw e
+            }
+          }
+        }
+        
+        // Try one more time with user_id if user owns it
+        if (userOwnsEvidence) {
+          const { error: retryError } = await supabase
+            .from('evidence')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', user.id)
+          
+          if (retryError) {
+            console.error('EvidenceManager: Retry delete also failed:', retryError)
+            throw new Error(`Failed to delete evidence: ${retryError.message || 'Unknown error'}. You may not have permission to delete this item.`)
+          }
+          
+          // Check one more time after retry
+          await new Promise(resolve => setTimeout(resolve, 300))
+          const { data: finalCheck } = await supabase
+            .from('evidence')
+            .select('id')
+            .eq('id', id)
+            .maybeSingle()
+          
+          if (finalCheck) {
+            throw new Error('Failed to delete evidence - item still exists after retry. This may be due to database permissions or foreign key constraints.')
+          } else {
+            console.log('EvidenceManager: Deletion succeeded on retry')
+          }
+        } else {
+          throw new Error('Failed to delete evidence - item still exists. The database policy may need to allow claim owners to delete guest-submitted evidence.')
+        }
+      } else {
+        console.log('EvidenceManager: Deletion verified - evidence no longer exists')
+      }
+      
+      // Wait a moment to ensure database has processed the deletion
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      return id
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['evidence'] })
+    onSuccess: async (deletedId) => {
+      console.log('EvidenceManager: Delete mutation onSuccess, deletedId:', deletedId)
+      
+      // Immediately remove from cache to update UI instantly
+      queryClient.setQueryData(['evidence', selectedClaim], (oldData: Evidence[] | undefined) => {
+        if (!oldData) return oldData
+        const filtered = oldData.filter(item => item.id !== deletedId)
+        console.log('EvidenceManager: Removed from cache, old count:', oldData.length, 'new count:', filtered.length)
+        return filtered
+      })
+      
+      // Also update the general evidence cache
+      queryClient.setQueryData(['evidence'], (oldData: Evidence[] | undefined) => {
+        if (!oldData) return oldData
+        return oldData.filter(item => item.id !== deletedId)
+      })
+      
+      // Verify deletion and only invalidate (don't refetch automatically)
+      setTimeout(async () => {
+        try {
+          const { data: verifyData, error: verifyError } = await supabase
+            .from('evidence')
+            .select('id')
+            .eq('id', deletedId)
+            .maybeSingle()
+          
+          if (verifyError) {
+            console.error('EvidenceManager: Error verifying deletion:', verifyError)
+          } else if (verifyData) {
+            console.error('EvidenceManager: CRITICAL - Evidence still exists after deletion!', deletedId)
+            // Try to delete again with more aggressive approach
+            await supabase.from('evidence_claims').delete().eq('evidence_id', deletedId)
+            await supabase.from('evidence').delete().eq('id', deletedId)
+            // Update cache to remove it anyway
+            queryClient.setQueryData(['evidence', selectedClaim], (oldData: Evidence[] | undefined) => {
+              if (!oldData) return oldData
+              return oldData.filter(item => item.id !== deletedId)
+            })
+          } else {
+            console.log('EvidenceManager: Deletion verified - evidence no longer exists')
+          }
+        } catch (e) {
+          console.error('EvidenceManager: Error during verification:', e)
+        }
+        
+        // Only invalidate - don't refetch automatically to prevent reappearing
+        queryClient.invalidateQueries({ queryKey: ['evidence', selectedClaim], refetchType: 'none' })
+        queryClient.invalidateQueries({ queryKey: ['evidence'], refetchType: 'none' })
+      }, 1000)
+      
+      toast({
+        title: "Success",
+        description: "Evidence deleted successfully!",
+      })
+    },
+    onError: (error: any) => {
+      console.error('Evidence delete error:', error)
+      toast({
+        title: "Error",
+        description: `Failed to delete evidence: ${error.message || 'Unknown error'}`,
+        variant: "destructive",
+      })
     }
   })
 
@@ -852,8 +1411,12 @@ const EvidenceManager = ({
                 <label className="block text-sm font-medium mb-1">Number of Pages</label>
                 <input
                   type="number"
-                  value={editingEvidence.number_of_pages || ''}
-                  onChange={(e) => setEditingEvidence({ ...editingEvidence, number_of_pages: parseInt(e.target.value) || null })}
+                  value={editingEvidence.number_of_pages ?? ''}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    const numValue = value === '' ? null : (isNaN(parseInt(value)) ? null : parseInt(value))
+                    setEditingEvidence({ ...editingEvidence, number_of_pages: numValue })
+                  }}
                   className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
@@ -861,7 +1424,9 @@ const EvidenceManager = ({
                 <label className="block text-sm font-medium mb-1">Date Submitted</label>
                 <input
                   type="date"
-                  value={editingEvidence.date_submitted || ''}
+                  value={editingEvidence.date_submitted ? (typeof editingEvidence.date_submitted === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(editingEvidence.date_submitted) 
+                    ? editingEvidence.date_submitted 
+                    : new Date(editingEvidence.date_submitted).toISOString().split('T')[0]) : ''}
                   onChange={(e) => setEditingEvidence({ ...editingEvidence, date_submitted: e.target.value })}
                   className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
@@ -918,7 +1483,7 @@ const EvidenceManager = ({
               <button
                 type="button"
                 onClick={() => setEditingEvidence(null)}
-                className="bg-yellow-400/20 text-gold px-4 py-2 rounded-lg hover:bg-yellow-400/30"
+                className="bg-transparent text-red-600 border border-red-600 px-4 py-2 rounded-lg hover:bg-red-600/10"
               >
                 Cancel
               </button>
@@ -929,131 +1494,106 @@ const EvidenceManager = ({
 
       {/* Evidence Table - Hide when editing */}
       {!editingEvidence && (
-        <div className={`card-enhanced w-full mt-12 ${isStatic ? 'min-h-[75vh]' : ''}`} style={{ maxWidth: '100%', width: '100%' }}>
-        <div className="px-6 py-4 border-b border-yellow-400/20">
+        <div className={`card-enhanced w-full mt-12 ${isStatic ? 'min-h-[75vh]' : ''}`} style={{ maxWidth: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div className="px-6 py-4 border-b border-yellow-400/20 sticky z-40 backdrop-blur-md flex-shrink-0" style={{ backgroundColor: 'rgba(30, 27, 75, 0.3)', top: '60px' }}>
           {/* Row 1: Title, Search boxes, and Buttons */}
           <div className="flex items-center mb-3 w-full">
             <h3 className="text-lg font-semibold text-gold flex-shrink-0 mr-4">Evidence List</h3>
-            <div className="flex items-center gap-2 justify-center flex-1" style={{ minWidth: 0, marginLeft: '-600px' }}>
-              {/* Quick Filters */}
-              <input
-                type="text"
-                value={filterText}
-                onChange={(e) => setFilterText(e.target.value)}
-                placeholder="Search title or method"
-                className="px-2 h-8 rounded bg-white/10 border border-yellow-400/40 text-gold placeholder-yellow-300/70"
-              />
-              <select
-                value={methodFilter}
-                onChange={(e) => setMethodFilter(e.target.value)}
-                className="px-2 h-8 rounded bg-white/10 border border-yellow-400/40 text-gold"
-              >
-                <option value="">All methods</option>
-                <option value="post">Post</option>
-                <option value="email">Email</option>
-                <option value="hand">Hand</option>
-                <option value="call">Call</option>
-                <option value="todo">To-Do</option>
-              </select>
-              <select
-                value={tagFilter}
-                onChange={(e) => setTagFilter(e.target.value)}
-                className="px-2 h-8 rounded bg-white/10 border border-yellow-400/40 text-gold"
-              >
-                <option value="">All tags</option>
-                <option value="Needs review">Needs review</option>
-                <option value="Approved">Approved</option>
-                <option value="Requires action">Requires action</option>
-              </select>
+            <div className="flex items-center gap-2 ml-4">
+            {/* Quick Filters */}
+            <input
+              type="text"
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
+              placeholder="Search title or method"
+              className="px-2 h-8 rounded bg-white/10 border border-yellow-400/40 text-gold placeholder-yellow-300/70"
+            />
+            <select
+              value={methodFilter}
+              onChange={(e) => setMethodFilter(e.target.value)}
+              className="px-2 h-8 rounded bg-white/10 border border-yellow-400/40 text-gold"
+            >
+              <option value="">All methods</option>
+              <option value="post">Post</option>
+              <option value="email">Email</option>
+              <option value="hand">Hand</option>
+              <option value="call">Call</option>
+              <option value="todo">To-Do</option>
+            </select>
+            <select
+              value={tagFilter}
+              onChange={(e) => setTagFilter(e.target.value)}
+              className="px-2 h-8 rounded bg-white/10 border border-yellow-400/40 text-gold"
+            >
+              <option value="">All tags</option>
+              <option value="Needs review">Needs review</option>
+              <option value="Approved">Approved</option>
+              <option value="Requires action">Requires action</option>
+            </select>
             </div>
-            <div className="flex items-center gap-1 flex-shrink-0">
+            <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
               {/* Order: Amend, Add, then Show */}
-              {!isCollapsed && onSetAmendMode && isInteractive && (
-                <button
-                  onClick={() => onSetAmendMode(!amendMode)}
-                  className={`px-3 h-8 rounded-lg flex items-center space-x-2 bg-white/10 border border-red-400 text-red-400 hover:opacity-90`}
-                >
-                  <Settings className="w-4 h-4" />
-                  <span>{amendMode ? 'Exit Amend' : 'Amend'}</span>
-                </button>
-              )}
+            {!isCollapsed && onSetAmendMode && isInteractive && (
+              <button
+                onClick={() => onSetAmendMode(!amendMode)}
+                className={`px-3 h-8 rounded-lg flex items-center space-x-2 bg-white/10 border border-red-400 text-red-400 hover:opacity-90`}
+              >
+                <Settings className="w-4 h-4" />
+                <span>{amendMode ? 'Exit Amend' : 'Amend'}</span>
+              </button>
+            )}
               {isInteractive && (!isGuest || (isGuest && !isGuestFrozen)) && (
-                <button
+              <button
                   onClick={() => {
-                    if (!selectedClaim) {
+                  if (!selectedClaim) {
                       alert('Please select a claim before adding evidence. The Case Number is required.')
-                      return
-                    }
+                    return
+                  }
                     setShowAddModal(true)
-                  }}
-                  disabled={!selectedClaim}
+                }}
+                disabled={!selectedClaim}
                   className="bg-white/10 border border-green-400 text-green-400 px-3 h-8 rounded-lg flex items-center space-x-2 hover:opacity-90"
-                >
+              >
                   <Plus className="w-4 h-4" />
                   <span>{isGuest ? 'Submit' : 'Add'}</span>
-                </button>
-              )}
-              <button
-                onClick={() => setIsCollapsed(!isCollapsed)}
-                className="bg-white/10 border border-yellow-400 text-yellow-400 px-3 h-8 rounded-lg flex items-center space-x-2 hover:opacity-90"
-                title={isCollapsed ? 'Show evidence' : 'Hide evidence'}
-              >
-                <span>{isCollapsed ? 'Show' : 'Hide'}</span>
               </button>
-            </div>
-          </div>
-          {/* Row 2: Checkboxes centered */}
-          <div className="flex items-center justify-center gap-4 mb-3 w-full" style={{ marginLeft: '-230px' }}>
-            {/* Column visibility */}
-            <label className="text-xs flex items-center gap-1">
-              <input type="checkbox" checked={columnPrefs.showMethod} onChange={(e) => setColumnPrefs({ ...columnPrefs, showMethod: e.target.checked })} />
-              Method
-            </label>
-            <label className="text-xs flex items-center gap-1">
-              <input type="checkbox" checked={columnPrefs.showPages} onChange={(e) => setColumnPrefs({ ...columnPrefs, showPages: e.target.checked })} />
-              Pages
-            </label>
-            <label className="text-xs flex items-center gap-1">
-              <input type="checkbox" checked={columnPrefs.showExhibit} onChange={(e) => setColumnPrefs({ ...columnPrefs, showExhibit: e.target.checked })} />
-              Exhibit
-            </label>
-            {!isGuest && (
-              <label className="flex items-center gap-2 text-xs text-gold/80">
-                <input
-                  type="checkbox"
-                  checked={!!hostGuestDownloadAllowed}
-                  onChange={(e) => toggleGuestDownloads(e.target.checked)}
-                />
-                <span>Guest downloads</span>
-              </label>
             )}
-            {!isGuest && (
-              <label className="flex items-center gap-2 text-xs text-gold/80">
-                <input
-                  type="checkbox"
-                  checked={!!autoApproveTrusted}
-                  onChange={(e) => saveAutoApproveTrusted(e.target.checked)}
-                />
-                <span>Auto-approve trusted</span>
-              </label>
-            )}
-          </div>
-        </div>
-        {amendMode && !isCollapsed && (
-          <div className="px-6 py-3 bg-yellow-400/10 border-b border-yellow-400/20 text-xs text-gold flex items-center justify-between">
-            <div>
-              Amend mode enabled: drag to reorder, bulk select, delete, and toggle guest access per item.
-            </div>
             <button
-              onClick={() => onSetAmendMode?.(false)}
-              className="px-2 py-1 rounded bg-white/10 border border-red-400 text-red-400"
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="bg-white/10 border border-yellow-400 text-yellow-400 px-3 h-8 rounded-lg flex items-center space-x-2 hover:opacity-90"
+              title={isCollapsed ? 'Show evidence' : 'Hide evidence'}
             >
-              Exit
+              <span>{isCollapsed ? 'Show' : 'Hide'}</span>
             </button>
           </div>
-        )}
+        </div>
+          {/* Row 2: Checkboxes */}
+          <div className="flex items-center gap-4 mb-3 w-full" style={{ marginLeft: '0px' }}>
+            {/* Column 1: Show/Hide label */}
+            <span className="text-xs text-gold flex-shrink-0">Show/Hide</span>
+            {/* Column 2 onwards: Checkboxes */}
+            <div className="flex items-center gap-4" style={{ marginLeft: '65px' }}>
+              <label className="text-xs flex items-center gap-1">
+                <input type="checkbox" checked={columnPrefs.showMethod} onChange={(e) => setColumnPrefs({ ...columnPrefs, showMethod: e.target.checked })} />
+                Method
+              </label>
+              <label className="text-xs flex items-center gap-1">
+                <input type="checkbox" checked={columnPrefs.showPages} onChange={(e) => setColumnPrefs({ ...columnPrefs, showPages: e.target.checked })} />
+                Pages
+              </label>
+              <label className="text-xs flex items-center gap-1">
+                <input type="checkbox" checked={columnPrefs.showBookOfDeeds} onChange={(e) => setColumnPrefs({ ...columnPrefs, showBookOfDeeds: e.target.checked })} />
+                Book of deeds
+              </label>
+              <label className="text-xs flex items-center gap-1">
+                <input type="checkbox" checked={columnPrefs.showCLCRef} onChange={(e) => setColumnPrefs({ ...columnPrefs, showCLCRef: e.target.checked })} />
+                CLC reference
+              </label>
+            </div>
+          </div>
+        </div>
         {!isCollapsed && (
-          <div className={`${isStatic ? 'max-h-[75vh] overflow-y-auto overflow-x-hidden' : ''} ${!isStatic ? 'overflow-x-auto' : ''}`} style={{ scrollbarGutter: isStatic ? 'stable both-edges' as any : undefined }}>
+          <div className={`flex-1 ${isStatic ? 'max-h-[75vh] overflow-y-auto overflow-x-hidden' : 'overflow-y-auto'} ${!isStatic ? 'overflow-x-auto' : ''}`} style={{ scrollbarGutter: isStatic ? 'stable both-edges' as any : undefined, maxWidth: '794px' }}>
             <table className={`min-w-full ${isStatic ? 'table-fixed' : 'table-auto'} divide-y divide-yellow-400/20`}>
             <thead className="bg-yellow-400/10">
               <tr>
@@ -1075,28 +1615,33 @@ const EvidenceManager = ({
                     />
                   </th>
                 )}
-                <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-48' : ''}`}>
+                <th className={`pl-[10px] pr-2 py-2 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-48' : ''}`}>
                   File Name
                 </th>
                 {columnPrefs.showMethod && (
-                  <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-20' : ''}`}>
+                  <th className={`px-2 py-2 text-center text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-20' : ''}`}>
                     Method
                   </th>
                 )}
                 {columnPrefs.showPages && (
-                  <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-16' : ''}`}>
+                  <th className={`px-2 py-2 text-center text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-16' : ''}`}>
                     Pages
                   </th>
                 )}
-                <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-24' : ''}`}>
+                <th className={`px-2 py-2 text-center text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-24' : ''}`}>
                   Date Submitted
                 </th>
-                {columnPrefs.showExhibit && (
-                  <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-20' : ''}`}>
-                    Exhibit #
+                {columnPrefs.showBookOfDeeds && (
+                  <th className={`px-2 py-2 text-center text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-20' : ''}`}>
+                    Book of Deeds #
                   </th>
                 )}
-                <th className={`px-6 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-24' : ''}`}>
+                {columnPrefs.showCLCRef && (
+                  <th className={`px-2 py-2 text-center text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-20' : ''}`}>
+                    CLC Ref #
+                  </th>
+                )}
+                <th className={`px-2 py-2 text-center text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-24' : ''}`}>
                   Actions
                 </th>
               </tr>
@@ -1130,61 +1675,79 @@ const EvidenceManager = ({
                         />
                       </td>
                     )}
-                    <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-900`}>
+                    <td className={`pl-[10px] pr-2 ${isStatic ? 'py-2' : 'py-2'} whitespace-nowrap text-sm text-gray-900 text-left`}>
                       {item.title || item.file_name || item.name || '-'}
                     </td>
                     {columnPrefs.showMethod && (
-                      <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-500`}>
+                      <td className={`px-2 ${isStatic ? 'py-2' : 'py-2'} whitespace-nowrap text-sm text-gray-500 text-center`}>
                         {item.method || '-'}
                       </td>
                     )}
                     {columnPrefs.showPages && (
-                      <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-500`}>
+                      <td className={`px-2 ${isStatic ? 'py-2' : 'py-2'} whitespace-nowrap text-sm text-gray-500 text-center`}>
                         {item.number_of_pages || '-'}
                       </td>
                     )}
-                    <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-500`}>
+                    <td className={`px-2 ${isStatic ? 'py-2' : 'py-2'} whitespace-nowrap text-sm text-gray-500 text-center`}>
                       {item.date_submitted ? new Date(item.date_submitted).toLocaleDateString() : '-'}
                     </td>
-                    {columnPrefs.showExhibit && (
-                      <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-500`}>
+                    {columnPrefs.showBookOfDeeds && (
+                      <td className={`px-2 ${isStatic ? 'py-2' : 'py-2'} whitespace-nowrap text-sm text-gray-500 text-center`}>
                         {item.exhibit_number || '-'}
                       </td>
                     )}
-                    <td className={`px-6 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm font-medium`}>
-                      <div className="flex space-x-2">
+                    {columnPrefs.showCLCRef && (
+                      <td className={`px-2 ${isStatic ? 'py-2' : 'py-2'} whitespace-nowrap text-sm text-gray-500 text-center`}>
+                        {item.book_of_deeds_ref || '-'}
+                      </td>
+                    )}
+                    <td className={`px-2 ${isStatic ? 'py-2' : 'py-2'} whitespace-nowrap text-sm font-medium text-center`}>
+                      <div className="flex justify-center items-center gap-[2px]">
                         {item.file_url && (!isGuest || (guestDownloadAllowed && (linkPermissions[item.id] !== false))) && (
                           <>
                           <button
-                              onClick={() => window.open(item.file_url as string, '_blank')}
-                            className="text-blue-600 hover:text-blue-900"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                window.open(item.file_url as string, '_blank')
+                              }}
+                            className="text-blue-600 hover:text-blue-900 p-[2px]"
                             title="View file"
                           >
-                            <Eye className="w-4 h-4" />
+                            <Eye className="w-6 h-6" />
                           </button>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
                                 downloadFile(item.file_url as string, item.file_name || item.title || 'evidence')
                               }}
-                              className="text-green-600 hover:text-green-900"
+                              className="text-green-600 hover:text-green-900 p-[2px]"
                               title="Download file"
                             >
-                              <Download className="w-4 h-4" />
+                              <Download className="w-6 h-6" />
                             </button>
+                          </>
+                        )}
                             {!isGuest && amendMode && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  deleteEvidenceMutation.mutate(item.id)
-                                }}
-                                className="text-red-600 hover:text-red-900"
+                              if (window.confirm('Are you sure you want to delete this evidence item? This action cannot be undone.')) {
+                                deleteEvidenceMutation.mutate(item.id, {
+                                  onSuccess: () => {
+                                    toast({
+                                      title: "Success",
+                                      description: "Evidence deleted successfully!",
+                                    })
+                                  }
+                                })
+                              }
+                            }}
+                            disabled={deleteEvidenceMutation.isPending}
+                            className="text-red-600 hover:text-red-900 p-[2px] disabled:opacity-50"
                                 title="Delete evidence"
                               >
-                                <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-6 h-6" />
                               </button>
-                            )}
-                          </>
                         )}
                         {!isGuest && amendMode && (
                           <button
@@ -1214,13 +1777,21 @@ const EvidenceManager = ({
                             {linkPermissions[item.id] !== false ? 'Guest On' : 'Guest Off'}
                           </button>
                         )}
-                        {/* Removed duplicate delete button - now handled above */}
                       </div>
                     </td>
                     </tr>
                     {expandedEvidence === item.id && editingEvidence && (
                       <tr>
-                        <td colSpan={isGuest ? 6 : 7} className="px-6 py-4 bg-yellow-400/10 border-t">
+                        <td colSpan={
+                          (isGuest ? 0 : (amendMode ? 1 : 0)) + 
+                          1 + // File Name
+                          (columnPrefs.showMethod ? 1 : 0) + 
+                          1 + // Date Submitted
+                          (columnPrefs.showPages ? 1 : 0) + 
+                          (columnPrefs.showBookOfDeeds ? 1 : 0) + 
+                          (columnPrefs.showCLCRef ? 1 : 0) + 
+                          1 // Actions
+                        } className="px-2 py-3 bg-yellow-400/10 border-t">
                           <div className="card-enhanced p-6 border-l-4" style={{ borderLeftColor: claimColor }}>
                             <div className="flex justify-between items-center mb-4">
                               <h4 className="text-lg font-semibold">Edit Evidence</h4>
@@ -1312,8 +1883,12 @@ const EvidenceManager = ({
                                   <label className="block text-sm font-medium mb-1">Number of Pages</label>
                                   <input
                                     type="number"
-                                    value={editingEvidence.number_of_pages || ''}
-                                    onChange={(e) => setEditingEvidence({ ...editingEvidence, number_of_pages: parseInt(e.target.value) || null })}
+                                    value={editingEvidence.number_of_pages ?? ''}
+                                    onChange={(e) => {
+                                      const value = e.target.value
+                                      const numValue = value === '' ? null : (isNaN(parseInt(value)) ? null : parseInt(value))
+                                      setEditingEvidence({ ...editingEvidence, number_of_pages: numValue })
+                                    }}
                                     className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                                   />
                                 </div>
@@ -1321,7 +1896,9 @@ const EvidenceManager = ({
                                   <label className="block text-sm font-medium mb-1">Date Submitted</label>
                                   <input
                                     type="date"
-                                    value={editingEvidence.date_submitted || ''}
+                                    value={editingEvidence.date_submitted ? (typeof editingEvidence.date_submitted === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(editingEvidence.date_submitted) 
+                                      ? editingEvidence.date_submitted 
+                                      : new Date(editingEvidence.date_submitted).toISOString().split('T')[0]) : ''}
                                     onChange={(e) => setEditingEvidence({ ...editingEvidence, date_submitted: e.target.value })}
                                     className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                                   />
@@ -1379,7 +1956,7 @@ const EvidenceManager = ({
                                     setExpandedEvidence(null)
                                     setEditingEvidence(null)
                                   }}
-                                  className="bg-yellow-400/20 text-gold px-4 py-2 rounded-lg hover:bg-yellow-400/30"
+                                  className="bg-transparent text-red-600 border border-red-600 px-4 py-2 rounded-lg hover:bg-red-600/10"
                                 >
                                   Cancel
                                 </button>
@@ -1393,7 +1970,16 @@ const EvidenceManager = ({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={
+                    (!isGuest && amendMode ? 1 : 0) + 
+                    1 + // File Name
+                    (columnPrefs.showMethod ? 1 : 0) + 
+                    1 + // Date Submitted
+                    (columnPrefs.showPages ? 1 : 0) + 
+                    (columnPrefs.showBookOfDeeds ? 1 : 0) + 
+                    (columnPrefs.showCLCRef ? 1 : 0) + 
+                    1 // Actions
+                  } className="px-2 py-3 text-center text-gray-500">
                     No evidence found. Add some evidence to get started!
                   </td>
                 </tr>
@@ -1533,8 +2119,7 @@ const EvidenceManager = ({
                 }
               }
 
-              // Close modal and refresh
-              setShowAddModal(false)
+              // Refresh evidence list (don't close modal here - let AddEvidenceModal handle it)
               queryClient.invalidateQueries({ queryKey: ['evidence', selectedClaim] })
               
               toast({

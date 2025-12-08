@@ -476,10 +476,11 @@ export default function AuthComponent({
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-      <div>
+    <>
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col h-screen overflow-hidden">
+      <div className="flex-shrink-0">
         {subReady && !gating && (
-          <div className="card-smudge shadow-lg border-b border-yellow-400/20">
+          <div className="card-smudge shadow-lg border-b border-yellow-400/20 backdrop-blur-md">
             <div className="container mx-auto px-4">
               <div className="flex justify-between items-center">
                 <div className="flex space-x-8">
@@ -598,6 +599,8 @@ export default function AuthComponent({
             </div>
           </div>
         )}
+      </div>
+      <div className="flex-1 overflow-y-auto">
         <div className="container mx-auto px-4 py-2">
           {children}
         </div>
@@ -699,5 +702,6 @@ export default function AuthComponent({
         </div>
       )}
     </div>
+    </>
   )
 }

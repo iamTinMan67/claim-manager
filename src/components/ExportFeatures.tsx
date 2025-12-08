@@ -23,6 +23,23 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null)
   const [previewType, setPreviewType] = useState<'evidence' | 'todos' | 'calendar'>('evidence')
 
+  // Read column preferences from localStorage
+  const columnPrefs = (() => {
+    try {
+      const raw = localStorage.getItem('evidence_column_prefs')
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        // Migrate old showExhibit to showBookOfDeeds
+        if (parsed.showExhibit !== undefined && parsed.showBookOfDeeds === undefined) {
+          parsed.showBookOfDeeds = parsed.showExhibit
+          delete parsed.showExhibit
+        }
+        return parsed
+      }
+    } catch {}
+    return { showMethod: true, showPages: true, showBookOfDeeds: false, showCLCRef: false }
+  })()
+
   const { data: evidence } = useQuery({
     queryKey: ['evidence-export', selectedClaim],
     queryFn: async () => {
@@ -216,9 +233,12 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         const bundleHeaderX = pagesCenterX + (pagesHeaderWidth / 2) + spacing
         const bundleHeaderWidth = pdf.getTextWidth('BUNDLE')
         bundleCenterX = bundleHeaderX + (bundleHeaderWidth / 2)
-        const clcRefHeaderX = bundleCenterX + (bundleHeaderWidth / 2) + spacing
-        const clcRefHeaderWidth = pdf.getTextWidth('CLC REF#')
-        clcRefCenterX = clcRefHeaderX + (clcRefHeaderWidth / 2)
+        // Only calculate CLC REF# position if it should be shown
+        if (columnPrefs.showCLCRef) {
+          const clcRefHeaderX = bundleCenterX + (bundleHeaderWidth / 2) + spacing
+          const clcRefHeaderWidth = pdf.getTextWidth('CLC REF#')
+          clcRefCenterX = clcRefHeaderX + (clcRefHeaderWidth / 2)
+        }
       }
 
       // Add column headers for evidence export
@@ -232,13 +252,17 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         const spacing = pageWidth * spacingPercent
         const fileNameHeaderX = exhibitHeaderX + exhibitHeaderWidth + spacing
         
+        // Always show EXHIBIT # in PDF export
         pdf.text(exhibitHeaderText, exhibitHeaderX, yPosition)
-        pdf.text('FILE NAME', fileNameHeaderX, yPosition)
+        pdf.text('TITLE', fileNameHeaderX, yPosition)
         pdf.text('METHOD', methodCenterX, yPosition, { align: 'center' })
         pdf.text('DATE', dateCenterX, yPosition, { align: 'center' })
         pdf.text('PAGES', pagesCenterX, yPosition, { align: 'center' })
         pdf.text('BUNDLE', bundleCenterX, yPosition, { align: 'center' })
-        pdf.text('CLC REF#', clcRefCenterX, yPosition, { align: 'center' })
+        // Only show CLC REF# if column preference is enabled
+        if (columnPrefs.showCLCRef) {
+          pdf.text('CLC REF#', clcRefCenterX, yPosition, { align: 'center' })
+        }
         pdf.setFont('helvetica', 'normal')
         yPosition += 10
       }
@@ -292,13 +316,17 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
             const spacing = pageWidth * spacingPercent
             const fileNameHeaderX = exhibitHeaderX + exhibitHeaderWidth + spacing
             
+            // Always show EXHIBIT # in PDF export
             pdf.text(exhibitHeaderText, exhibitHeaderX, yPosition)
-            pdf.text('FILE NAME', fileNameHeaderX, yPosition)
+            pdf.text('TITLE', fileNameHeaderX, yPosition)
             pdf.text('METHOD', methodCenterX, yPosition, { align: 'center' })
             pdf.text('DATE', dateCenterX, yPosition, { align: 'center' })
             pdf.text('PAGES', pagesCenterX, yPosition, { align: 'center' })
             pdf.text('BUNDLE', bundleCenterX, yPosition, { align: 'center' })
-            pdf.text('CLC REF#', clcRefCenterX, yPosition, { align: 'center' })
+            // Only show CLC REF# if column preference is enabled
+            if (columnPrefs.showCLCRef) {
+              pdf.text('CLC REF#', clcRefCenterX, yPosition, { align: 'center' })
+            }
             pdf.setFont('helvetica', 'normal')
             yPosition += 10
           }
@@ -325,13 +353,17 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
           const spacing = pageWidth * spacingPercent
           const fileNameX = exhibitTextX + exhibitTextWidth + spacing
           
+          // Always show exhibit value in PDF export
           pdf.text(exhibitValue, exhibitTextX, yPosition)
-          pdf.text(item.file_name || '', fileNameX, yPosition)
+          pdf.text(item.title || item.file_name || '', fileNameX, yPosition)
           pdf.text(item.method || '', methodCenterX, yPosition, { align: 'center' })
           pdf.text(item.date_submitted ? new Date(item.date_submitted).toLocaleDateString() : '', dateCenterX, yPosition, { align: 'center' })
           pdf.text((item.number_of_pages || '').toString(), pagesCenterX, yPosition, { align: 'center' })
           pdf.text(bundlePositions[item.id]?.toString() || '', bundleCenterX, yPosition, { align: 'center' })
-          pdf.text(item.book_of_deeds_ref || '', clcRefCenterX, yPosition, { align: 'center' })
+          // Only show CLC REF# if column preference is enabled
+          if (columnPrefs.showCLCRef) {
+            pdf.text(item.book_of_deeds_ref || '', clcRefCenterX, yPosition, { align: 'center' })
+          }
           yPosition += 8
         } else {
           // For other exports, use existing logic but exclude unwanted fields
@@ -589,7 +621,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center sticky top-0 z-40 backdrop-blur-md py-2 -mx-4 px-4 mb-4" style={{ backgroundColor: 'rgba(30, 27, 75, 0.3)' }}>
         <div className="flex items-center space-x-2">
           <button
             onClick={navigateBack}

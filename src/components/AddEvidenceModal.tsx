@@ -28,7 +28,11 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
     const lastDate = localStorage.getItem('lastEvidenceDate');
     return lastDate || new Date().toISOString().split('T')[0];
   });
-  const [method, setMethod] = useState("Email");
+  const [method, setMethod] = useState(() => {
+    // Get the last selected method from localStorage, or default to Email
+    const lastMethod = localStorage.getItem('lastEvidenceMethod');
+    return lastMethod || "Email";
+  });
   const [urlLink, setUrlLink] = useState("");
   const PLACEHOLDER_REF = "Enter any Reference #";
   const [bookOfDeedsRef, setBookOfDeedsRef] = useState(PLACEHOLDER_REF);
@@ -80,6 +84,13 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
     }
   }, [dateSubmitted]);
 
+  // Save method to localStorage whenever it changes
+  useEffect(() => {
+    if (method) {
+      localStorage.setItem('lastEvidenceMethod', method);
+    }
+  }, [method]);
+
   // Debug: Log when method changes (removed to prevent interference)
   // useEffect(() => {
   //   console.log('Method changed to:', method);
@@ -118,10 +129,11 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
     const nextNum = currentMatch ? parseInt(currentMatch[1], 10) + 1 : 1;
     setExhibitRef(`Exhibit ${nextNum}`);
     
-    setNumberOfPages("");
+    setNumberOfPages("1"); // Reset to "1" instead of empty string
     // Keep the last selected date instead of resetting it
     // setDateSubmitted(""); // Removed this line
-    setMethod("To-Do");
+    // Keep the last selected method instead of resetting it
+    // setMethod("To-Do"); // Removed this line - method will persist from localStorage
     setBookOfDeedsRef("");
     setSelectedFile(null);
     // Reset title after clearing file (auto-population will handle it when new file is selected)
@@ -136,7 +148,7 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
     }, 100);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, closeAfterSubmit: boolean = false) => {
     e.preventDefault();
     
     const normalizedRef = bookOfDeedsRef === PLACEHOLDER_REF ? "" : bookOfDeedsRef;
@@ -155,13 +167,17 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
       onAdd
     );
     
-    // Reset form for new record instead of closing
-    resetForm();
+    if (closeAfterSubmit) {
+      onClose();
+    } else {
+      // Reset form for new record instead of closing
+      resetForm();
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl w-full" style={{ backgroundColor: 'rgba(30, 58, 138, 0.9)', borderRadius: '16px', width: 'calc(100% - 110px)', paddingTop: '8px' }}>
+      <DialogContent className="max-w-4xl w-full" style={{ backgroundColor: 'rgba(30, 58, 138, 0.9)', borderRadius: '16px', width: 'calc(51.2% - 56px)', paddingTop: '8px' }}>
         <DialogHeader>
           <DialogTitle>
             {isGuest ? 'Submit Evidence for Review' : 'Add New Evidence'}
@@ -169,7 +185,12 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
           <DialogDescription className="text-yellow-300">
             {isGuest
               ? 'Submit evidence for review by the claim owner'
-              : 'To ensure the file you are uploading has an appropriate title that will automatically imput as the file name'}
+              : (
+                <>
+                  To ensure the file you are uploading has an appropriate title<br />
+                  that will automatically imput as the file name
+                </>
+              )}
           </DialogDescription>
           <button
             onClick={onClose}
@@ -190,11 +211,11 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
             Access Frozen - You cannot add evidence at this time.
           </div>
         )}
-        <form onSubmit={handleSubmit} className="space-y-6" style={{ opacity: isGuest && isGuestFrozen ? 0.5 : 1, paddingTop: '12px', paddingRight: '24px', paddingBottom: '24px', paddingLeft: '24px' }}>
-          {/* Row 1: File Upload, Pages */}
-          <div className="grid grid-cols-5 gap-6 items-start">
-            {/* File Upload */}
-            <div className="space-y-2 col-span-2">
+        <form onSubmit={(e) => handleSubmit(e, true)} className="space-y-6" style={{ opacity: isGuest && isGuestFrozen ? 0.5 : 1, paddingTop: '12px', paddingRight: '24px', paddingBottom: '24px', paddingLeft: '24px' }}>
+          {/* Row 1: File Upload and Pages */}
+          <div className="flex gap-6 items-start">
+            {/* File Upload - fixed width to maintain size regardless of form width */}
+            <div className="space-y-2" style={{ width: '300px', paddingRight: '12px' }}>
               <FileUploadSection
                 ref={fileInputRef}
                 selectedFile={selectedFile}
@@ -204,10 +225,11 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
                 disabled={isGuest && isGuestFrozen}
               />
             </div>
-            <div className="space-y-2 col-span-1 flex flex-col justify-end items-end">
+            {/* Pages - fixed width to maintain size regardless of form width, moved left by 5px */}
+            <div className="space-y-2 flex flex-col justify-start items-start" style={{ width: '100px', marginLeft: '-5px' }}>
               <label
                 htmlFor="number-of-pages"
-                className="text-base font-medium self-end"
+                className="text-base font-medium"
               >
                 Pages
               </label>
@@ -218,15 +240,15 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
                 onChange={(e) => setNumberOfPages(e.target.value)}
                 disabled={isGuest && isGuestFrozen}
                 min="1"
-                className="h-8 text-base px-3 pt-1 pb-2 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 mt-4"
-                style={{ width: '50%' }}
+                className="h-8 text-base px-3 pt-1 pb-2 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                style={{ width: '100%' }}
               />
             </div>
           </div>
 
-          {/* Row 2: Date, Method */}
-          <div className="grid grid-cols-5 gap-6 items-start">
-            <div className="space-y-2 col-span-1">
+          {/* Row 2: Date Submitted, Method, and Add & Close button */}
+          <div className="flex gap-6 items-end">
+            <div className="space-y-2" style={{ width: '200px' }}>
               <label htmlFor="date-submitted" className="text-base font-medium">Date Submitted</label>
               <input
                 id="date-submitted"
@@ -234,19 +256,19 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
                 value={dateSubmitted}
                 onChange={(e) => setDateSubmitted(e.target.value)}
                 disabled={isGuest && isGuestFrozen}
-                className="h-8 text-base w-full px-3 pt-1 pb-2 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
-                style={{ fontSize: '16px' }}
+                className="h-8 text-base px-3 pt-1 pb-2 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                style={{ fontSize: '16px', width: '100%' }}
               />
             </div>
-            <div className="space-y-2 col-span-1 flex flex-col justify-end items-end">
-              <label htmlFor="method" className="text-base font-medium self-end">Method</label>
+            <div className="space-y-2" style={{ width: '200px' }}>
+              <label htmlFor="method" className="text-base font-medium">Method</label>
               <select
                 id="method"
                 value={method}
                 onChange={(e) => setMethod(e.target.value)}
                 disabled={isGuest && isGuestFrozen}
-                className="h-8 text-base px-3 pt-1 pb-2 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 mt-4"
-                style={{ width: '50%' }}
+                className="h-8 text-base px-3 pt-1 pb-2 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                style={{ width: '100%' }}
               >
                 <option value="Post">Post</option>
                 <option value="Email">Email</option>
@@ -255,21 +277,33 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
                 <option value="To-Do">To-Do</option>
               </select>
             </div>
+            <div className="flex items-end">
+              <Button 
+                className="bg-white/10 border border-blue-400 text-blue-400 h-8 flex items-center justify-center px-4" 
+                type="button" 
+                onClick={(e) => handleSubmit(e, true)}
+                disabled={uploading || (isGuest && isGuestFrozen)}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                {uploading ? "Uploading..." : isGuest ? "Submit for Review" : "Add & Close"}
+              </Button>
+            </div>
           </div>
 
-          {/* Row 3: Book of Deeds, Exhibit */}
-          <div className="grid grid-cols-5 gap-6 items-start">
-            <div className="space-y-2 col-span-1">
+          {/* Row 3: Book of Deeds, Exhibit #, and Add Another button */}
+          <div className="flex gap-6 items-end">
+            <div className="space-y-2" style={{ width: '200px' }}>
               <label htmlFor="book-of-deeds-ref" className="text-base font-medium">Book-Of-Deeds #</label>
               <input
                 id="book-of-deeds-ref"
                 value={bookOfDeedsRef}
                 onChange={(e) => setBookOfDeedsRef(e.target.value)}
                 disabled={false}
-                className={`h-8 text-base w-full px-3 pt-1 pb-2 border border-yellow-400/30 rounded-md bg-white/10 ${bookOfDeedsRef ? 'text-yellow-300' : 'text-yellow-300'} placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 cursor-text opacity-100 disabled:opacity-100 caret-yellow-300`}
+                className={`h-8 text-base px-3 pt-1 pb-2 border border-yellow-400/30 rounded-md bg-white/10 ${bookOfDeedsRef ? 'text-yellow-300' : 'text-yellow-300'} placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 cursor-text opacity-100 disabled:opacity-100 caret-yellow-300`}
+                style={{ width: '100%' }}
               />
             </div>
-            <div className="space-y-2 col-span-1">
+            <div className="space-y-2" style={{ width: '200px' }}>
               <label htmlFor="exhibit-ref" className="text-base font-medium">Exhibit #</label>
               <input
                 id="exhibit-ref"
@@ -277,14 +311,26 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
                 onChange={(e) => setExhibitRef(e.target.value)}
                 disabled={isGuest && isGuestFrozen}
                 placeholder="Enter exhibit reference"
-                className="h-8 text-base w-full px-3 pt-1 pb-2 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                className="h-8 text-base px-3 pt-1 pb-2 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                style={{ width: '100%' }}
               />
+            </div>
+            <div className="flex items-end">
+              <Button 
+                className="bg-white/10 border border-green-400 text-green-400 h-8 flex items-center justify-center px-4" 
+                type="button" 
+                onClick={(e) => handleSubmit(e, false)}
+                disabled={uploading || (isGuest && isGuestFrozen)}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                {uploading ? "Uploading..." : "Add Another"}
+              </Button>
             </div>
           </div>
 
-          {/* Row 4: Title and Add button */}
-          <div className="grid grid-cols-5 gap-6 items-start">
-            <div className="space-y-2 col-span-2">
+          {/* Row 4: Title */}
+          <div className="flex gap-6 items-start">
+            <div className="space-y-2" style={{ width: '400px' }}>
               <label htmlFor="title" className="text-base font-medium">Title</label>
               <input
                 id="title"
@@ -295,12 +341,6 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
                 placeholder="Evidence title"
                 className="h-8 text-base w-full px-3 pt-1 pb-2 border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
               />
-            </div>
-            <div className="col-span-1 flex items-end">
-              <Button className="bg-white/10 border border-green-400 text-green-400 h-8 flex items-center justify-center px-4" type="submit" disabled={uploading || (isGuest && isGuestFrozen)}>
-                <Plus className="w-4 h-4 mr-2" />
-                {uploading ? "Uploading..." : isGuest ? "Submit for Review" : "Add"}
-              </Button>
             </div>
           </div>
 

@@ -9,6 +9,7 @@ import { useNavigation } from '@/contexts/NavigationContext'
 import EvidenceManager from './EvidenceManager'
 import CollaborationHub from './CollaborationHub'
 import { getClaimIdFromCaseNumber } from '@/utils/claimUtils'
+import { toast } from '@/hooks/use-toast'
 
 interface ClaimsTableProps {
   onClaimSelect: (claimId: string | null) => void
@@ -26,10 +27,11 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
   const [newClaim, setNewClaim] = useState({
     case_number: '',
     title: '',
-    court: '',
+    court: 'NCCBC',
     plaintiff_name: '',
     defendant_name: '',
-    email: '',
+    contact_number: '',
+    email: 'enquiries.northampton.countycourt@justice.gov.uk',
     description: '',
     status: 'Active',
     color: '#3B82F6'
@@ -239,6 +241,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
         court: claimData.court?.trim() || null,
         plaintiff_name: claimData.plaintiff_name?.trim() || null,
         defendant_name: claimData.defendant_name?.trim() || null,
+        contact_number: claimData.contact_number?.trim() || null,
         email: claimData.email?.trim() || null,
         description: claimData.description?.trim() || null,
         status: claimData.status || 'Active',
@@ -277,10 +280,9 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
       setNewClaim({
         case_number: '',
         title: '',
-        court: '',
+        court: 'NCCBC',
         plaintiff_name: '',
         defendant_name: '',
-        email: '',
         description: '',
         status: 'Active',
         color: '#3B82F6'
@@ -297,14 +299,36 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
 
   const updateClaimMutation = useMutation({
     mutationFn: async ({ case_number, data }: { case_number: string, data: Partial<Claim> }) => {
+      // Filter out read-only fields that shouldn't be updated
+      const { claim_id, user_id, created_at, updated_at, ...updateData } = data as any
+      
+      // Convert empty strings to null
+      if (updateData.email === '') {
+        updateData.email = null
+      }
+      if (updateData.contact_number === '') {
+        updateData.contact_number = null
+      }
+      
+      console.log('Updating claim with data:', updateData)
+      
       const { data: result, error } = await supabase
         .from('claims')
-        .update(data)
+        .update(updateData)
         .eq('case_number', case_number)
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.error('Error updating claim:', error)
+        // Provide helpful error message if email column doesn't exist
+        if (error.message && error.message.includes('email') && error.code === 'PGRST204') {
+          throw new Error('The "email" column does not exist in the "claims" table. Please add it to your Supabase database schema using: ALTER TABLE claims ADD COLUMN email TEXT;')
+        }
+        throw error
+      }
+      
+      console.log('Claim updated successfully:', result)
       return result
     },
     onSuccess: (data, variables) => {
@@ -314,6 +338,18 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
       // when a private claim's status is changed to "Closed"
       queryClient.invalidateQueries({ queryKey: ['shared-claims'] })
       setEditingClaim(null)
+      toast({
+        title: "Success",
+        description: "Claim updated successfully!",
+      })
+    },
+    onError: (error: any) => {
+      console.error('Claim update error:', error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update claim. Please try again.",
+        variant: "destructive"
+      })
     }
   })
 
@@ -500,7 +536,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div className="space-y-4">
               
               {/* Row 1: Title, Court, Case Number */}
@@ -607,9 +643,22 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                 </div>
               </div>
 
-              {/* Row 3: Email spanning columns 1 and 2, Add Claim button in column 3 */}
+              {/* Row 3: Contact Number and Email */}
               <div className="grid grid-cols-3 gap-4 items-end">
-                <div className="col-span-2">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Contact Number</label>
+                  <input
+                    type="tel"
+                    value={newClaim.contact_number}
+                    onChange={(e) => {
+                      const updated = { ...newClaim, contact_number: e.target.value }
+                      setNewClaim(updated)
+                    }}
+                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                    placeholder="e.g., 01234 567890"
+                  />
+                </div>
+                <div>
                   <label className="block text-sm font-medium mb-1">Email</label>
                   <input
                     type="email"
@@ -620,6 +669,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                     }}
                     className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                     placeholder="e.g., contact@example.com"
+                    required={false}
                   />
                 </div>
                 <div className="flex justify-end">
@@ -672,7 +722,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
       ) : (
         // Main content when form is not open
         <>
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center sticky top-0 z-40 backdrop-blur-md py-2 -mx-4 px-4 mb-4" style={{ backgroundColor: 'rgba(30, 27, 75, 0.3)' }}>
             <div className="flex items-center space-x-2">
               {isGuest && (
                 <>
@@ -717,7 +767,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
               <X className="w-5 h-5" />
             </button>
           </div>
-          <form onSubmit={handleUpdate} className="space-y-4">
+          <form onSubmit={handleUpdate} className="space-y-4" noValidate>
             {/* Row 1: Title, Court, Case Number */}
             <div className="grid grid-cols-3 gap-4">
               <div>
@@ -784,9 +834,19 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                 />
               </div>
             </div>
-            {/* Row 3: Email spanning columns 1 and 2, Update Claim button in column 3 */}
+            {/* Row 3: Contact Number, Email, and Update Claim button */}
             <div className="grid grid-cols-3 gap-4 items-end">
-              <div className="col-span-2">
+              <div>
+                <label className="block text-sm font-medium mb-1">Contact Number</label>
+                <input
+                  type="tel"
+                  value={editingClaim.contact_number || ''}
+                  onChange={(e) => setEditingClaim({ ...editingClaim, contact_number: e.target.value })}
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  placeholder="e.g., 01234 567890"
+                />
+              </div>
+              <div>
                 <label className="block text-sm font-medium mb-1">Email</label>
                 <input
                   type="email"
