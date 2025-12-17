@@ -298,9 +298,9 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
   })
 
   const updateClaimMutation = useMutation({
-    mutationFn: async ({ case_number, data }: { case_number: string, data: Partial<Claim> }) => {
+    mutationFn: async ({ claim_id, data }: { claim_id: string, data: Partial<Claim> }) => {
       // Filter out read-only fields that shouldn't be updated
-      const { claim_id, user_id, created_at, updated_at, ...updateData } = data as any
+      const { user_id, created_at, updated_at, ...updateData } = data as any
       
       // Convert empty strings to null
       if (updateData.email === '') {
@@ -310,12 +310,28 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
         updateData.contact_number = null
       }
       
+      // Check if case_number is being changed and if it already exists
+      if (updateData.case_number && updateData.case_number.trim()) {
+        const { data: existingClaim, error: checkError } = await supabase
+          .from('claims')
+          .select('claim_id, case_number')
+          .eq('case_number', updateData.case_number.trim())
+          .neq('claim_id', claim_id)
+          .maybeSingle()
+        
+        if (checkError && checkError.code !== 'PGRST116') {
+          console.error('Error checking case number uniqueness:', checkError)
+        } else if (existingClaim) {
+          throw new Error('Case number already exists. Please choose a different case number.')
+        }
+      }
+      
       console.log('Updating claim with data:', updateData)
       
       const { data: result, error } = await supabase
         .from('claims')
         .update(updateData)
-        .eq('case_number', case_number)
+        .eq('claim_id', claim_id)
         .select()
         .single()
 
@@ -331,12 +347,16 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
       console.log('Claim updated successfully:', result)
       return result
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['claims'] })
       // Always invalidate shared-claims when a claim is updated
       // This ensures closed claims are immediately removed from shared view
       // when a private claim's status is changed to "Closed"
       queryClient.invalidateQueries({ queryKey: ['shared-claims'] })
+      // If the case number was changed, keep the UI focused on the updated claim
+      if (data?.case_number) {
+        onClaimSelect(data.case_number)
+      }
       setEditingClaim(null)
       toast({
         title: "Success",
@@ -404,9 +424,20 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
 
   const handleUpdate = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!editingClaim) return
+    if (!editingClaim || !editingClaim.claim_id) return
+    
+    // Validate case number
+    if (!editingClaim.case_number || !editingClaim.case_number.trim()) {
+      toast({
+        title: "Error",
+        description: "Case Number is required",
+        variant: "destructive",
+      })
+      return
+    }
+    
     updateClaimMutation.mutate({
-      case_number: editingClaim.case_number,
+      claim_id: editingClaim.claim_id,
       data: editingClaim
     })
   }
@@ -796,7 +827,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                   value={editingClaim.case_number}
                   onChange={(e) => setEditingClaim({ ...editingClaim, case_number: e.target.value })}
                   className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
-                  disabled
+                  required
                 />
               </div>
             </div>

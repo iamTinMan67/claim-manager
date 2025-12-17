@@ -253,21 +253,56 @@ export const generateClaimEvidencePDF = (
     return y + maxRowHeight; // Return new Y position for next row
   };
 
-  // Sort evidence by exhibit_number in ascending order, or by display_order if exhibit_number is missing
+  // Helper function to extract numeric exhibit number
+  const getExhibitNumber = (evidence: Evidence): number | null => {
+    const exhibitNum = (evidence as any).exhibit_number;
+    if (exhibitNum !== null && exhibitNum !== undefined) {
+      // If it's already a number, return it
+      if (typeof exhibitNum === 'number') {
+        return exhibitNum;
+      }
+      // If it's a string, try to extract the number
+      if (typeof exhibitNum === 'string') {
+        // Remove "Exhibit " prefix if present and extract number
+        const match = exhibitNum.replace(/^Exhibit\s*/i, '').match(/\d+/);
+        if (match) {
+          return parseInt(match[0], 10);
+        }
+        // Try parsing the whole string as a number
+        const parsed = parseInt(exhibitNum, 10);
+        if (!isNaN(parsed)) {
+          return parsed;
+        }
+      }
+    }
+    return null;
+  };
+
+  // Sort evidence by exhibit_number in ascending order (1, 2, 3...), then by display_order, then by created_at
   const sortedEvidence = [...evidenceList].sort((a, b) => {
-    // First try to sort by exhibit_number if both have it
-    const aExhibitNum = (a as any).exhibit_number;
-    const bExhibitNum = (b as any).exhibit_number;
+    const aExhibitNum = getExhibitNumber(a);
+    const bExhibitNum = getExhibitNumber(b);
     
-    if (aExhibitNum !== null && aExhibitNum !== undefined && bExhibitNum !== null && bExhibitNum !== undefined) {
+    // Both have exhibit numbers - sort numerically
+    if (aExhibitNum !== null && bExhibitNum !== null) {
       return aExhibitNum - bExhibitNum;
     }
-    // Fall back to display_order if exhibit_number is missing
+    
+    // Only one has exhibit number - items with exhibit numbers come first
+    if (aExhibitNum !== null && bExhibitNum === null) {
+      return -1;
+    }
+    if (aExhibitNum === null && bExhibitNum !== null) {
+      return 1;
+    }
+    
+    // Neither has exhibit number - fall back to display_order
     if (a.display_order !== null && b.display_order !== null) {
       return a.display_order - b.display_order;
     }
     if (a.display_order !== null) return -1;
     if (b.display_order !== null) return 1;
+    
     // Finally, sort by created_at
     return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
   });

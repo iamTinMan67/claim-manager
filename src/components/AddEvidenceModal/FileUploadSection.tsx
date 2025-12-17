@@ -35,7 +35,7 @@ export const FileUploadSection = forwardRef<HTMLInputElement, Props>(({ selected
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <Label htmlFor="file" className="text-base font-medium">File Upload</Label>
+      <Label htmlFor="file" className="text-base font-medium">File Upload</Label>
         {/* Hidden help text - shown on hover */}
         <div className="relative group flex-shrink-0">
           <div className="w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center cursor-help">
@@ -48,16 +48,16 @@ export const FileUploadSection = forwardRef<HTMLInputElement, Props>(({ selected
         </div>
       </div>
       <div className="relative">
-        <Input
-          ref={ref}
-          id="file"
-          type="file"
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.mp4,.mov,.avi,.mkv,.mp3,.wav,.flac,.aac,.ogg"
-          onChange={handleFileChange}
-          disabled={disabled}
+      <Input
+        ref={ref}
+        id="file"
+        type="file"
+        accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.mp4,.mov,.avi,.mkv,.mp3,.wav,.flac,.aac,.ogg"
+        onChange={handleFileChange}
+        disabled={disabled}
           className="h-8 text-base border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 file:bg-white/10 file:text-yellow-300 file:border-0 file:mr-4 file:py-1 file:px-2 file:rounded file:text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 text-center pt-1 pb-2 w-full opacity-0 absolute cursor-pointer"
           style={{ zIndex: 1 }}
-        />
+      />
         <label
           htmlFor="file"
           className="h-8 text-base border border-yellow-400/30 rounded-md bg-white/10 text-yellow-300 flex items-center justify-center cursor-pointer hover:bg-white/20 transition-colors"

@@ -282,13 +282,16 @@ export class EvidenceService {
 
   static async reorderEvidence(evidenceList: Evidence[]): Promise<void> {
     const operation = async () => {
-      // Update display_order for each evidence item and update exhibit_number
+      // Update display_order and exhibit_number for each evidence item
+      // The list is assumed to be in the desired visual order (first item = exhibit 1, etc.)
+      // display_order: descending (highest first, since list is sorted descending)
+      // exhibit_number: ascending (1, 2, 3... based on position in list)
       const updates = evidenceList.map((evidence, index) => {
         return supabase
           .from('evidence')
           .update({ 
-            display_order: index + 1,
-            exhibit_number: index + 1
+            display_order: evidenceList.length - index, // Descending: first item gets highest display_order
+            exhibit_number: index + 1 // Ascending: first item gets exhibit 1
           })
           .eq('id', evidence.id);
       });

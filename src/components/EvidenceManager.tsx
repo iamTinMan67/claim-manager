@@ -54,8 +54,8 @@ const EvidenceManager = ({
   const [filterText, setFilterText] = useState('')
   const [methodFilter, setMethodFilter] = useState<string>('')
   const [tagFilter, setTagFilter] = useState<string>('')
-  const [columnPrefs, setColumnPrefs] = useState<{ showMethod: boolean; showPages: boolean; showBookOfDeeds: boolean; showCLCRef: boolean }>(() => {
-    return { showMethod: true, showPages: true, showBookOfDeeds: false, showCLCRef: false }
+  const [columnPrefs, setColumnPrefs] = useState<{ showMethod: boolean; showPages: boolean; showBookOfDeeds: boolean; showCLCRef: boolean; showExhibitNumber: boolean }>(() => {
+    return { showMethod: true, showPages: true, showBookOfDeeds: false, showCLCRef: false, showExhibitNumber: true }
   })
   const [autoApproveTrusted, setAutoApproveTrusted] = useState<boolean>(false)
 
@@ -88,7 +88,7 @@ const EvidenceManager = ({
           } catch {}
         } else {
           // Use defaults
-          setColumnPrefs({ showMethod: true, showPages: true, showBookOfDeeds: false, showCLCRef: false })
+          setColumnPrefs({ showMethod: true, showPages: true, showBookOfDeeds: false, showCLCRef: false, showExhibitNumber: true })
         }
       }
     } catch {}
@@ -629,12 +629,20 @@ const EvidenceManager = ({
   }
 
   const updateDisplayOrderMutation = useMutation({
-    mutationFn: async (updates: { id: string; display_order: number }[]) => {
+    mutationFn: async (updates: { id: string; display_order: number; exhibit_number?: number }[]) => {
       // Update each item individually to avoid RLS issues
       for (const update of updates) {
+        const updateData: { display_order: number; exhibit_number?: number } = {
+          display_order: update.display_order
+        }
+        // Include exhibit_number if provided
+        if (update.exhibit_number !== undefined) {
+          updateData.exhibit_number = update.exhibit_number
+        }
+        
         const { error } = await supabase
         .from('evidence')
-          .update({ display_order: update.display_order })
+          .update(updateData)
           .eq('id', update.id)
       if (error) throw error
       }
@@ -1155,7 +1163,7 @@ USING (
       console.log('EvidenceManager: Delete mutation onSuccess, deletedId:', deletedId)
       
       // Immediately remove from cache to update UI instantly
-      queryClient.setQueryData(['evidence', selectedClaim], (oldData: Evidence[] | undefined) => {
+      const updatedData = queryClient.setQueryData(['evidence', selectedClaim], (oldData: Evidence[] | undefined) => {
         if (!oldData) return oldData
         const filtered = oldData.filter(item => item.id !== deletedId)
         console.log('EvidenceManager: Removed from cache, old count:', oldData.length, 'new count:', filtered.length)
@@ -1168,7 +1176,40 @@ USING (
         return oldData.filter(item => item.id !== deletedId)
       })
       
-      // Verify deletion and only invalidate (don't refetch automatically)
+      // Renumber all remaining exhibits based on their new positions
+      setTimeout(async () => {
+        try {
+          // Get the updated evidence list from cache
+          const currentEvidence = queryClient.getQueryData<Evidence[]>(['evidence', selectedClaim]) || []
+          
+          // Sort by display_order descending (to match the display order)
+          const sortedEvidence = [...currentEvidence].sort((a, b) => {
+            const ao = a.display_order ?? -Infinity
+            const bo = b.display_order ?? -Infinity
+            if (ao !== bo) return bo - ao
+            const at = new Date(a.created_at).getTime()
+            const bt = new Date(b.created_at).getTime()
+            return bt - at
+          })
+          
+          // Renumber all exhibits based on their position (1, 2, 3...)
+          const renumberUpdates = sortedEvidence.map((evidence, index) => ({
+            id: evidence.id,
+            display_order: sortedEvidence.length - index,
+            exhibit_number: index + 1
+          }))
+          
+          // Update all exhibits with new numbers
+          if (renumberUpdates.length > 0) {
+            console.log('EvidenceManager: Renumbering exhibits after deletion:', renumberUpdates)
+            await updateDisplayOrderMutation.mutateAsync(renumberUpdates)
+          }
+        } catch (e) {
+          console.error('EvidenceManager: Error renumbering exhibits after deletion:', e)
+        }
+      }, 500)
+      
+      // Verify deletion and refresh the list
       setTimeout(async () => {
         try {
           const { data: verifyData, error: verifyError } = await supabase
@@ -1196,10 +1237,10 @@ USING (
           console.error('EvidenceManager: Error during verification:', e)
         }
         
-        // Only invalidate - don't refetch automatically to prevent reappearing
-        queryClient.invalidateQueries({ queryKey: ['evidence', selectedClaim], refetchType: 'none' })
-        queryClient.invalidateQueries({ queryKey: ['evidence'], refetchType: 'none' })
-      }, 1000)
+        // Invalidate and refetch to get updated exhibit numbers
+        queryClient.invalidateQueries({ queryKey: ['evidence', selectedClaim] })
+      queryClient.invalidateQueries({ queryKey: ['evidence'] })
+      }, 1500)
       
       toast({
         title: "Success",
@@ -1247,10 +1288,13 @@ USING (
     const [draggedElement] = newOrder.splice(draggedIndex, 1)
     newOrder.splice(targetIndex, 0, draggedElement)
     
-    // Update display_order for all items (1-based indexing, ascending order)
+    // Update display_order and exhibit_number for all items
+    // display_order: descending (highest first, since list is sorted descending)
+    // exhibit_number: ascending (1, 2, 3... based on position in list)
     const updates = newOrder.map((item, index) => ({
       id: item.id,
-      display_order: newOrder.length - index
+      display_order: newOrder.length - index,
+      exhibit_number: index + 1 // Position 0 = Exhibit 1, Position 1 = Exhibit 2, etc.
     }))
     
     updateDisplayOrderMutation.mutate(updates)
@@ -1589,6 +1633,10 @@ USING (
                 <input type="checkbox" checked={columnPrefs.showCLCRef} onChange={(e) => setColumnPrefs({ ...columnPrefs, showCLCRef: e.target.checked })} />
                 CLC reference
               </label>
+              <label className="text-xs flex items-center gap-1">
+                <input type="checkbox" checked={columnPrefs.showExhibitNumber} onChange={(e) => setColumnPrefs({ ...columnPrefs, showExhibitNumber: e.target.checked })} />
+                Exhibit #
+              </label>
             </div>
           </div>
         </div>
@@ -1639,6 +1687,11 @@ USING (
                 {columnPrefs.showCLCRef && (
                   <th className={`px-2 py-2 text-center text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-20' : ''}`}>
                     CLC Ref #
+                  </th>
+                )}
+                {columnPrefs.showExhibitNumber && (
+                  <th className={`px-2 py-2 text-center text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-20' : ''}`}>
+                    Exhibit #
                   </th>
                 )}
                 <th className={`px-2 py-2 text-center text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-24' : ''}`}>
@@ -1693,12 +1746,17 @@ USING (
                     </td>
                     {columnPrefs.showBookOfDeeds && (
                       <td className={`px-2 ${isStatic ? 'py-2' : 'py-2'} whitespace-nowrap text-sm text-gray-500 text-center`}>
-                        {item.exhibit_number || '-'}
+                        {item.book_of_deeds_ref || '-'}
                       </td>
                     )}
                     {columnPrefs.showCLCRef && (
                       <td className={`px-2 ${isStatic ? 'py-2' : 'py-2'} whitespace-nowrap text-sm text-gray-500 text-center`}>
                         {item.book_of_deeds_ref || '-'}
+                      </td>
+                    )}
+                    {columnPrefs.showExhibitNumber && (
+                      <td className={`px-2 ${isStatic ? 'py-2' : 'py-2'} whitespace-nowrap text-sm text-gray-500 text-center`}>
+                        {(item as any).exhibit_number || '-'}
                       </td>
                     )}
                     <td className={`px-2 ${isStatic ? 'py-2' : 'py-2'} whitespace-nowrap text-sm font-medium text-center`}>
@@ -1790,6 +1848,7 @@ USING (
                           (columnPrefs.showPages ? 1 : 0) + 
                           (columnPrefs.showBookOfDeeds ? 1 : 0) + 
                           (columnPrefs.showCLCRef ? 1 : 0) + 
+                          (columnPrefs.showExhibitNumber ? 1 : 0) + 
                           1 // Actions
                         } className="px-2 py-3 bg-yellow-400/10 border-t">
                           <div className="card-enhanced p-6 border-l-4" style={{ borderLeftColor: claimColor }}>
@@ -1998,7 +2057,8 @@ USING (
           onClose={() => setShowAddModal(false)}
           selectedClaim={selectedClaim}
           initialExhibitRef={(function(){
-            const list = evidenceData?.filter(e => e.case_number === selectedClaim) || []
+            // evidenceData is already filtered for the selected claim
+            const list = evidenceData || []
             const nums = list.map(e => {
               const fromNum = (e as any).exhibit_number
               return fromNum !== null && fromNum !== undefined && typeof fromNum === 'number' ? fromNum : 0

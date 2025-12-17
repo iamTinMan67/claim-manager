@@ -87,7 +87,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
 
   const queryClient = useQueryClient()
   const controlsRef = useRef<HTMLDivElement | null>(null)
-  const timeFieldWidth = 180
+  const timeFieldWidth = 220  // Increased from 180 to make date fields wider
   const titleFieldWidth = timeFieldWidth
   const colorFieldWidth = Math.round(timeFieldWidth * 0.2)
 
@@ -466,7 +466,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
   }
 
   return (
-    <div className="space-y-6 min-h-[75vh]">
+    <div className="space-y-6 min-h-[75vh]" style={{ width: '890px' }}>
       {showNavigation && (
         /* Sticky Navigation Controls */
         <div className="sticky top-0 z-20 backdrop-blur-sm border-b border-yellow-400/20 p-4 -mx-4 mb-6">
@@ -543,27 +543,56 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
 
       {!showNavigation && (
         <div className="mb-6">
-          <h2 className="text-2xl font-bold mb-4">Calendar Events</h2>
-          <div className="mb-4">
-            <button
-              onClick={() => {
-                const now = new Date()
-                const nowStr = format(now, "yyyy-MM-dd'T'HH:mm")
-                setNewEvent(prev => ({
-                  ...prev,
-                  start_time: nowStr,
-                  end_time: nowStr,
-                  claim_id: selectedClaim || '',
-                  color: selectedClaim ? claimColor : prev.color,
-                  assignee_id: currentUser?.id
-                }))
-                setShowAddForm(true)
-              }}
-              className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg hover:opacity-90 flex items-center space-x-2"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add New</span>
-            </button>
+          {/* Add New button and Calendar Controls in same row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-4">
+            {/* Left side - Add New button (aligned with todo list) */}
+            <div className="flex items-center">
+              <button
+                onClick={() => {
+                  const now = new Date()
+                  const nowStr = format(now, "yyyy-MM-dd'T'HH:mm")
+                  setNewEvent(prev => ({
+                    ...prev,
+                    start_time: nowStr,
+                    end_time: nowStr,
+                    claim_id: selectedClaim || '',
+                    color: selectedClaim ? claimColor : prev.color,
+                    assignee_id: currentUser?.id
+                  }))
+                  setShowAddForm(true)
+                }}
+                className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg hover:opacity-90 flex items-center space-x-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add New</span>
+              </button>
+            </div>
+            {/* Right side - Calendar Controls (centered over calendar) */}
+            <div className="flex justify-center items-center">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
+                  className="px-3 py-1 border rounded hover:bg-yellow-400/20 text-gold"
+                >
+                  Previous
+                </button>
+                <h3 className="text-lg font-semibold">
+                  {format(currentDate, 'MMMM yyyy')}
+                </h3>
+                <button
+                  onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}
+                  className="px-3 py-1 border rounded hover:bg-yellow-400/20 text-gold"
+                >
+                  Next
+                </button>
+                <button
+                  onClick={() => setCurrentDate(new Date())}
+                  className="px-3 py-1 border rounded hover:bg-yellow-400/20 text-gold ml-4"
+                >
+                  Today
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -659,7 +688,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                   type={newEvent.all_day ? "date" : "datetime-local"}
                   value={newEvent.start_time}
                   onChange={(e) => setNewEvent({ ...newEvent, start_time: e.target.value })}
-                  className="h-[27px] border border-yellow-400/30 rounded-md px-2 bg-white/10 text-yellow-300 text-sm placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                  className="h-[24px] border border-yellow-400/30 rounded-md px-2 bg-white/10 text-yellow-300 text-sm placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
                   style={{ width: timeFieldWidth }}
                   required
                 />
@@ -670,7 +699,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                   type={newEvent.all_day ? "date" : "datetime-local"}
                   value={newEvent.end_time}
                   onChange={(e) => setNewEvent({ ...newEvent, end_time: e.target.value })}
-                  className="h-[27px] border border-yellow-400/30 rounded-md px-2 bg-white/10 text-yellow-300 text-sm placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
+                  className="h-[24px] border border-yellow-400/30 rounded-md px-2 bg-white/10 text-yellow-300 text-sm placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
                   style={{ width: timeFieldWidth }}
                 />
             </div>
@@ -733,10 +762,10 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
 
       {/* Daily View with To-Do List and Calendar - Hide when form is open */}
       {!showAddForm && (
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* To-Do List Section */}
         <div className="lg:col-span-1">
-          <div className="card-enhanced p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor }}>
+          <div className="card-enhanced p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor, width: '433px' }}>
             <h3 className="text-lg font-semibold mb-4" style={{ color: claimColor }}>
               Today's Tasks & Upcoming
             </h3>
@@ -752,109 +781,105 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                   return (
                     <div
                       key={todo.id}
-                      className={`p-3 rounded border-l-2 ${
-                        isOverdue ? 'card-smudge border-red-400' : 
-                        isToday ? 'card-smudge border-yellow-400' : 
-                        'card-smudge border-blue-400'
+                      className={`p-4 rounded-lg shadow border-l-4 w-full ${
+                        todo.completed ? 'opacity-75' : ''
+                      } ${
+                        isOverdue ? 'border-red-400' : 
+                        isToday ? 'border-yellow-400' : 
+                        'border-blue-400'
                       }`}
+                      style={{ borderLeftColor: claimColor }}
                     >
-                      <div className="flex justify-between items-start">
-                        <div className="flex items-start space-x-2 flex-1">
-                          <button
-                            onClick={() => toggleTodoMutation.mutate({ 
-                              id: todo.id, 
-                              completed: !todo.completed 
-                            })}
-                            className={`mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center ${
-                              todo.completed 
-                                ? 'text-white' 
-                                : 'border-gray-300'
-                            }`}
-                            style={todo.completed ? { 
-                              backgroundColor: claimColor, 
-                              borderColor: claimColor 
-                            } : { 
-                              borderColor: `${claimColor}50` 
-                            }}
-                          >
-                            {todo.completed && <Check className="w-2 h-2" />}
-                          </button>
-                          <div className="flex-1">
-                            <h4 className="font-medium text-sm">{todo.title}</h4>
-                            <div className="flex flex-col space-y-2 mt-1 text-xs text-gray-600">
-                              
-                              {/* Row 1: Due date and status */}
-                              <div className="flex items-center space-x-2">
-                                <Clock className="w-3 h-3" />
-                                <span>{format(dueDate, 'MMM d, h:mm a')}</span>
-                                {isOverdue && <span className="text-red-600 font-medium">OVERDUE</span>}
-                                {isToday && <span className="text-yellow-600 font-medium">DUE TODAY</span>}
-                                {todo.alarm_enabled && (
-                                  <AlertCircle className="w-3 h-3" style={{ color: claimColor }} />
-                                )}
-                              </div>
-                              
-                              {/* Row 2: User assignments - more space */}
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-8">
-                                  <div className="flex items-center space-x-2">
-                                    <User className="w-3 h-3" />
-                                    <span>By: {todo.creator_profile?.nickname || todo.creator_profile?.email || todo.user_id?.slice(0, 8)}...</span>
-                                  </div>
-                                  {todo.responsible_user_id && (
-                                    <div className="flex items-center space-x-2">
-                                      <User className="w-3 h-3 text-blue-400" />
-                                      <span className="text-blue-600">Assigned to: {todo.assignee_profile?.nickname || todo.assignee_profile?.email || todo.responsible_user_id?.slice(0, 8)}...</span>
-                                    </div>
-                                  )}
-                                </div>
-                                {/* Alarm indicator - last position (right side) */}
-                                {todo.alarm_enabled && (
-                                  <div className="flex items-center space-x-1">
-                                    <AlertCircle className="w-3 h-3" style={{ color: claimColor }} />
-                                    <span className="text-gray-700">Alarm set</span>
-                                  </div>
-                                )}
-                              </div>
-                              
-                              {/* Row 3: Edit button and Priority - below user info */}
-                              <div className="flex items-center justify-end space-x-2">
-                                <button
-                                  onClick={() => {
-                                    // Edit functionality - placeholder for now
-                                    console.log('Edit todo:', todo.id)
-                                  }}
-                                  className="text-blue-600 hover:text-blue-800 p-1 flex items-center space-x-1"
-                                  title="Edit todo"
-                                >
-                                  <Edit className="w-3 h-3" />
-                                  <span className="text-xs">Edit</span>
-                                </button>
-                                <span className={`px-2 py-1 rounded-full text-xs ${getPriorityColor(todo.priority)}`}>
-                                  {todo.priority}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
+                      {/* Row 1: Title (col 1) and Edit (col 2) */}
+                      <div className="grid grid-cols-2 gap-4 mb-3">
+                        <div className="flex items-center">
+                          <h4 className={`font-medium text-sm flex-1 ${todo.completed ? 'line-through text-gray-500' : ''}`}>
+                            {todo.title}
+                          </h4>
                         </div>
-                        <div className="flex flex-col items-end space-y-1">
+                        <div className="flex items-center justify-end">
                           <button
                             onClick={() => {
                               // Edit functionality - placeholder for now
                               console.log('Edit todo:', todo.id)
                             }}
-                            className="text-blue-600 hover:text-blue-800 p-1 flex items-center space-x-1 mr-8"
+                            className="text-blue-600 hover:text-blue-800 p-1 flex items-center space-x-1"
                             title="Edit todo"
                           >
-                            <Edit className="w-3 h-3" />
-                            <span className="text-xs">Edit</span>
+                            <Edit className="w-4 h-4" />
+                            <span className="text-sm">Edit</span>
                           </button>
+                        </div>
+                      </div>
+
+                      {/* Row 2: Due date (col 1) and Delete (col 2) */}
+                      <div className="grid grid-cols-2 gap-4 mb-3">
+                        <div className="flex items-center space-x-1">
+                          <Clock className="w-4 h-4 text-gray-400" />
+                          <span className="text-gray-700 text-sm">{format(dueDate, 'MMM d, h:mm a')}</span>
+                          {isOverdue && <span className="text-red-600 font-medium text-xs ml-2">OVERDUE</span>}
+                          {isToday && !isOverdue && <span className="text-yellow-600 font-medium text-xs ml-2">DUE TODAY</span>}
+                        </div>
+                        <div className="flex items-center justify-end space-x-2">
                           <button
                             onClick={() => deleteTodoMutation.mutate(todo.id)}
-                            className="text-red-500 hover:text-red-700 p-1"
+                            className="text-red-600 hover:text-red-800 p-1 flex items-center space-x-1"
+                            title="Delete todo"
                           >
-                            <Trash2 className="w-3 h-3" />
+                            <Trash2 className="w-4 h-4" />
+                            <span className="text-sm">Delete</span>
                           </button>
+                        </div>
+                      </div>
+
+                      {/* Row 3: Description (spanning both columns) */}
+                      {todo.description && (
+                        <div className="mb-3">
+                          <p className={`text-sm ${todo.completed ? 'text-gray-400' : 'text-gray-600'}`}>
+                            {todo.description}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Row 4: Assigned to (col 1) and Assigned by (col 2) */}
+                      <div className="grid grid-cols-2 gap-4 text-sm mb-3">
+                        <div className="flex items-center space-x-2">
+                          {todo.responsible_user_id && (
+                            <>
+                              <User className="w-4 h-4 text-blue-400" />
+                              <span className="text-blue-700">Assigned to: {todo.assignee_profile?.nickname || todo.assignee_profile?.email || todo.responsible_user_id?.slice(0, 8)}...</span>
+                            </>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-2 justify-end">
+                          <User className="w-4 h-4 text-gray-400" />
+                          <span className="text-gray-700">Assigned by: {todo.creator_profile?.nickname || todo.creator_profile?.email || todo.user_id?.slice(0, 8)}...</span>
+                          {todo.alarm_enabled && (
+                            <div className="flex items-center space-x-1 ml-2">
+                              <AlertCircle className="w-4 h-4" style={{ color: claimColor }} />
+                              <span className="text-gray-700 text-xs">Alarm</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Row 6: Completed checkbox (col 1) and Priority badge (col 2) */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="flex items-center">
+                          <label className="flex items-center space-x-2 cursor-pointer" title={todo.completed ? 'Mark as not completed' : 'Mark as completed'}>
+                            <input
+                              type="checkbox"
+                              checked={!!todo.completed}
+                              onChange={() => toggleTodoMutation.mutate({ id: todo.id, completed: !todo.completed })}
+                              className="w-4 h-4 rounded border-gray-300"
+                            />
+                            <span className="text-xs text-gray-600">Complete</span>
+                          </label>
+                        </div>
+                        <div className="flex items-center justify-end">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(todo.priority)}`}>
+                            {todo.priority}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -870,42 +895,16 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         </div>
 
         {/* Calendar Section */}
-        <div className="lg:col-span-2">
-          <div className="card-enhanced rounded-lg shadow">
-            {/* Calendar Navigation Controls - Centered above calendar */}
-            {!showNavigation && (
-              <div className="flex justify-center items-center space-x-4 mb-4 pt-4">
-                <button
-                  onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
-                  className="px-3 py-1 border rounded hover:bg-yellow-400/20 text-gold"
-                >
-                  Previous
-                </button>
-                <h3 className="text-lg font-semibold">
-                  {format(currentDate, 'MMMM yyyy')}
-                </h3>
-                <button
-                  onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}
-                  className="px-3 py-1 border rounded hover:bg-yellow-400/20 text-gold"
-                >
-                  Next
-                </button>
-                <button
-                  onClick={() => setCurrentDate(new Date())}
-                  className="px-3 py-1 border rounded hover:bg-yellow-400/20 text-gold ml-4"
-                >
-                  Today
-                </button>
-              </div>
-            )}
-            <div className="grid grid-cols-7 gap-px bg-yellow-400/20">
+        <div className="lg:col-span-1">
+          <div className="card-enhanced rounded-lg shadow" style={{ width: '605px' }}>
+            <div className="grid grid-cols-7 gap-px bg-yellow-400/20" style={{ height: '404px' }}>
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                 <div key={day} className="bg-yellow-400/30 p-2 text-center text-sm font-medium text-gold">
                   {day}
                 </div>
               ))}
             </div>
-            <div className="grid grid-cols-7 gap-px bg-yellow-400/20">
+            <div className="grid grid-cols-7 gap-px bg-yellow-400/20" style={{ width: '450px' }}>
               {monthDays.map(date => {
                 const dayEvents = getEventsForDay(date)
                 return (
@@ -935,15 +934,26 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                             : showGuestContent
                               ? '#10B981'
                               : claimColor
+                        const startTime = new Date(event.start_time)
+                        const endTime = new Date(event.end_time)
                         return (
                         <div
                           key={event.id}
-                          className="text-xs p-1 rounded truncate text-white relative group"
-                          style={{ backgroundColor: bg }}
+                          className="text-xs p-2 rounded border-l-2 shadow-sm text-white relative group mb-1"
+                          style={{ backgroundColor: bg, borderLeftColor: bg }}
                         >
-                          <div>{event.title}</div>
-                          <div className="text-xs opacity-75">
-                            by {event.user_id?.slice(0, 8)}...
+                          <div className="font-medium mb-1">{event.title}</div>
+                          {event.description && (
+                            <div className="text-xs opacity-90 mb-1 line-clamp-1">{event.description}</div>
+                          )}
+                          <div className="flex items-center justify-between text-xs opacity-75">
+                            <div>
+                              {event.all_day 
+                                ? 'All day' 
+                                : `${format(startTime, 'HH:mm')}${!event.all_day && event.end_time ? ` - ${format(endTime, 'HH:mm')}` : ''}`
+                              }
+                            </div>
+                            <div>by {event.user_id?.slice(0, 8)}...</div>
                           </div>
                           <button
                             onClick={(e) => {
@@ -960,9 +970,9 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                                 deleteEventMutation.mutate(event.id)
                               }
                             }}
-                            className={`absolute -top-1 -right-1 w-4 h-4 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center ${
+                            className={`absolute -top-1 -right-1 w-5 h-5 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center ${
                              (isGuest && (isGuestFrozen || event.user_id !== currentUser?.id)) ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600'
-                            } text-white`}
+                            } text-white transition-opacity`}
                            disabled={isGuest && (isGuestFrozen || event.user_id !== currentUser?.id)}
                            title={
                              isGuest && isGuestFrozen
@@ -972,7 +982,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                                  : 'Delete event'
                            }
                           >
-                            <X className="w-2 h-2" />
+                            <X className="w-3 h-3" />
                           </button>
                         </div>
                       )})}

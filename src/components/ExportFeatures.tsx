@@ -144,10 +144,67 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
     }
   })
 
+  // Helper function to extract numeric exhibit number
+  const getExhibitNumber = (item: any): number | null => {
+    const exhibitNum = item.exhibit_number;
+    if (exhibitNum !== null && exhibitNum !== undefined) {
+      // If it's already a number, return it
+      if (typeof exhibitNum === 'number') {
+        return exhibitNum;
+      }
+      // If it's a string, try to extract the number
+      if (typeof exhibitNum === 'string') {
+        // Remove "Exhibit " prefix if present and extract number
+        const match = exhibitNum.replace(/^Exhibit\s*/i, '').match(/\d+/);
+        if (match) {
+          return parseInt(match[0], 10);
+        }
+        // Try parsing the whole string as a number
+        const parsed = parseInt(exhibitNum, 10);
+        if (!isNaN(parsed)) {
+          return parsed;
+        }
+      }
+    }
+    return null;
+  };
+
   const exportToCSV = (data: any[], filename: string, headers: string[]) => {
+    // Sort evidence by exhibit number if it's an evidence export
+    let sortedData = data;
+    if (filename === 'evidence') {
+      sortedData = [...data].sort((a, b) => {
+        const aExhibitNum = getExhibitNumber(a);
+        const bExhibitNum = getExhibitNumber(b);
+        
+        // Both have exhibit numbers - sort numerically
+        if (aExhibitNum !== null && bExhibitNum !== null) {
+          return aExhibitNum - bExhibitNum;
+        }
+        
+        // Only one has exhibit number - items with exhibit numbers come first
+        if (aExhibitNum !== null && bExhibitNum === null) {
+          return -1;
+        }
+        if (aExhibitNum === null && bExhibitNum !== null) {
+          return 1;
+        }
+        
+        // Neither has exhibit number - fall back to display_order
+        if (a.display_order !== null && b.display_order !== null) {
+          return a.display_order - b.display_order;
+        }
+        if (a.display_order !== null) return -1;
+        if (b.display_order !== null) return 1;
+        
+        // Finally, sort by created_at
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      });
+    }
+
     const csvContent = [
       headers.join(','),
-      ...data.map(row => 
+      ...sortedData.map(row => 
         headers.map(header => {
           const value = row[header.toLowerCase().replace(' ', '_')] || ''
           return `"${String(value).replace(/"/g, '""')}"`
@@ -235,9 +292,9 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         bundleCenterX = bundleHeaderX + (bundleHeaderWidth / 2)
         // Only calculate CLC REF# position if it should be shown
         if (columnPrefs.showCLCRef) {
-          const clcRefHeaderX = bundleCenterX + (bundleHeaderWidth / 2) + spacing
-          const clcRefHeaderWidth = pdf.getTextWidth('CLC REF#')
-          clcRefCenterX = clcRefHeaderX + (clcRefHeaderWidth / 2)
+        const clcRefHeaderX = bundleCenterX + (bundleHeaderWidth / 2) + spacing
+        const clcRefHeaderWidth = pdf.getTextWidth('CLC REF#')
+        clcRefCenterX = clcRefHeaderX + (clcRefHeaderWidth / 2)
         }
       }
 
@@ -261,32 +318,74 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         pdf.text('BUNDLE', bundleCenterX, yPosition, { align: 'center' })
         // Only show CLC REF# if column preference is enabled
         if (columnPrefs.showCLCRef) {
-          pdf.text('CLC REF#', clcRefCenterX, yPosition, { align: 'center' })
+        pdf.text('CLC REF#', clcRefCenterX, yPosition, { align: 'center' })
         }
         pdf.setFont('helvetica', 'normal')
         yPosition += 10
       }
 
 
+      // Helper function to extract numeric exhibit number
+      const getExhibitNumber = (item: any): number | null => {
+        const exhibitNum = item.exhibit_number;
+        if (exhibitNum !== null && exhibitNum !== undefined) {
+          // If it's already a number, return it
+          if (typeof exhibitNum === 'number') {
+            return exhibitNum;
+          }
+          // If it's a string, try to extract the number
+          if (typeof exhibitNum === 'string') {
+            // Remove "Exhibit " prefix if present and extract number
+            const match = exhibitNum.replace(/^Exhibit\s*/i, '').match(/\d+/);
+            if (match) {
+              return parseInt(match[0], 10);
+            }
+            // Try parsing the whole string as a number
+            const parsed = parseInt(exhibitNum, 10);
+            if (!isNaN(parsed)) {
+              return parsed;
+            }
+          }
+        }
+        return null;
+      };
+
+      // Sort data by exhibit number for evidence exports
+      let sortedData = data;
+      if (type === 'evidence') {
+        sortedData = [...data].sort((a, b) => {
+          const aExhibitNum = getExhibitNumber(a);
+          const bExhibitNum = getExhibitNumber(b);
+          
+          // Both have exhibit numbers - sort numerically
+          if (aExhibitNum !== null && bExhibitNum !== null) {
+            return aExhibitNum - bExhibitNum;
+          }
+          
+          // Only one has exhibit number - items with exhibit numbers come first
+          if (aExhibitNum !== null && bExhibitNum === null) {
+            return -1;
+          }
+          if (aExhibitNum === null && bExhibitNum !== null) {
+            return 1;
+          }
+          
+          // Neither has exhibit number - fall back to display_order
+          if (a.display_order !== null && b.display_order !== null) {
+            return a.display_order - b.display_order;
+          }
+          if (a.display_order !== null) return -1;
+          if (b.display_order !== null) return 1;
+          
+          // Finally, sort by created_at
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        });
+      }
+
       // Calculate bundle positions for evidence
       let bundlePositions: { [key: string]: number } = {}
-      if (type === 'evidence' && data) {
+      if (type === 'evidence' && sortedData) {
         let currentPos = 1
-        // Sort data by display_order first, then by created_at to ensure correct sequence
-        const sortedData = [...data].sort((a, b) => {
-          // First sort by display_order (nulls last)
-          if (a.display_order !== null && b.display_order !== null) {
-            return a.display_order - b.display_order
-          }
-          if (a.display_order !== null && b.display_order === null) {
-            return -1
-          }
-          if (a.display_order === null && b.display_order !== null) {
-            return 1
-          }
-          // If both are null, sort by created_at
-          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-        })
         
         sortedData.forEach((item) => {
           bundlePositions[item.id] = currentPos
@@ -297,7 +396,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
 
       // Data
       pdf.setFontSize(10)
-      data.forEach((item, index) => {
+      sortedData.forEach((item, index) => {
         if (yPosition > pageHeight - 30) {
           pdf.addPage()
           yPosition = 20
@@ -325,7 +424,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
             pdf.text('BUNDLE', bundleCenterX, yPosition, { align: 'center' })
             // Only show CLC REF# if column preference is enabled
             if (columnPrefs.showCLCRef) {
-              pdf.text('CLC REF#', clcRefCenterX, yPosition, { align: 'center' })
+            pdf.text('CLC REF#', clcRefCenterX, yPosition, { align: 'center' })
             }
             pdf.setFont('helvetica', 'normal')
             yPosition += 10
@@ -362,7 +461,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
           pdf.text(bundlePositions[item.id]?.toString() || '', bundleCenterX, yPosition, { align: 'center' })
           // Only show CLC REF# if column preference is enabled
           if (columnPrefs.showCLCRef) {
-            pdf.text(item.book_of_deeds_ref || '', clcRefCenterX, yPosition, { align: 'center' })
+          pdf.text(item.book_of_deeds_ref || '', clcRefCenterX, yPosition, { align: 'center' })
           }
           yPosition += 8
         } else {

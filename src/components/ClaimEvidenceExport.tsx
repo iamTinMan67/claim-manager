@@ -64,11 +64,65 @@ export const ClaimEvidenceExport = ({ claim, evidenceList, allClaims, allEvidenc
     handleExportClaimEvidence(config);
   };
 
+  // Helper function to extract numeric exhibit number
+  const getExhibitNumber = (evidence: Evidence): number | null => {
+    const exhibitNum = (evidence as any).exhibit_number;
+    if (exhibitNum !== null && exhibitNum !== undefined) {
+      // If it's already a number, return it
+      if (typeof exhibitNum === 'number') {
+        return exhibitNum;
+      }
+      // If it's a string, try to extract the number
+      if (typeof exhibitNum === 'string') {
+        // Remove "Exhibit " prefix if present and extract number
+        const match = exhibitNum.replace(/^Exhibit\s*/i, '').match(/\d+/);
+        if (match) {
+          return parseInt(match[0], 10);
+        }
+        // Try parsing the whole string as a number
+        const parsed = parseInt(exhibitNum, 10);
+        if (!isNaN(parsed)) {
+          return parsed;
+        }
+      }
+    }
+    return null;
+  };
+
   const exportEvidenceCSV = () => {
+    // Sort evidence by exhibit number before exporting
+    const sortedEvidence = [...evidenceList].sort((a, b) => {
+      const aExhibitNum = getExhibitNumber(a);
+      const bExhibitNum = getExhibitNumber(b);
+      
+      // Both have exhibit numbers - sort numerically
+      if (aExhibitNum !== null && bExhibitNum !== null) {
+        return aExhibitNum - bExhibitNum;
+      }
+      
+      // Only one has exhibit number - items with exhibit numbers come first
+      if (aExhibitNum !== null && bExhibitNum === null) {
+        return -1;
+      }
+      if (aExhibitNum === null && bExhibitNum !== null) {
+        return 1;
+      }
+      
+      // Neither has exhibit number - fall back to display_order
+      if (a.display_order !== null && b.display_order !== null) {
+        return a.display_order - b.display_order;
+      }
+      if (a.display_order !== null) return -1;
+      if (b.display_order !== null) return 1;
+      
+      // Finally, sort by created_at
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    });
+
     const headers = ['Exhibit Number', 'File Name', 'Created Date', 'Claims Count'];
     const csvContent = [
       headers.join(','),
-      ...evidenceList.map(evidence => {
+      ...sortedEvidence.map(evidence => {
         const exhibitNum = (evidence as any).exhibit_number;
         const exhibitValue = exhibitNum !== null && exhibitNum !== undefined ? exhibitNum : '';
         return [

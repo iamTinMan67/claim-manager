@@ -7,6 +7,7 @@ import { FileUploadSection } from "./AddEvidenceModal/FileUploadSection";
 import { useEvidenceUpload } from "@/hooks/useEvidenceUpload";
 import { X, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getClaimIdFromCaseNumber } from "@/utils/claimUtils";
 
 interface Props {
   onClose: () => void;
@@ -54,19 +55,62 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
         return
       }
       try {
-        let query = supabase
-          .from('evidence')
-          .select('exhibit_number')
-          .limit(2000);
-        // No need to filter by case_number since evidence table doesn't have this column
-        const { data, error } = await query;
-        if (error) throw error;
         let maxNum = 0;
-        (data || []).forEach((row: any) => {
-          if (row.exhibit_number && Number.isFinite(row.exhibit_number)) {
-            maxNum = Math.max(maxNum, Number(row.exhibit_number));
+        
+        // If a claim is selected, get evidence for that claim only
+        if (selectedClaim) {
+          // Determine claim_id from either case_number or direct UUID
+          const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+          let claimId: string | null = null
+          if (uuidPattern.test(selectedClaim)) {
+            claimId = selectedClaim
+          } else {
+            claimId = await getClaimIdFromCaseNumber(selectedClaim)
           }
-        });
+          
+          if (claimId) {
+            // Fetch linked evidence ids via evidence_claims for the selected claim
+            const { data: linkRows, error: linkErr } = await supabase
+              .from('evidence_claims')
+              .select('evidence_id')
+              .eq('claim_id', claimId)
+            
+            if (!linkErr && linkRows) {
+              const linkedIds = linkRows.map(r => r.evidence_id).filter(Boolean)
+              
+              if (linkedIds.length > 0) {
+                // Fetch exhibit numbers for linked evidence
+                const { data, error } = await supabase
+                  .from('evidence')
+                  .select('exhibit_number')
+                  .in('id', linkedIds)
+                
+                if (!error && data) {
+                  data.forEach((row: any) => {
+                    if (row.exhibit_number && Number.isFinite(row.exhibit_number)) {
+                      maxNum = Math.max(maxNum, Number(row.exhibit_number));
+                    }
+                  });
+                }
+              }
+            }
+          }
+        } else {
+          // If no claim selected, query all evidence (fallback)
+          const { data, error } = await supabase
+            .from('evidence')
+            .select('exhibit_number')
+            .limit(2000);
+          
+          if (!error && data) {
+            data.forEach((row: any) => {
+              if (row.exhibit_number && Number.isFinite(row.exhibit_number)) {
+                maxNum = Math.max(maxNum, Number(row.exhibit_number));
+              }
+            });
+          }
+        }
+        
         setExhibitRef(`Exhibit ${maxNum + 1}`);
       } catch (_) {
         setExhibitRef("Exhibit 1");
@@ -123,11 +167,62 @@ export const AddEvidenceModal = ({ onClose, onAdd, isGuest = false, isGuestFroze
     }
   }, [selectedFile]);
 
-  const resetForm = () => {
-    // Generate next exhibit reference by incrementing current number
-    const currentMatch = exhibitRef.match(/(\d+)/);
-    const nextNum = currentMatch ? parseInt(currentMatch[1], 10) + 1 : 1;
-    setExhibitRef(`Exhibit ${nextNum}`);
+  const resetForm = async () => {
+    // Recalculate next exhibit number based on current claim's evidence
+    try {
+      let maxNum = 0;
+      
+      // If a claim is selected, get evidence for that claim only
+      if (selectedClaim) {
+        // Determine claim_id from either case_number or direct UUID
+        const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+        let claimId: string | null = null
+        if (uuidPattern.test(selectedClaim)) {
+          claimId = selectedClaim
+        } else {
+          claimId = await getClaimIdFromCaseNumber(selectedClaim)
+        }
+        
+        if (claimId) {
+          // Fetch linked evidence ids via evidence_claims for the selected claim
+          const { data: linkRows, error: linkErr } = await supabase
+            .from('evidence_claims')
+            .select('evidence_id')
+            .eq('claim_id', claimId)
+          
+          if (!linkErr && linkRows) {
+            const linkedIds = linkRows.map(r => r.evidence_id).filter(Boolean)
+            
+            if (linkedIds.length > 0) {
+              // Fetch exhibit numbers for linked evidence
+              const { data, error } = await supabase
+                .from('evidence')
+                .select('exhibit_number')
+                .in('id', linkedIds)
+              
+              if (!error && data) {
+                data.forEach((row: any) => {
+                  if (row.exhibit_number && Number.isFinite(row.exhibit_number)) {
+                    maxNum = Math.max(maxNum, Number(row.exhibit_number));
+                  }
+                });
+              }
+            }
+          }
+        }
+      } else {
+        // If no claim selected, increment current number
+        const currentMatch = exhibitRef.match(/(\d+)/);
+        maxNum = currentMatch ? parseInt(currentMatch[1], 10) : 0;
+      }
+      
+      setExhibitRef(`Exhibit ${maxNum + 1}`);
+    } catch (_) {
+      // Fallback: increment current number
+      const currentMatch = exhibitRef.match(/(\d+)/);
+      const nextNum = currentMatch ? parseInt(currentMatch[1], 10) + 1 : 1;
+      setExhibitRef(`Exhibit ${nextNum}`);
+    }
     
     setNumberOfPages("1"); // Reset to "1" instead of empty string
     // Keep the last selected date instead of resetting it

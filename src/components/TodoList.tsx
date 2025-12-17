@@ -493,7 +493,6 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
 
       {!showNavigation && (
         <div className="mb-4">
-          <h2 className="text-2xl font-bold">To-Do Lists</h2>
           <div className="mt-2">
             <button
               type="button"
@@ -716,7 +715,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       ) : !editingTodo ? (
         // Main content when form is not open and not editing
         <>
-          <div className="space-y-4 w-[44%]">
+          <div className="space-y-4 w-full max-w-4xl">
         {todos?.reduce((groups: { [key: string]: TodoWithUser[] }, todo) => {
           const claimKey = todo.case_number || 'No Claim'
           if (!groups[claimKey]) {
@@ -753,40 +752,19 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
               {claimTodos.map((todo) => (
                 <div
                   key={todo.id}
-                  className={`card-enhanced px-4 pt-4 pb-2 rounded-lg shadow border-l-4 ${
+                  className={`card-enhanced px-4 pt-4 pb-4 rounded-lg shadow border-l-4 ${
                     todo.completed ? 'opacity-75' : ''
                   }`}
                   style={{ borderLeftColor: claimColor }}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start space-x-3 flex-1">
-                      <label className="flex items-center space-x-2 mt-1 cursor-pointer" title={todo.completed ? 'Mark as not completed' : 'Mark as completed'}>
-                        <input
-                          type="checkbox"
-                          checked={!!todo.completed}
-                          onChange={() => toggleTodoMutation.mutate({ id: todo.id, completed: !todo.completed })}
-                          className="w-4 h-4 rounded border-gray-300"
-                        />
-                        <span className="text-xs text-gray-600">Complete</span>
-                      </label>
-                      <div className="flex-1">
-                        <div className="flex items-center">
-                          <h3 className={`font-medium ${todo.completed ? 'line-through text-gray-500' : ''}`}>
-                            {todo.title}
-                          </h3>
-                        </div>
-                        <div className="flex items-center space-x-1 mt-1">
-                          <Clock className="w-4 h-4 text-gray-400" />
-                          <span className="text-gray-700 text-sm">{format(new Date(todo.due_date), 'MMM d, h:mm a')}</span>
-                        </div>
-                        {todo.description && (
-                          <p className={`text-sm mt-1 ${todo.completed ? 'text-gray-400' : 'text-gray-600'}`}>
-                            {todo.description}
-                          </p>
-                        )}
-                      </div>
+                  {/* Row 1: Title (col 1) and Edit (col 2) */}
+                  <div className="grid grid-cols-2 gap-4 mb-3">
+                    <div className="flex items-center">
+                      <h3 className={`font-medium flex-1 ${todo.completed ? 'line-through text-gray-500' : ''}`}>
+                        {todo.title}
+                      </h3>
                     </div>
-                    <div className="flex flex-col items-end space-y-2">
+                    <div className="flex items-center justify-end">
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
@@ -805,6 +783,16 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                         <Edit className="w-4 h-4" />
                         <span className="text-sm">Edit</span>
                       </button>
+                    </div>
+                  </div>
+
+                  {/* Row 2: Due date (col 1) and Delete (col 2) */}
+                  <div className="grid grid-cols-2 gap-4 mb-3">
+                    <div className="flex items-center space-x-1">
+                      <Clock className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-700 text-sm">{format(new Date(todo.due_date), 'MMM d, h:mm a')}</span>
+                    </div>
+                    <div className="flex items-center justify-end">
                       <button
                         onClick={() => deleteTodoMutation.mutate(todo.id)}
                         className="text-red-600 hover:text-red-800 p-1 flex items-center space-x-1"
@@ -820,34 +808,58 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                         <Trash2 className="w-4 h-4" />
                         <span className="text-sm">Delete</span>
                       </button>
-                      {/* Priority value - below edit icon */}
+                    </div>
+                  </div>
+
+                  {/* Row 3: Description (spanning both columns) */}
+                  {todo.description && (
+                    <div className="mb-3">
+                      <p className={`text-sm ${todo.completed ? 'text-gray-400' : 'text-gray-600'}`}>
+                        {todo.description}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Row 4: Assigned to (col 1) and Assigned by (col 2) */}
+                  <div className="grid grid-cols-2 gap-4 text-sm mb-3">
+                    <div className="flex items-center space-x-2">
+                      {todo.responsible_user_id && (
+                        <>
+                          <User className="w-4 h-4 text-blue-400" />
+                          <span className="text-blue-700">Assigned to: {todo.assignee_profile?.nickname || todo.assignee_profile?.email || todo.responsible_user_id?.slice(0, 8)}...</span>
+                        </>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-2 justify-end">
+                      <User className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-700">Assigned by: {todo.creator_profile?.nickname || todo.creator_profile?.email || todo.user_id?.slice(0, 8)}...</span>
+                      {todo.alarm_enabled && (
+                        <div className="flex items-center space-x-1 ml-2">
+                          <AlertCircle className="w-4 h-4" style={{ color: claimColor }} />
+                          <span className="text-gray-700 text-xs">Alarm</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Row 6: Completed checkbox (col 1) and Priority badge (col 2) */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center">
+                      <label className="flex items-center space-x-2 cursor-pointer" title={todo.completed ? 'Mark as not completed' : 'Mark as completed'}>
+                        <input
+                          type="checkbox"
+                          checked={!!todo.completed}
+                          onChange={() => toggleTodoMutation.mutate({ id: todo.id, completed: !todo.completed })}
+                          className="w-4 h-4 rounded border-gray-300"
+                        />
+                        <span className="text-xs text-gray-600">Complete</span>
+                      </label>
+                    </div>
+                    <div className="flex items-center justify-end">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(todo.priority)}`}>
                         {todo.priority}
                       </span>
                     </div>
-                  </div>
-
-                  {/* Row 2: User information - more space for names */}
-                  <div className="flex items-center justify-between mt-3 text-sm">
-                    <div className="flex items-center space-x-10">
-                      {todo.responsible_user_id && (
-                        <div className="flex items-center space-x-2">
-                          <User className="w-4 h-4 text-blue-400" />
-                          <span className="text-blue-700">Assigned to: {todo.assignee_profile?.nickname || todo.assignee_profile?.email || todo.responsible_user_id?.slice(0, 8)}...</span>
-                        </div>
-                      )}
-                      <div className="flex items-center space-x-2">
-                        <User className="w-4 h-4 text-gray-400" />
-                        <span className="text-gray-700">By: {todo.creator_profile?.nickname || todo.creator_profile?.email || todo.user_id?.slice(0, 8)}...</span>
-                      </div>
-                    </div>
-                    {/* Alarm indicator - last position (right side) */}
-                    {todo.alarm_enabled && (
-                      <div className="flex items-center space-x-1">
-                        <AlertCircle className="w-4 h-4" style={{ color: claimColor }} />
-                        <span className="text-gray-700">Alarm set</span>
-                      </div>
-                    )}
                   </div>
                 </div>
               ))}
