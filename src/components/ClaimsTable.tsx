@@ -4,12 +4,14 @@ import { useQuery } from '@tanstack/react-query'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { Claim } from '@/types/database'
-import { Edit, Trash2, Plus, X, Settings, Home, ChevronLeft, Users, Crown, Lock } from 'lucide-react'
+import { Edit, Trash2, Plus, X, Settings, Home, ChevronLeft, Users, Crown, Lock, Share2 } from 'lucide-react'
 import { useNavigation } from '@/contexts/NavigationContext'
 import EvidenceManager from './EvidenceManager'
 import CollaborationHub from './CollaborationHub'
 import { getClaimIdFromCaseNumber } from '@/utils/claimUtils'
 import { toast } from '@/hooks/use-toast'
+import { ShareClaimModal } from './ShareClaimModal'
+import { useCollaboration } from '@/hooks/useCollaboration'
 
 interface ClaimsTableProps {
   onClaimSelect: (claimId: string | null) => void
@@ -38,6 +40,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
   })
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({})
   const [showCollaboration, setShowCollaboration] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
 
   const queryClient = useQueryClient()
 
@@ -199,6 +202,113 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showAddForm, claims])
+
+  // Get claim_id for sharing when a claim is selected (MUST be before any conditional returns)
+  const { data: resolvedClaimId, isLoading: isLoadingClaimId } = useQuery({
+    queryKey: ['claim-id-for-sharing', selectedClaim],
+    queryFn: async () => {
+      if (!selectedClaim) return undefined
+      try {
+        return await getClaimIdFromCaseNumber(selectedClaim)
+      } catch (error) {
+        console.error('Error resolving claim ID for sharing:', error)
+        return undefined
+      }
+    },
+    enabled: !!selectedClaim && !isGuest
+  })
+
+  // Use collaboration hook for sharing (MUST be before any conditional returns)
+  // Hook handles undefined claimId gracefully by checking before making queries
+  const {
+    shareClaimWithUser = async () => ({ success: false }),
+    searchUsers: searchUsersForSharing = async () => []
+  } = useCollaboration(resolvedClaimId || undefined)
+
+  // Fetch claim directly if selected but not in claims list (MUST be before any conditional returns)
+  const claimInList = selectedClaim ? claims?.find(c => c.case_number === selectedClaim) : null
+  const needsDirectFetch = !!selectedClaim && !claimInList && !isLoading
+  
+  const { data: directClaim, isLoading: loadingDirectClaim, error: directClaimError } = useQuery({
+    queryKey: ['direct-claim', selectedClaim, isGuest],
+    queryFn: async () => {
+      if (!selectedClaim) return null
+      
+      console.log('Direct claim query - fetching for:', { selectedClaim, isGuest })
+      
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        console.log('Direct claim query - no user')
+        return null
+      }
+      
+      // For guests, verify they have access via claim_shares
+      if (isGuest) {
+        // First get the claim_id from case_number
+        const claimId = await getClaimIdFromCaseNumber(selectedClaim)
+        console.log('Direct claim query - claimId:', claimId)
+        if (!claimId) return null
+        
+        // Verify the user has access via claim_shares
+        const { data: share, error: shareError } = await supabase
+          .from('claim_shares')
+          .select('claim_id')
+          .eq('claim_id', claimId)
+          .eq('shared_with_id', user.id)
+          .maybeSingle()
+        
+        console.log('Direct claim query - share check:', { share, shareError })
+        if (!share) {
+          console.log('Direct claim query - no share found, user does not have access')
+          return null // No access
+        }
+      }
+      
+      // Fetch the claim by case_number
+      const { data, error } = await supabase
+        .from('claims')
+        .select('*')
+        .eq('case_number', selectedClaim)
+        .maybeSingle()
+      
+      if (error) {
+        console.error('Error fetching direct claim:', error)
+        return null
+      }
+      
+      if (!data) {
+        console.log('Direct claim query - no data returned')
+        return null
+      }
+      
+      console.log('Direct claim fetched successfully:', data)
+      return data as Claim
+    },
+    enabled: needsDirectFetch,
+    retry: 1
+  })
+  
+  if (directClaimError) {
+    console.error('Direct claim query error:', directClaimError)
+  }
+  
+  // Use claim from list if available, otherwise use direct claim
+  const claim = claimInList || directClaim || null
+
+  // Debug logging (MUST be before any conditional returns)
+  React.useEffect(() => {
+    if (selectedClaim) {
+      console.log('ClaimsTable - Selected claim state:', {
+        selectedClaim,
+        claimInList: !!claimInList,
+        directClaim: !!directClaim,
+        claim: !!claim,
+        claimData: claim,
+        isGuest,
+        loadingDirectClaim
+      })
+    }
+  }, [selectedClaim, claimInList, directClaim, claim, isGuest, loadingDirectClaim])
 
   const addClaimMutation = useMutation({
     mutationFn: async (claimData: typeof newClaim) => {
@@ -471,8 +581,37 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
 
   // If a claim is selected, show only that claim with evidence subform (and optional Connect Hub)
   if (selectedClaim) {
-    const claim = claims?.find(c => c.case_number === selectedClaim)
-    if (!claim) return <div>Claim not found</div>
+    if (loadingDirectClaim && !claim) {
+      return (
+        <div className="flex items-center justify-center p-8">
+          <div className="text-gray-600">Loading claim details...</div>
+        </div>
+      )
+    }
+    
+    if (!claim) {
+      return (
+        <div className="card-enhanced p-4 border-red-400/50">
+          <div className="text-red-200">Claim not found or you do not have access to this claim.</div>
+          <div className="text-gray-400 text-sm mt-2">
+            Selected: {selectedClaim} | isGuest: {isGuest ? 'true' : 'false'} | In list: {claimInList ? 'yes' : 'no'} | Direct: {directClaim ? 'yes' : 'no'} | Loading: {loadingDirectClaim ? 'yes' : 'no'}
+          </div>
+        </div>
+      )
+    }
+    
+    // Ensure claim has required fields
+    if (!claim.case_number || !claim.claim_id) {
+      console.error('Claim missing required fields:', claim)
+      return (
+        <div className="card-enhanced p-4 border-red-400/50">
+          <div className="text-red-200">Claim data is incomplete. Missing case_number or claim_id.</div>
+          <div className="text-gray-400 text-sm mt-2">
+            Claim data: {JSON.stringify(claim, null, 2)}
+          </div>
+        </div>
+      )
+    }
 
     return (
       <div className="space-y-6">
@@ -530,21 +669,68 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
             )}
           </div>
           <h2 className="text-2xl font-bold text-gold text-center flex-1">Claim Details</h2>
-          <div />
+          <div className="flex items-center space-x-2">
+            {!isGuest && (
+              <button
+                onClick={() => {
+                  if (resolvedClaimId) {
+                    setShowShareModal(true)
+                  } else {
+                    toast({
+                      title: "Please wait",
+                      description: "Loading claim information. Please try again in a moment.",
+                      variant: "default"
+                    })
+                  }
+                }}
+                disabled={!resolvedClaimId}
+                className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                title={resolvedClaimId ? "Share this claim with others" : "Loading claim information..."}
+              >
+                <Share2 className="w-4 h-4" />
+                <span>Share</span>
+              </button>
+            )}
+          </div>
         </div>
         
         {/* Evidence */}
-        <EvidenceManager 
-          selectedClaim={selectedClaim} 
-          claimColor={claim.color || '#3B82F6'} 
-          amendMode={amendMode}
-          isGuest={isGuest}
-          currentUserId={currentUser?.id}
-          isGuestFrozen={false}
-          onEditClaim={() => setEditingClaim(claim)}
-          onDeleteClaim={() => deleteClaimMutation.mutate(claim.case_number)}
-          onSetAmendMode={setAmendMode}
-        />
+        {claim && claim.case_number ? (
+          <EvidenceManager 
+            selectedClaim={selectedClaim} 
+            claimColor={claim.color || '#3B82F6'} 
+            amendMode={amendMode}
+            isGuest={isGuest}
+            currentUserId={currentUser?.id}
+            isGuestFrozen={false}
+            onEditClaim={() => setEditingClaim(claim)}
+            onDeleteClaim={() => deleteClaimMutation.mutate(claim.case_number)}
+            onSetAmendMode={setAmendMode}
+          />
+        ) : (
+          <div className="card-enhanced p-4 border-yellow-400/50">
+            <div className="text-yellow-200">Claim data is incomplete. Missing case_number.</div>
+            <div className="text-gray-400 text-sm mt-2">
+              Claim object: {JSON.stringify(claim, null, 2)}
+            </div>
+          </div>
+        )}
+
+        {/* Share Claim Modal */}
+        {!isGuest && resolvedClaimId && (
+          <ShareClaimModal
+            open={showShareModal}
+            onOpenChange={setShowShareModal}
+            onShare={async (email, permissions) => {
+              if (!resolvedClaimId) return false
+              const result = await shareClaimWithUser(email, permissions)
+              return result?.success || false
+            }}
+            onSearchUsers={async (query) => {
+              return await searchUsersForSharing(query)
+            }}
+          />
+        )}
       </div>
     )
   }

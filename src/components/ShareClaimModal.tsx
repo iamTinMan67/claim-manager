@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -67,9 +67,12 @@ export const ShareClaimModal = ({ open, onOpenChange, onShare, onSearchUsers }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" aria-describedby="share-claim-description">
         <DialogHeader>
           <DialogTitle>Share Claim</DialogTitle>
+          <DialogDescription id="share-claim-description">
+            Share this claim with another user by entering their email address. They will be able to view and submit evidence based on the permissions you set.
+          </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4">
