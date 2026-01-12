@@ -58,15 +58,18 @@ export class EvidenceService {
     userId: string
   ): Promise<any> {
     const operation = async () => {
-      // Get the next display_order value for this user
-      const { data: maxOrderData } = await supabase
+      // Get the minimum display_order value for this user
+      // Since list is sorted descending, new items should have the lowest display_order to appear at the end
+      const { data: minOrderData } = await supabase
         .from('evidence')
         .select('display_order')
         .eq('user_id', userId)
-        .order('display_order', { ascending: false, nullsFirst: false })
+        .not('display_order', 'is', null)
+        .order('display_order', { ascending: true })
         .limit(1);
       
-      const nextOrder = (maxOrderData?.[0]?.display_order || 0) + 1;
+      const minOrder = minOrderData?.[0]?.display_order ?? 1;
+      const nextOrder = Math.max(0, minOrder - 1);
 
       const { data, error } = await supabase
         .from('evidence')

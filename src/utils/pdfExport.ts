@@ -555,6 +555,173 @@ export const generateToDoListPDF = (
   return pdf;
 };
 
+interface CommunicationLog {
+  id: string;
+  claim_id: string;
+  date: string;
+  name: string;
+  company: string | null;
+  notes: string | null;
+  type: 'Call' | 'Mail' | 'Text' | 'Email' | 'Visit';
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+}
+
+export const generateCommunicationLogPDF = (
+  claim: Claim,
+  logs: CommunicationLog[]
+) => {
+  const pdf = new jsPDF();
+  let yPosition = 20;
+  const margin = 20;
+  const pageWidth = pdf.internal.pageSize.width;
+  const pageHeight = pdf.internal.pageSize.height;
+
+  // Helper function to add new page if needed
+  const checkPageBreak = (neededSpace: number) => {
+    if (yPosition + neededSpace > pageHeight - margin) {
+      pdf.addPage();
+      yPosition = margin;
+      return true;
+    }
+    return false;
+  };
+
+  // Helper function to wrap text
+  const addWrappedText = (text: string, x: number, y: number, maxWidth: number, fontSize: number = 10) => {
+    pdf.setFontSize(fontSize);
+    const lines = pdf.splitTextToSize(text, maxWidth);
+    pdf.text(lines, x, y);
+    return lines.length * (fontSize * 0.5);
+  };
+
+  // Title
+  pdf.setFontSize(18);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Communication Log Report', margin, yPosition);
+  yPosition += 10;
+
+  // Claim Information
+  pdf.setFontSize(12);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(`Claim: ${claim.title}`, margin, yPosition);
+  yPosition += 7;
+  pdf.text(`Case Number: ${claim.case_number}`, margin, yPosition);
+  yPosition += 7;
+  pdf.text(`Generated: ${new Date().toLocaleDateString()}`, margin, yPosition);
+  yPosition += 15;
+
+  // Table Headers
+  checkPageBreak(20);
+  pdf.setFontSize(10);
+  pdf.setFont('helvetica', 'bold');
+  
+  const colWidths = {
+    date: 40,
+    type: 30,
+    name: 50,
+    company: 50,
+    notes: pageWidth - 2 * margin - 40 - 30 - 50 - 50 - 10, // Remaining width
+  };
+  
+  let currentX = margin;
+  pdf.text('Date & Time', currentX, yPosition);
+  currentX += colWidths.date;
+  pdf.text('Type', currentX, yPosition);
+  currentX += colWidths.type;
+  pdf.text('Name', currentX, yPosition);
+  currentX += colWidths.name;
+  pdf.text('Company', currentX, yPosition);
+  currentX += colWidths.company;
+  pdf.text('Notes', currentX, yPosition);
+  
+  yPosition += 8;
+  
+  // Draw header line
+  pdf.setLineWidth(0.5);
+  pdf.line(margin, yPosition - 2, pageWidth - margin, yPosition - 2);
+  yPosition += 5;
+
+  // Sort logs: newest first (descending by date)
+  const sortedLogs = [...logs].sort((a, b) => {
+    return new Date(b.date).getTime() - new Date(a.date).getTime();
+  });
+
+  // Log entries (newest at top, oldest at bottom)
+  sortedLogs.forEach((log, index) => {
+    checkPageBreak(30);
+    
+    const logDate = new Date(log.date);
+    const formattedDate = logDate.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'normal');
+    
+    let rowHeight = 0;
+    currentX = margin;
+
+    // Date & Time
+    const dateLines = pdf.splitTextToSize(formattedDate, colWidths.date - 2);
+    pdf.text(dateLines, currentX, yPosition);
+    rowHeight = Math.max(rowHeight, dateLines.length * 4.5);
+    currentX += colWidths.date;
+
+    // Type
+    pdf.text(log.type, currentX, yPosition);
+    rowHeight = Math.max(rowHeight, 4.5);
+    currentX += colWidths.type;
+
+    // Name
+    const nameLines = pdf.splitTextToSize(log.name || '', colWidths.name - 2);
+    pdf.text(nameLines, currentX, yPosition);
+    rowHeight = Math.max(rowHeight, nameLines.length * 4.5);
+    currentX += colWidths.name;
+
+    // Company
+    const companyText = log.company || '-';
+    const companyLines = pdf.splitTextToSize(companyText, colWidths.company - 2);
+    pdf.text(companyLines, currentX, yPosition);
+    rowHeight = Math.max(rowHeight, companyLines.length * 4.5);
+    currentX += colWidths.company;
+
+    // Notes
+    const notesText = log.notes || '-';
+    const notesLines = pdf.splitTextToSize(notesText, colWidths.notes - 2);
+    pdf.text(notesLines, currentX, yPosition);
+    rowHeight = Math.max(rowHeight, notesLines.length * 4.5);
+
+    // Draw row separator
+    yPosition += rowHeight + 3;
+    pdf.setLineWidth(0.1);
+    pdf.setDrawColor(200, 200, 200);
+    pdf.line(margin, yPosition - 1, pageWidth - margin, yPosition - 1);
+    yPosition += 2;
+  });
+
+  // Footer
+  const totalPages = pdf.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    pdf.setPage(i);
+    pdf.setFontSize(8);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setDrawColor(0, 0, 0);
+    pdf.text(
+      `Generated on ${new Date().toLocaleDateString()} - Page ${i} of ${totalPages}`,
+      margin,
+      pageHeight - 10
+    );
+  }
+
+  return pdf;
+};
+
 export const generateEvidenceSummaryPDF = (
   allClaims: Claim[],
   allEvidence: Evidence[]

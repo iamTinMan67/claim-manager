@@ -4,8 +4,8 @@ import { Claim } from "@/hooks/useClaims";
 import { Evidence } from "@/hooks/useEvidence";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Download, FileText, Settings, CheckSquare } from "lucide-react";
-import { generateClaimEvidencePDF, generateToDoListPDF } from "@/utils/pdfExport";
+import { Download, FileText, Settings, CheckSquare, MessageSquare } from "lucide-react";
+import { generateClaimEvidencePDF, generateToDoListPDF, generateCommunicationLogPDF } from "@/utils/pdfExport";
 import { toast } from "@/hooks/use-toast";
 import { PDFFieldSelector } from "./PDFFieldSelector";
 import { 
@@ -13,6 +13,8 @@ import {
   DEFAULT_CLAIM_FIELDS, 
   DEFAULT_EVIDENCE_FIELDS 
 } from "@/types/pdfConfig";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   claim: Claim;
@@ -21,12 +23,40 @@ interface Props {
   allEvidence: Evidence[];
 }
 
+interface CommunicationLog {
+  id: string;
+  claim_id: string;
+  date: string;
+  name: string;
+  company: string | null;
+  notes: string | null;
+  type: 'Call' | 'Mail' | 'Text' | 'Email' | 'Visit';
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+}
+
 export const ClaimEvidenceExport = ({ claim, evidenceList, allClaims, allEvidence }: Props) => {
   const [generating, setGenerating] = useState(false);
   const [showFieldSelector, setShowFieldSelector] = useState(false);
   const [fieldConfig, setFieldConfig] = useState<PDFFieldConfig>({
     claimFields: DEFAULT_CLAIM_FIELDS,
     evidenceFields: DEFAULT_EVIDENCE_FIELDS,
+  });
+
+  // Fetch communication logs for this claim
+  const { data: communicationLogs = [] } = useQuery({
+    queryKey: ['communication-logs-export', claim.claim_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('communication_logs')
+        .select('*')
+        .eq('claim_id', claim.claim_id)
+        .order('date', { ascending: false }); // Newest first
+      
+      if (error) throw error;
+      return data as CommunicationLog[];
+    },
   });
 
   const handleExportClaimEvidence = async (config?: PDFFieldConfig) => {
@@ -173,6 +203,39 @@ export const ClaimEvidenceExport = ({ claim, evidenceList, allClaims, allEvidenc
     }
   };
 
+  const handleExportCommunicationLog = async () => {
+    setGenerating(true);
+    try {
+      if (communicationLogs.length === 0) {
+        toast({
+          title: "No Communication Logs",
+          description: "There are no communication logs for this claim to export.",
+          variant: "destructive",
+        });
+        setGenerating(false);
+        return;
+      }
+
+      const pdf = generateCommunicationLogPDF(claim, communicationLogs);
+      const fileName = `${claim.case_number}_Communication_Log.pdf`;
+      pdf.save(fileName);
+      
+      toast({
+        title: "Communication Log Export Successful",
+        description: `Communication log saved as ${fileName}`,
+      });
+    } catch (error) {
+      console.error('Error generating Communication Log PDF:', error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to generate Communication Log PDF. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -235,6 +298,33 @@ export const ClaimEvidenceExport = ({ claim, evidenceList, allClaims, allEvidenc
             <Download className="w-4 h-4 mr-2" />
             {generating ? "Generating To-Do List..." : "Download To-Do List PDF"}
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <MessageSquare className="w-5 h-5" />
+            <span>Communication Log</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Generate a PDF report of all communication logs for this claim. Newest entries appear at the top, oldest at the bottom.
+          </p>
+          <Button 
+            onClick={handleExportCommunicationLog}
+            disabled={generating || communicationLogs.length === 0}
+            className="w-full"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            {generating ? "Generating PDF..." : `Download Communication Log PDF (${communicationLogs.length} entries)`}
+          </Button>
+          {communicationLogs.length === 0 && (
+            <p className="text-xs text-gray-500 text-center">
+              No communication logs found for this claim.
+            </p>
+          )}
         </CardContent>
       </Card>
 

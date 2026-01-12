@@ -1,11 +1,13 @@
 import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
-import { Download, FileText, Calendar, Users, CheckSquare, Home, ChevronLeft, Eye, X } from 'lucide-react'
+import { Download, FileText, Calendar, Users, CheckSquare, Home, ChevronLeft, Eye, X, MessageSquare } from 'lucide-react'
 import { useNavigation } from '@/contexts/NavigationContext'
 import jsPDF from 'jspdf'
 import JSZip from 'jszip'
 import { getClaimIdFromCaseNumber } from '@/utils/claimUtils'
+import { generateCommunicationLogPDF } from '@/utils/pdfExport'
+import { Claim } from '@/hooks/useClaims'
 
 interface ExportFeaturesProps {
   selectedClaim: string | null
@@ -17,11 +19,11 @@ interface ExportFeaturesProps {
 
 const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeaturesProps) => {
   const { navigateBack, navigateTo } = useNavigation()
-  const [exportType, setExportType] = useState<'evidence' | 'todos' | 'calendar'>('evidence')
+  const [exportType, setExportType] = useState<'evidence' | 'todos' | 'calendar' | 'communication'>('evidence')
   const [isExporting, setIsExporting] = useState(false)
   const [isDownloadingZip, setIsDownloadingZip] = useState(false)
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null)
-  const [previewType, setPreviewType] = useState<'evidence' | 'todos' | 'calendar'>('evidence')
+  const [previewType, setPreviewType] = useState<'evidence' | 'todos' | 'calendar' | 'communication'>('evidence')
 
   // Read column preferences from localStorage
   const columnPrefs = (() => {
@@ -142,6 +144,43 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
       if (error) throw error
       return data
     }
+  })
+
+  // Fetch claim object for communication log export
+  const { data: claim } = useQuery({
+    queryKey: ['claim-for-export', selectedClaim],
+    queryFn: async () => {
+      if (!selectedClaim) return null
+      const { data, error } = await supabase
+        .from('claims')
+        .select('*')
+        .eq('case_number', selectedClaim)
+        .single()
+      
+      if (error) throw error
+      return data as Claim
+    },
+    enabled: !!selectedClaim
+  })
+
+  // Fetch communication logs
+  const { data: communicationLogs = [] } = useQuery({
+    queryKey: ['communication-logs-export', selectedClaim],
+    queryFn: async () => {
+      if (!selectedClaim) return []
+      const claimId = await getClaimIdFromCaseNumber(selectedClaim)
+      if (!claimId) return []
+      
+      const { data, error } = await supabase
+        .from('communication_logs')
+        .select('*')
+        .eq('claim_id', claimId)
+        .order('date', { ascending: false }) // Newest first
+      
+      if (error) throw error
+      return data
+    },
+    enabled: !!selectedClaim
   })
 
   // Helper function to extract numeric exhibit number
@@ -513,7 +552,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
   }
 
   const handleExport = async (format: 'csv' | 'pdf') => {
-    if (!evidence && !todos && !events) return
+    if (!evidence && !todos && !events && !communicationLogs) return
 
     switch (exportType) {
       case 'evidence':
@@ -552,10 +591,52 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
           }
         }
         break
+      case 'communication':
+        if (communicationLogs && claim) {
+          if (format === 'pdf') {
+            setIsExporting(true)
+            try {
+              const pdf = generateCommunicationLogPDF(claim, communicationLogs)
+              const fileName = `${claim.case_number}_Communication_Log.pdf`
+              pdf.save(fileName)
+            } catch (error) {
+              console.error('Error generating Communication Log PDF:', error)
+            } finally {
+              setIsExporting(false)
+            }
+          } else {
+            // CSV export for communication logs
+            const headers = ['Date & Time', 'Type', 'Name', 'Company', 'Notes']
+            const csvContent = [
+              headers.join(','),
+              ...communicationLogs.map(log => {
+                const date = new Date(log.date).toLocaleString('en-GB')
+                return [
+                  `"${date}"`,
+                  `"${log.type}"`,
+                  `"${log.name}"`,
+                  `"${log.company || ''}"`,
+                  `"${(log.notes || '').replace(/"/g, '""')}"`
+                ].join(',')
+              })
+            ].join('\n')
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+            const link = document.createElement('a')
+            const url = URL.createObjectURL(blob)
+            link.setAttribute('href', url)
+            link.setAttribute('download', `${claim.case_number}_Communication_Log.csv`)
+            link.style.visibility = 'hidden'
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+          }
+        }
+        break
     }
   }
 
-  const generatePreview = async (type: 'evidence' | 'todos' | 'calendar') => {
+  const generatePreview = async (type: 'evidence' | 'todos' | 'calendar' | 'communication') => {
     setIsExporting(true)
     try {
       let pdfUrl: string | null = null
@@ -574,6 +655,13 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         case 'calendar':
           if (events) {
             pdfUrl = await exportToPDF(events, 'Calendar Events Report', 'calendar', 'calendar')
+          }
+          break
+        case 'communication':
+          if (communicationLogs && claim) {
+            const pdf = generateCommunicationLogPDF(claim, communicationLogs)
+            const pdfBlob = pdf.output('blob')
+            pdfUrl = URL.createObjectURL(pdfBlob)
           }
           break
       }
@@ -615,7 +703,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
     await generatePreview(exportType)
   }
 
-  const handlePreviewTypeChange = async (type: 'evidence' | 'todos' | 'calendar') => {
+  const handlePreviewTypeChange = async (type: 'evidence' | 'todos' | 'calendar' | 'communication') => {
     await generatePreview(type)
   }
 
@@ -709,11 +797,12 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
     }
   }
 
-  const hasDataForType = (type: 'evidence' | 'todos' | 'calendar') => {
+  const hasDataForType = (type: 'evidence' | 'todos' | 'calendar' | 'communication') => {
     switch (type) {
       case 'evidence': return (evidence?.length ?? 0) > 0
       case 'todos': return (todos?.length ?? 0) > 0
       case 'calendar': return (events?.length ?? 0) > 0
+      case 'communication': return (communicationLogs?.length ?? 0) > 0
       default: return false
     }
   }
@@ -751,7 +840,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">Select Data to Export</label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <button
                 onClick={() => setExportType('evidence')}
                 className={`p-4 border rounded-lg text-center transition-colors ${
@@ -805,6 +894,26 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
                 <div className="text-sm font-medium">Calendar</div>
                 <div className="text-xs text-gray-500">{events?.length || 0} items</div>
               </button>
+              
+              <button
+                onClick={() => setExportType('communication')}
+                className={`p-4 border rounded-lg text-center transition-colors ${
+                  exportType === 'communication' 
+                    ? 'text-white' 
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+                style={exportType === 'communication' ? { 
+                  borderColor: claimColor, 
+                  backgroundColor: `${claimColor}20`,
+                  color: claimColor
+                } : {}}
+                disabled={!selectedClaim}
+                title={!selectedClaim ? 'Please select a claim first' : ''}
+              >
+                <MessageSquare className="w-6 h-6 mx-auto mb-2" />
+                <div className="text-sm font-medium">Comms Log</div>
+                <div className="text-xs text-gray-500">{communicationLogs?.length || 0} entries</div>
+              </button>
             </div>
           </div>
 
@@ -848,8 +957,8 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
                 <span>{isExporting ? 'Generating PDF...' : 'Export as PDF'}</span>
               </button>
               
-              {/* Export as CSV and Download Documents ZIP - only show for evidence */}
-              {exportType === 'evidence' && (
+              {/* Export as CSV and Download Documents ZIP - show for evidence and communication */}
+              {(exportType === 'evidence' || exportType === 'communication') && (
                 <>
                   <button
                     onClick={() => handleExport('csv')}
@@ -860,14 +969,16 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
                     <span>Export as CSV</span>
                   </button>
                   
-                <button
-                  onClick={downloadDocumentsZip}
-                  disabled={isDownloadingZip || !evidence || evidence.length === 0}
-                  className="bg-blue-900/30 border-2 border-green-500 text-green-500 px-6 py-3 rounded-lg hover:bg-blue-800/50 hover:border-green-400 hover:text-green-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>{isDownloadingZip ? 'Creating ZIP...' : 'Download Documents ZIP'}</span>
-                </button>
+                  {exportType === 'evidence' && (
+                    <button
+                      onClick={downloadDocumentsZip}
+                      disabled={isDownloadingZip || !evidence || evidence.length === 0}
+                      className="bg-blue-900/30 border-2 border-green-500 text-green-500 px-6 py-3 rounded-lg hover:bg-blue-800/50 hover:border-green-400 hover:text-green-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>{isDownloadingZip ? 'Creating ZIP...' : 'Download Documents ZIP'}</span>
+                    </button>
+                  )}
                 </>
               )}
             </div>
@@ -946,6 +1057,19 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
                   >
                     <Calendar className="w-4 h-4 inline mr-2" />
                     Calendar ({events?.length || 0})
+                  </button>
+                  
+                  <button
+                    onClick={() => handlePreviewTypeChange('communication')}
+                    disabled={isExporting || !communicationLogs || communicationLogs.length === 0}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      previewType === 'communication'
+                        ? 'bg-green-500 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    <MessageSquare className="w-4 h-4 inline mr-2" />
+                    Comms Log ({communicationLogs?.length || 0})
                   </button>
                 </div>
               </div>

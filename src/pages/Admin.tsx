@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { supabase } from '@/integrations/supabase/client'
-import { CheckCircle, XCircle, Search, UserPlus, UserMinus } from 'lucide-react'
+import { XCircle, Search } from 'lucide-react'
 
 const OWNER_ID = 'f41fbcf1-c378-4594-9a46-fdc198c1a38a'
 
@@ -43,21 +43,110 @@ const Admin: React.FC = () => {
     }
   }
 
-  const upsertSubscription = async (subscribed: boolean, tier: 'free' | 'basic' | 'frontend') => {
-    if (!targetUserId) return
+  const clearSelection = () => {
+    setTargetUserId(null)
+    setTargetInfo(null)
+    setStatusMsg(null)
+    setLookupEmail('')
+  }
+
+  const grantTier = async (tier: 'free' | 'basic' | 'premium') => {
+    if (!targetUserId || !targetInfo) return
     setBusy(true)
     setStatusMsg(null)
     try {
       await ensureOwner()
-      const { error } = await supabase.rpc('admin_set_subscription', {
-        target_user_id: targetUserId,
-        p_subscribed: subscribed,
-        p_tier: tier
-      })
-      if (error) throw error
-      setStatusMsg(subscribed ? 'Premium granted.' : 'Premium revoked.')
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
+      // Grant premium privilege with specific tier (bypasses Stripe)
+      const { error: privilegeError } = await supabase
+        .from('user_privileges')
+        .upsert({
+          user_id: targetUserId,
+          granted_by: user.id,
+          privilege_type: 'premium',
+          premium_tier: tier,
+          is_active: true,
+          expires_at: null, // Never expires
+        }, {
+          onConflict: 'user_id,privilege_type'
+        })
+
+      if (privilegeError) {
+        console.error('Error granting privilege:', privilegeError)
+        throw privilegeError
+      }
+
+      // Also update subscribers table for consistency
+      const { error: subscriberError } = await supabase
+        .from('subscribers')
+        .upsert({
+          user_id: targetUserId,
+          email: targetInfo.email,
+          subscription_tier: tier,
+          subscribed: tier !== 'free', // Only 'free' is not subscribed
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        })
+
+      if (subscriberError) {
+        console.error('Error updating subscribers table:', subscriberError)
+        // Don't throw - privilege was granted successfully
+        setStatusMsg(`${tier.charAt(0).toUpperCase() + tier.slice(1)} tier granted (bypasses Stripe). Note: subscribers table update had an issue.`)
+      } else {
+        setStatusMsg(`${tier.charAt(0).toUpperCase() + tier.slice(1)} tier granted (bypasses Stripe).`)
+      }
     } catch (e: any) {
-      setStatusMsg(e?.message || 'Update failed (RLS may block this).')
+      console.error('Failed to grant tier:', e)
+      setStatusMsg(e?.message || 'Failed to grant tier.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const revokeTier = async () => {
+    if (!targetUserId || !targetInfo) return
+    setBusy(true)
+    setStatusMsg(null)
+    try {
+      await ensureOwner()
+      
+      // Deactivate privilege
+      const { error: privilegeError } = await supabase
+        .from('user_privileges')
+        .update({ is_active: false })
+        .eq('user_id', targetUserId)
+        .eq('privilege_type', 'premium')
+
+      if (privilegeError) {
+        console.error('Error revoking privilege:', privilegeError)
+        throw privilegeError
+      }
+
+      // Also update subscribers table to free/unsubscribed
+      const { error: subscriberError } = await supabase
+        .from('subscribers')
+        .upsert({
+          user_id: targetUserId,
+          email: targetInfo.email,
+          subscription_tier: 'free',
+          subscribed: false,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        })
+
+      if (subscriberError) {
+        console.error('Error updating subscribers table:', subscriberError)
+        // Don't throw - privilege was revoked successfully
+        setStatusMsg('Premium tier revoked. Note: subscribers table update had an issue.')
+      } else {
+        setStatusMsg('Premium tier revoked.')
+      }
+    } catch (e: any) {
+      setStatusMsg(e?.message || 'Failed to revoke tier.')
     } finally {
       setBusy(false)
     }
@@ -67,7 +156,7 @@ const Admin: React.FC = () => {
     <div className="space-y-4">
       <div className="card-enhanced p-4 border-l-4" style={{ borderLeftColor: '#22c55e' }}>
         <h2 className="text-xl font-semibold mb-2">Admin Panel</h2>
-        <p className="text-sm text-gray-300 mb-3">Grant or revoke premium access for any user.</p>
+        <p className="text-sm text-gray-300 mb-3">Search for a user and grant a subscription tier. This bypasses Stripe and grants access directly.</p>
 
         <div className="flex items-center gap-2">
           <input
@@ -87,26 +176,54 @@ const Admin: React.FC = () => {
         </div>
 
         {targetUserId && targetInfo && (
-          <div className="mt-4 card-smudge p-3 rounded">
+          <div className="mt-4 card-smudge p-3 rounded space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm text-yellow-200">{targetInfo.email}</div>
                 {targetInfo.nickname && <div className="text-xs text-yellow-400">{targetInfo.nickname}</div>}
               </div>
-              <div className="flex items-center gap-2">
+              <button
+                onClick={clearSelection}
+                className="px-2 py-1 rounded-lg bg-white/10 border border-red-400 text-red-400 hover:opacity-90 flex items-center gap-1 text-xs"
+                title="Clear selection"
+              >
+                <XCircle className="w-3 h-3" /> Close
+              </button>
+            </div>
+            
+            <div className="border-t border-yellow-400/20 pt-3">
+              <div className="text-xs text-yellow-300 mb-2 font-semibold">Grant Subscription Tier</div>
+              <div className="flex flex-wrap items-center gap-2">
                 <button
-                  onClick={() => upsertSubscription(true, 'frontend')}
+                  onClick={() => grantTier('free')}
                   disabled={busy}
-                  className="px-3 h-8 rounded-lg bg-white/10 border border-green-400 text-green-400 hover:opacity-90 flex items-center gap-1"
+                  className="px-3 h-8 rounded-lg bg-white/10 border border-gray-400 text-gray-300 hover:opacity-90 flex items-center gap-1 text-xs"
+                  title="Grant free tier (1 guest)"
                 >
-                  <CheckCircle className="w-4 h-4" /> Grant Premium
+                  Free
                 </button>
                 <button
-                  onClick={() => upsertSubscription(false, 'free')}
+                  onClick={() => grantTier('basic')}
                   disabled={busy}
-                  className="px-3 h-8 rounded-lg bg-white/10 border border-red-400 text-red-400 hover:opacity-90 flex items-center gap-1"
+                  className="px-3 h-8 rounded-lg bg-white/10 border border-yellow-400 text-yellow-300 hover:opacity-90 flex items-center gap-1 text-xs"
+                  title="Grant basic tier (2-7 guests)"
                 >
-                  <XCircle className="w-4 h-4" /> Revoke Premium
+                  Basic
+                </button>
+                <button
+                  onClick={() => grantTier('premium')}
+                  disabled={busy}
+                  className="px-3 h-8 rounded-lg bg-white/10 border border-green-400 text-green-300 hover:opacity-90 flex items-center gap-1 text-xs"
+                  title="Grant premium tier (8+ guests, all features)"
+                >
+                  Premium
+                </button>
+                <button
+                  onClick={revokeTier}
+                  disabled={busy}
+                  className="px-3 h-8 rounded-lg bg-white/10 border border-red-400 text-red-400 hover:opacity-90 flex items-center gap-1 text-xs"
+                >
+                  <XCircle className="w-3 h-3" /> Revoke
                 </button>
               </div>
             </div>

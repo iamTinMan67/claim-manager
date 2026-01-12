@@ -1,18 +1,69 @@
-import React from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { usePrivileges } from '@/hooks/usePrivileges';
-import { Crown, Shield, Star, CheckCircle, XCircle } from 'lucide-react';
+import { Star } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const PrivilegesStatus: React.FC = () => {
   const { 
-    hasAdmin, 
-    adminTier, 
-    hasValidAccess, 
     hasPremium, 
     loading,
     refreshPrivileges 
   } = usePrivileges();
+  const { user } = useAuth();
+  const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
+  const [tierLoading, setTierLoading] = useState(true);
 
-  if (loading) {
+  // Fetch subscription tier
+  const fetchTier = useCallback(async () => {
+    if (!user) {
+      setTierLoading(false);
+      return;
+    }
+
+    try {
+      setTierLoading(true);
+      // First check user_privileges for premium_tier
+      const { data: privilegeData } = await supabase
+        .from('user_privileges')
+        .select('premium_tier')
+        .eq('user_id', user.id)
+        .eq('privilege_type', 'premium')
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (privilegeData?.premium_tier) {
+        setSubscriptionTier(privilegeData.premium_tier);
+        setTierLoading(false);
+        return;
+      }
+
+      // Fallback to subscribers table
+      const { data: subscriberData } = await supabase
+        .from('subscribers')
+        .select('subscription_tier')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      setSubscriptionTier(subscriberData?.subscription_tier || 'free');
+    } catch (error) {
+      console.error('Error fetching subscription tier:', error);
+      setSubscriptionTier('free');
+    } finally {
+      setTierLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchTier();
+  }, [fetchTier, hasPremium]);
+
+  const handleRefresh = () => {
+    refreshPrivileges();
+    fetchTier();
+  };
+
+  if (loading || tierLoading) {
     return (
       <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
         <div className="flex items-center">
@@ -23,22 +74,18 @@ const PrivilegesStatus: React.FC = () => {
     );
   }
 
-  const getAdminTierColor = (tier: string | null) => {
+  const getTierColor = (tier: string | null) => {
     switch (tier) {
-      case 'developer': return 'text-purple-600 bg-purple-100';
-      case 'admin': return 'text-red-600 bg-red-100';
-      case 'moderator': return 'text-blue-600 bg-blue-100';
+      case 'premium': return 'text-green-600 bg-green-100';
+      case 'basic': return 'text-yellow-600 bg-yellow-100';
+      case 'free': return 'text-gray-600 bg-gray-100';
       default: return 'text-gray-600 bg-gray-100';
     }
   };
 
-  const getAdminTierIcon = (tier: string | null) => {
-    switch (tier) {
-      case 'developer': return <Crown className="w-4 h-4" />;
-      case 'admin': return <Shield className="w-4 h-4" />;
-      case 'moderator': return <Star className="w-4 h-4" />;
-      default: return null;
-    }
+  const getTierDisplayName = (tier: string | null) => {
+    if (!tier) return 'Free';
+    return tier.charAt(0).toUpperCase() + tier.slice(1);
   };
 
   return (
@@ -46,7 +93,7 @@ const PrivilegesStatus: React.FC = () => {
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900">Your Privileges Status</h3>
         <button
-          onClick={refreshPrivileges}
+          onClick={handleRefresh}
           className="text-sm text-blue-600 hover:text-blue-800 underline"
         >
           Refresh
@@ -54,62 +101,28 @@ const PrivilegesStatus: React.FC = () => {
       </div>
 
       <div className="space-y-3">
-        {/* Admin Tier */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            {getAdminTierIcon(adminTier)}
-            <span className="font-medium ml-2">Admin Tier</span>
-          </div>
-          {hasAdmin ? (
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getAdminTierColor(adminTier)}`}>
-              {adminTier?.toUpperCase()}
-            </span>
-          ) : (
-            <XCircle className="w-5 h-5 text-red-500" />
-          )}
-        </div>
-
-        {/* Valid Access */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <CheckCircle className="w-5 h-5 text-blue-600 mr-2" />
-            <span className="font-medium">Valid Access</span>
-          </div>
-          {hasValidAccess ? (
-            <CheckCircle className="w-5 h-5 text-green-500" />
-          ) : (
-            <XCircle className="w-5 h-5 text-red-500" />
-          )}
-        </div>
-
-        {/* Premium Access */}
+        {/* Subscription Tier */}
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <Star className="w-5 h-5 text-yellow-600 mr-2" />
-            <span className="font-medium">Premium Access</span>
+            <span className="font-medium">Subscription Tier</span>
           </div>
-          {hasPremium ? (
-            <CheckCircle className="w-5 h-5 text-green-500" />
-          ) : (
-            <XCircle className="w-5 h-5 text-red-500" />
-          )}
+          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getTierColor(subscriptionTier)}`}>
+            {getTierDisplayName(subscriptionTier)}
+          </span>
         </div>
       </div>
 
       {/* Summary */}
       <div className="mt-4 p-3 bg-gray-50 rounded-lg">
         <p className="text-sm text-gray-600">
-          {hasAdmin ? (
-            <span className="text-blue-600 font-medium">
-              🔧 You have ADMIN ACCESS with {adminTier} privileges.
-            </span>
-          ) : hasValidAccess ? (
+          {hasPremium ? (
             <span className="text-green-600 font-medium">
-              ✅ You have valid access to the application.
+              ✅ You have {getTierDisplayName(subscriptionTier)} tier access.
             </span>
           ) : (
-            <span className="text-red-600 font-medium">
-              ❌ You do not have valid access. Please contact support.
+            <span className="text-gray-600 font-medium">
+              You are on the {getTierDisplayName(subscriptionTier)} tier.
             </span>
           )}
         </p>

@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { Claim } from '@/types/database'
-import { Edit, Trash2, Plus, X, Settings, Home, ChevronLeft, Users, Crown, Lock, Share2 } from 'lucide-react'
+import { Edit, Trash2, Plus, X, Settings, Home, ChevronLeft, Users, Crown, Lock, Share2, FileText } from 'lucide-react'
 import { useNavigation } from '@/contexts/NavigationContext'
 import EvidenceManager from './EvidenceManager'
 import CollaborationHub from './CollaborationHub'
@@ -12,6 +12,7 @@ import { getClaimIdFromCaseNumber } from '@/utils/claimUtils'
 import { toast } from '@/hooks/use-toast'
 import { ShareClaimModal } from './ShareClaimModal'
 import { useCollaboration } from '@/hooks/useCollaboration'
+import { CommunicationLog } from './CommunicationLog'
 
 interface ClaimsTableProps {
   onClaimSelect: (claimId: string | null) => void
@@ -41,6 +42,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({})
   const [showCollaboration, setShowCollaboration] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
+  const [showCommunicationLog, setShowCommunicationLog] = useState(false)
 
   const queryClient = useQueryClient()
 
@@ -671,25 +673,46 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
           <h2 className="text-2xl font-bold text-gold text-center flex-1">Claim Details</h2>
           <div className="flex items-center space-x-2">
             {!isGuest && (
-              <button
-                onClick={() => {
-                  if (resolvedClaimId) {
-                    setShowShareModal(true)
-                  } else {
-                    toast({
-                      title: "Please wait",
-                      description: "Loading claim information. Please try again in a moment.",
-                      variant: "default"
-                    })
-                  }
-                }}
-                disabled={!resolvedClaimId}
-                className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                title={resolvedClaimId ? "Share this claim with others" : "Loading claim information..."}
-              >
-                <Share2 className="w-4 h-4" />
-                <span>Share</span>
-              </button>
+              <>
+                <button
+                  onClick={() => {
+                    if (resolvedClaimId) {
+                      setShowCommunicationLog(true)
+                    } else {
+                      toast({
+                        title: "Please wait",
+                        description: "Loading claim information. Please try again in a moment.",
+                        variant: "default"
+                      })
+                    }
+                  }}
+                  disabled={!resolvedClaimId}
+                  className="bg-white/10 border border-blue-400 text-blue-400 px-3 py-1 rounded-lg flex items-center space-x-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={resolvedClaimId ? "View communication log for this claim" : "Loading claim information..."}
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Log</span>
+                </button>
+                <button
+                  onClick={() => {
+                    if (resolvedClaimId) {
+                      setShowShareModal(true)
+                    } else {
+                      toast({
+                        title: "Please wait",
+                        description: "Loading claim information. Please try again in a moment.",
+                        variant: "default"
+                      })
+                    }
+                  }}
+                  disabled={!resolvedClaimId}
+                  className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={resolvedClaimId ? "Share this claim with others" : "Loading claim information..."}
+                >
+                  <Share2 className="w-4 h-4" />
+                  <span>Share</span>
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -718,18 +741,26 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
 
         {/* Share Claim Modal */}
         {!isGuest && resolvedClaimId && (
-          <ShareClaimModal
-            open={showShareModal}
-            onOpenChange={setShowShareModal}
-            onShare={async (email, permissions) => {
-              if (!resolvedClaimId) return false
-              const result = await shareClaimWithUser(email, permissions)
-              return result?.success || false
-            }}
-            onSearchUsers={async (query) => {
-              return await searchUsersForSharing(query)
-            }}
-          />
+          <>
+            <ShareClaimModal
+              open={showShareModal}
+              onOpenChange={setShowShareModal}
+              onShare={async (email, permissions) => {
+                if (!resolvedClaimId) return false
+                const result = await shareClaimWithUser(email, permissions)
+                return result?.success || false
+              }}
+              onSearchUsers={async (query) => {
+                return await searchUsersForSharing(query)
+              }}
+            />
+            <CommunicationLog
+              open={showCommunicationLog}
+              onOpenChange={setShowCommunicationLog}
+              claimId={resolvedClaimId}
+              claimTitle={claim?.title || null}
+            />
+          </>
         )}
       </div>
     )

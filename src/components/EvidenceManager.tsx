@@ -510,17 +510,40 @@ const EvidenceManager = ({
           claimId = await getClaimIdFromCaseNumber(selectedClaim)
         }
         if (!claimId) return
+        
+        // Try to fetch guest_download_allowed, but handle gracefully if column doesn't exist
         const { data, error } = await supabase
           .from('evidence_claims')
           .select('evidence_id, guest_download_allowed')
           .eq('claim_id', claimId)
-        if (error) return
+        
+        // If column doesn't exist (400 error), default to allowing all downloads
+        if (error) {
+          console.warn('Could not load guest_download_allowed permissions (column may not exist):', error)
+          // Still fetch evidence_ids to populate the map, defaulting to allowed
+          const { data: linkData } = await supabase
+            .from('evidence_claims')
+            .select('evidence_id')
+            .eq('claim_id', claimId)
+          
+          const map: Record<string, boolean> = {}
+          ;(linkData || []).forEach((r: any) => {
+            if (r.evidence_id) map[r.evidence_id] = true // Default to allowed
+          })
+          setLinkPermissions(map)
+          return
+        }
+        
         const map: Record<string, boolean> = {}
         ;(data || []).forEach((r: any) => {
           if (r.evidence_id) map[r.evidence_id] = r.guest_download_allowed !== false
         })
         setLinkPermissions(map)
-      } catch {}
+      } catch (err) {
+        console.warn('Error loading guest download permissions:', err)
+        // Default to empty map (all allowed)
+        setLinkPermissions({})
+      }
     }
     loadPermissions()
   }, [selectedClaim])
@@ -1819,12 +1842,26 @@ USING (
                                   claimId = uuidPattern.test(selectedClaim) ? selectedClaim : await getClaimIdFromCaseNumber(selectedClaim)
                                 }
                                 if (!claimId) return
-                                await supabase
+                                
+                                // Try to update guest_download_allowed, but handle gracefully if column doesn't exist
+                                const { error } = await supabase
                                   .from('evidence_claims')
                                   .update({ guest_download_allowed: allowed })
                                   .eq('claim_id', claimId)
                                   .eq('evidence_id', item.id)
-                                setLinkPermissions({ ...linkPermissions, [item.id]: allowed })
+                                
+                                if (error) {
+                                  // If column doesn't exist (400 error), just update local state
+                                  if (error.code === '42703' || error.message?.includes('column') || error.message?.includes('does not exist')) {
+                                    console.warn('guest_download_allowed column does not exist in evidence_claims table. Update skipped.')
+                                    // Still update local state for UI consistency
+                                    setLinkPermissions({ ...linkPermissions, [item.id]: allowed })
+                                  } else {
+                                    throw error
+                                  }
+                                } else {
+                                  setLinkPermissions({ ...linkPermissions, [item.id]: allowed })
+                                }
                               } catch (err) {
                                 console.warn('Failed to update guest_download_allowed', err)
                               }
@@ -2072,16 +2109,17 @@ USING (
               if (!user) throw new Error('Not authenticated')
               if (!selectedClaim) throw new Error('A Case Number (claim) is required for evidence')
 
-              // Get the current maximum display_order for this user
-              const { data: maxOrderData } = await supabase
+              // Get the current minimum display_order for this user
+              // Since list is sorted descending, new items should have the lowest display_order to appear at the end
+              const { data: minOrderData } = await supabase
                 .from('evidence')
                 .select('display_order')
                 .eq('user_id', user.id)
                 .not('display_order', 'is', null)
-                .order('display_order', { ascending: false })
+                .order('display_order', { ascending: true })
                 .limit(1)
-              const maxDisplayOrder = maxOrderData?.[0]?.display_order || 0
-              const newDisplayOrder = maxDisplayOrder + 1
+              const minDisplayOrder = minOrderData?.[0]?.display_order ?? 1
+              const newDisplayOrder = Math.max(0, minDisplayOrder - 1)
 
               // Clean the data before submission - only include valid evidence table fields
               // Explicitly exclude exhibit_id and other invalid fields
