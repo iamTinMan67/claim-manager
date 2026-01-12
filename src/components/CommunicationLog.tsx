@@ -323,16 +323,27 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle }: Pr
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>Communication Log - {claimTitle || 'Claim'}</span>
-            {!showAddForm && (
+            <div className="flex items-center gap-2">
+              {!showAddForm && (
+                <Button
+                  onClick={() => setShowAddForm(true)}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  size="sm"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Log
+                </Button>
+              )}
               <Button
-                onClick={() => setShowAddForm(true)}
-                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => onOpenChange(false)}
+                variant="ghost"
                 size="sm"
+                className="h-8 w-8 p-0 hover:bg-gray-100"
+                title="Close"
               >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Log
+                <X className="w-4 h-4" />
               </Button>
-            )}
+            </div>
           </DialogTitle>
         </DialogHeader>
 

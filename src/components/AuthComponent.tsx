@@ -449,7 +449,7 @@ export default function AuthComponent({
           <Auth
             supabaseClient={supabase}
             appearance={{ theme: ThemeSupa }}
-            providers={[]}
+            providers={['google']}
             redirectTo={`${window.location.origin}`}
             onlyThirdPartyProviders={false}
           />

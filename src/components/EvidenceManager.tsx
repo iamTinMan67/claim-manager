@@ -6,6 +6,7 @@ import { Plus, Edit, Trash2, Upload, Download, Eye, X, Save, Settings, FileText,
 import PendingEvidenceReview from './PendingEvidenceReview'
 import { AddEvidenceModal } from './AddEvidenceModal'
 import { LinkEvidenceModal } from './LinkEvidenceModal'
+import { CopyEvidenceModal } from './CopyEvidenceModal'
 import { toast } from '@/hooks/use-toast'
 import { getClaimIdFromCaseNumber } from '@/utils/claimUtils'
 
@@ -41,7 +42,31 @@ const EvidenceManager = ({
   const isInteractive = !isStatic && (!isGuest || !isGuestFrozen)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showLinkModal, setShowLinkModal] = useState(false)
+  const [showCopyModal, setShowCopyModal] = useState(false)
   const [availableEvidence, setAvailableEvidence] = useState<Evidence[]>([])
+  
+  // Fetch claim title for Copy Evidence modal
+  const { data: currentClaimTitle } = useQuery({
+    queryKey: ['claim-title', selectedClaim],
+    queryFn: async () => {
+      if (!selectedClaim) return ''
+      const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+      let claimId: string | null = null
+      if (uuidPattern.test(selectedClaim)) {
+        claimId = selectedClaim
+      } else {
+        claimId = await getClaimIdFromCaseNumber(selectedClaim)
+      }
+      if (!claimId) return ''
+      const { data } = await supabase
+        .from('claims')
+        .select('title')
+        .eq('claim_id', claimId)
+        .maybeSingle()
+      return data?.title || ''
+    },
+    enabled: !!selectedClaim && isGuest
+  })
   const [editingEvidence, setEditingEvidence] = useState<Evidence | null>(null)
   const [expandedEvidence, setExpandedEvidence] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -1625,6 +1650,16 @@ USING (
                   <span>{isGuest ? 'Submit' : 'Add'}</span>
               </button>
             )}
+            {isGuest && !isGuestFrozen && selectedClaim && (
+              <button
+                onClick={() => setShowCopyModal(true)}
+                className="bg-white/10 border border-blue-400 text-blue-400 px-3 h-8 rounded-lg flex items-center space-x-2 hover:opacity-90"
+                title="Copy evidence from this shared claim to your own claims"
+              >
+                <Link className="w-4 h-4" />
+                <span>Copy</span>
+              </button>
+            )}
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
               className="bg-white/10 border border-yellow-400 text-yellow-400 px-3 h-8 rounded-lg flex items-center space-x-2 hover:opacity-90"
@@ -2235,6 +2270,20 @@ USING (
           }}
           isGuest={isGuest}
           isGuestFrozen={isGuestFrozen}
+        />
+      )}
+
+      {/* Copy Evidence Modal - For Guest Users */}
+      {showCopyModal && selectedClaim && isGuest && (
+        <CopyEvidenceModal
+          open={showCopyModal}
+          onOpenChange={setShowCopyModal}
+          currentClaimCaseNumber={selectedClaim}
+          currentClaimTitle={currentClaimTitle || 'Shared Claim'}
+          availableEvidence={evidenceData || []}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['evidence'] })
+          }}
         />
       )}
 
