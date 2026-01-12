@@ -1421,8 +1421,17 @@ USING (
       
 
       {editingEvidence && (
-        <div className="card-enhanced p-6 border-l-4" style={{ borderLeftColor: claimColor }}>
-          <h3 className="text-lg font-semibold mb-4">Edit Evidence</h3>
+        <div className="card-enhanced p-6 border-l-4" style={{ borderLeftColor: claimColor, width: '700px' }}>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">Edit Evidence</h3>
+            <button
+              type="button"
+              onClick={() => setEditingEvidence(null)}
+              className="bg-transparent text-red-600 border border-red-600 p-2 rounded-lg hover:bg-red-600/10 flex items-center justify-center"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
           <form onSubmit={handleUpdate} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -1435,18 +1444,6 @@ USING (
                   placeholder="Enter evidence title"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">File Name</label>
-                <input
-                  type="text"
-                  value={editingEvidence.file_name || ''}
-                  onChange={(e) => setEditingEvidence({ ...editingEvidence, file_name: e.target.value })}
-                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
-                  placeholder="Enter file name"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Replace File</label>
                 <div className="relative">
@@ -1489,16 +1486,7 @@ USING (
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Exhibit Number</label>
-                <input
-                  type="number"
-                  value={editingEvidence.exhibit_number || ''}
-                  onChange={(e) => setEditingEvidence({ ...editingEvidence, exhibit_number: parseInt(e.target.value) || null })}
-                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
-                />
-              </div>
+            <div className="grid grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Number of Pages</label>
                 <input
@@ -1523,8 +1511,6 @@ USING (
                   className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Method</label>
                 <select
@@ -1540,26 +1526,27 @@ USING (
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">URL Link</label>
+                <label className="block text-sm font-medium mb-1">Exhibit Number</label>
                 <input
-                  type="url"
-                  value={editingEvidence.url_link || ''}
-                  onChange={(e) => setEditingEvidence({ ...editingEvidence, url_link: e.target.value })}
+                  type="number"
+                  value={editingEvidence.exhibit_number || ''}
+                  onChange={(e) => setEditingEvidence({ ...editingEvidence, exhibit_number: parseInt(e.target.value) || null })}
                   className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 />
               </div>
             </div>
             {/* Description removed per requirements */}
-            <div>
-              <label className="block text-sm font-medium mb-1">CLC Ref#</label>
-              <input
-                type="text"
-                value={editingEvidence.book_of_deeds_ref || ''}
-                onChange={(e) => setEditingEvidence({ ...editingEvidence, book_of_deeds_ref: e.target.value })}
-                className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
-              />
-            </div>
-            <div className="flex space-x-3 mb-4">
+              <div className="flex items-end justify-between gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Book-Of-Deeds #</label>
+                <input
+                  type="text"
+                  value={editingEvidence.book_of_deeds_ref || ''}
+                  onChange={(e) => setEditingEvidence({ ...editingEvidence, book_of_deeds_ref: e.target.value })}
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  style={{ width: '175px' }}
+                />
+              </div>
               <button
                 type="submit"
                 disabled={updateEvidenceMutation.isPending}
@@ -1567,17 +1554,11 @@ USING (
                 style={{ 
                   backgroundColor: 'rgba(30, 58, 138, 0.3)',
                   border: '2px solid #10b981',
-                  color: '#10b981'
+                  color: '#10b981',
+                  width: '175px'
                 }}
               >
                 {updateEvidenceMutation.isPending ? 'Updating...' : 'Update Evidence'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditingEvidence(null)}
-                className="bg-transparent text-red-600 border border-red-600 px-4 py-2 rounded-lg hover:bg-red-600/10"
-              >
-                Cancel
               </button>
             </div>
           </form>
@@ -1923,15 +1904,16 @@ USING (
                           (columnPrefs.showExhibitNumber ? 1 : 0) + 
                           1 // Actions
                         } className="px-2 py-3 bg-yellow-400/10 border-t">
-                          <div className="card-enhanced p-6 border-l-4" style={{ borderLeftColor: claimColor }}>
+                          <div className="card-enhanced p-6 border-l-4" style={{ borderLeftColor: claimColor, width: '700px' }}>
                             <div className="flex justify-between items-center mb-4">
                               <h4 className="text-lg font-semibold">Edit Evidence</h4>
                               <button
+                                type="button"
                                 onClick={() => {
                                   setExpandedEvidence(null)
                                   setEditingEvidence(null)
                                 }}
-                                className="text-gray-500 hover:text-gray-700"
+                                className="bg-transparent text-red-600 border border-red-600 p-2 rounded-lg hover:bg-red-600/10 flex items-center justify-center"
                               >
                                 <X className="w-5 h-5" />
                               </button>
@@ -1949,16 +1931,6 @@ USING (
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-medium mb-1">File Name</label>
-                                  <input
-                                    type="text"
-                                    value={editingEvidence.file_name || ''}
-                                    onChange={(e) => setEditingEvidence({ ...editingEvidence, file_name: e.target.value })}
-                                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
-                                    placeholder="Enter file name"
-                                  />
-                                </div>
-                                <div className="col-span-2">
                                   <label className="block text-sm font-medium mb-1">Replace File</label>
                                   <div className="relative">
                                     <input
@@ -2000,16 +1972,7 @@ USING (
                                   </div>
                                 </div>
                               </div>
-                              <div className="grid grid-cols-3 gap-4">
-                                <div>
-                                  <label className="block text-sm font-medium mb-1">Exhibit Number</label>
-                                  <input
-                                    type="number"
-                                    value={editingEvidence.exhibit_number || ''}
-                                    onChange={(e) => setEditingEvidence({ ...editingEvidence, exhibit_number: parseInt(e.target.value) || null })}
-                                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
-                                  />
-                                </div>
+                              <div className="grid grid-cols-4 gap-4">
                                 <div>
                                   <label className="block text-sm font-medium mb-1">Number of Pages</label>
                                   <input
@@ -2034,8 +1997,6 @@ USING (
                                     className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                                   />
                                 </div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
                                 <div>
                                   <label className="block text-sm font-medium mb-1">Method</label>
                                   <select
@@ -2050,25 +2011,27 @@ USING (
                                   </select>
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-medium mb-1">URL Link</label>
+                                  <label className="block text-sm font-medium mb-1">Exhibit Number</label>
                                   <input
-                                    type="url"
-                                    value={editingEvidence.url_link || ''}
-                                    onChange={(e) => setEditingEvidence({ ...editingEvidence, url_link: e.target.value })}
+                                    type="number"
+                                    value={editingEvidence.exhibit_number || ''}
+                                    onChange={(e) => setEditingEvidence({ ...editingEvidence, exhibit_number: parseInt(e.target.value) || null })}
                                     className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                                   />
                                 </div>
                               </div>
-                              <div>
-                                <label className="block text-sm font-medium mb-1">CLC Ref#</label>
-                                <input
-                                  type="text"
-                                  value={editingEvidence.book_of_deeds_ref || ''}
-                                  onChange={(e) => setEditingEvidence({ ...editingEvidence, book_of_deeds_ref: e.target.value })}
-                                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
-                                />
-                              </div>
-                              <div className="flex space-x-3">
+                              {/* Description removed per requirements */}
+                              <div className="flex items-end justify-between gap-4">
+                                <div>
+                                  <label className="block text-sm font-medium mb-1">Book-Of-Deeds #</label>
+                                  <input
+                                    type="text"
+                                    value={editingEvidence.book_of_deeds_ref || ''}
+                                    onChange={(e) => setEditingEvidence({ ...editingEvidence, book_of_deeds_ref: e.target.value })}
+                                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                                    style={{ width: '175px' }}
+                                  />
+                                </div>
                                 <button
                                   type="submit"
                                   disabled={updateEvidenceMutation.isPending}
@@ -2076,20 +2039,11 @@ USING (
                                   style={{ 
                                     backgroundColor: 'rgba(30, 58, 138, 0.3)',
                                     border: '2px solid #10b981',
-                                    color: '#10b981'
+                                    color: '#10b981',
+                                    width: '175px'
                                   }}
                                 >
                                   {updateEvidenceMutation.isPending ? 'Updating...' : 'Update Evidence'}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setExpandedEvidence(null)
-                                    setEditingEvidence(null)
-                                  }}
-                                  className="bg-transparent text-red-600 border border-red-600 px-4 py-2 rounded-lg hover:bg-red-600/10"
-                                >
-                                  Cancel
                                 </button>
                               </div>
                             </form>
