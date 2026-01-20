@@ -251,7 +251,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         throw error
       }
     },
-    enabled: !!selectedClaim && showGuestContent
+    enabled: !!selectedClaim && (isGuest || showGuestContent)
   })
 
   const { data: todayTodos } = useQuery({

@@ -71,7 +71,7 @@ const Events: React.FC<EventsProps> = ({
                   selectedClaim={selectedClaim}
                   claimColor="#3B82F6"
                   isGuest={isGuest}
-                  showGuestContent={false}
+                  showGuestContent={isGuest}
                   isGuestFrozen={isGuestFrozen}
                   showNavigation={false}
                 />
@@ -103,7 +103,7 @@ const Events: React.FC<EventsProps> = ({
                   selectedClaim={selectedClaim}
                   claimColor="#3B82F6"
                   isGuest={isGuest}
-                  showGuestContent={false}
+                  showGuestContent={isGuest}
                   isGuestFrozen={isGuestFrozen}
                   showNavigation={false}
                 />

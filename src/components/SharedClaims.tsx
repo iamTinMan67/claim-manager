@@ -5,6 +5,7 @@ import { useNavigation } from '@/contexts/NavigationContext'
 import CollaborationHub from './CollaborationHub'
 import EvidenceManager from './EvidenceManager'
 import { Users, Crown, Edit, Trash2, Plus, UserPlus } from 'lucide-react'
+import { AlertsSummaryCard } from './AlertsSummaryCard'
 
 interface SharedClaimsProps {
   selectedClaim: string | null
@@ -140,6 +141,7 @@ const SharedClaims = ({
 
   return (
     <div>
+      <AlertsSummaryCard scope="shared" />
       {/* Collaboration Section */}
       {showCollaboration && selectedClaim && (
         <div className="card-enhanced rounded-lg shadow border-l-4 relative z-30 w-full" style={{ borderLeftColor: claimColor }}>

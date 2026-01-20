@@ -61,7 +61,8 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
     end_time: '',
     all_day: false,
     color: claimColor,
-    claim_id: selectedClaim || ''
+    claim_id: selectedClaim || '',
+    responsible_user_id: ''
   })
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({})
 
@@ -147,17 +148,16 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         .lte('start_time', end.toISOString())
       
       if (isGuest) {
-        // Shared: filter to selected claim and other users' events
+        // Shared: filter to selected claim (host + guests per RLS)
         if (selectedClaim) {
           const claimId = await getClaimIdFromCaseNumber(selectedClaim)
           if (claimId) {
             query = query.eq('claim_id', claimId)
           }
         }
-        query = query.neq('user_id', user.id)
       } else {
-        // Private: show events I created across all claims
-        query = query.eq('user_id', user.id)
+        // Private: show events I created OR events assigned to me
+        query = query.or(`user_id.eq.${user.id},responsible_user_id.eq.${user.id}`)
       }
       
       const { data, error } = await query
@@ -309,7 +309,8 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         .insert([{ 
           ...event, 
           user_id: user.id, 
-          claim_id: event.claim_id || null
+          claim_id: event.claim_id || null,
+          responsible_user_id: event.responsible_user_id || user.id
         }])
         .select()
         .single()
@@ -333,7 +334,8 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         end_time: '',
         all_day: false,
         color: claimColor,
-        claim_id: selectedClaim || ''
+        claim_id: selectedClaim || '',
+        responsible_user_id: ''
       })
     },
     onError: (err: any) => {
@@ -447,7 +449,8 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       ...prev,
       start_time: format(date, "yyyy-MM-dd'T'HH:mm"),
       end_time: format(date, "yyyy-MM-dd'T'HH:mm"),
-      claim_id: selectedClaim || ''
+      claim_id: selectedClaim || '',
+      responsible_user_id: currentUser?.id || prev.responsible_user_id || ''
     }))
     setShowAddForm(true)
   }
@@ -502,7 +505,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                     end_time: nowStr,
                     claim_id: selectedClaim || '',
                     color: selectedClaim ? claimColor : prev.color,
-                    assignee_id: currentUser?.id
+                    responsible_user_id: currentUser?.id || ''
                   }))
                   setShowAddForm(true)
                 }}
@@ -557,7 +560,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                     end_time: nowStr,
                     claim_id: selectedClaim || '',
                     color: selectedClaim ? claimColor : prev.color,
-                    assignee_id: currentUser?.id
+                    responsible_user_id: currentUser?.id || ''
                   }))
                   setShowAddForm(true)
                 }}
@@ -727,10 +730,10 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
             </div>
             <div className="w-1/2 grid grid-cols-1 items-end">
             <div>
-                  <label className="block text-base font-medium mb-1">Assignee</label>
+                  <label className="block text-base font-medium mb-1">Assign Event To</label>
               <select
-                    value={newEvent.assignee_id || currentUser?.id || ''}
-                    onChange={(e) => setNewEvent({ ...newEvent, assignee_id: e.target.value })}
+                    value={newEvent.responsible_user_id || currentUser?.id || ''}
+                    onChange={(e) => setNewEvent({ ...newEvent, responsible_user_id: e.target.value })}
                     className="h-[27px] text-sm border border-yellow-400/30 rounded-md px-2 bg-white/10 text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
                     style={{ width: timeFieldWidth }}
                   >

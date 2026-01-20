@@ -13,6 +13,7 @@ import { toast } from '@/hooks/use-toast'
 import { ShareClaimModal } from './ShareClaimModal'
 import { useCollaboration } from '@/hooks/useCollaboration'
 import { CommunicationLog } from './CommunicationLog'
+import { AlertsSummaryCard } from './AlertsSummaryCard'
 
 interface ClaimsTableProps {
   onClaimSelect: (claimId: string | null) => void
@@ -1163,7 +1164,11 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
 
       {/* Claims Grid */}
       {!showAddForm && claims && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <>
+          {!selectedClaim && !statusFilter && (
+            <AlertsSummaryCard scope={isGuest ? 'shared' : 'private'} />
+          )}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {claims.map((claim, index) => (
           <div
             key={claim.case_number}
@@ -1298,7 +1303,8 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
             </div>
           </div>
         )}
-        </div>
+          </div>
+        </>
       )}
     </div>
   )
