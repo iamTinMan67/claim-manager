@@ -1567,7 +1567,7 @@ USING (
 
       {/* Evidence Table - Hide when editing */}
       {!editingEvidence && (
-        <div className={`card-enhanced w-full mt-12 ${isStatic ? 'min-h-[75vh]' : ''}`} style={{ maxWidth: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div className={`card-enhanced w-full mt-12 py-2.5 ${isStatic ? 'min-h-[75vh]' : ''}`} style={{ maxWidth: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
         <div className="px-6 py-4 border-b border-yellow-400/20 sticky z-40 backdrop-blur-md flex-shrink-0" style={{ backgroundColor: 'rgba(30, 27, 75, 0.3)', top: '60px' }}>
           {/* Row 1: Title, Search boxes, and Buttons */}
           <div className="flex items-center mb-3 w-full">
@@ -1653,41 +1653,42 @@ USING (
           {/* Row 2: Checkboxes */}
           <div className="flex items-center gap-4 mb-3 w-full" style={{ marginLeft: '0px' }}>
             {/* Column 1: Show/Hide label */}
-            <span className="text-xs text-gold flex-shrink-0">Show/Hide</span>
+            <span className="text-sm text-gold flex-shrink-0">Show/Hide</span>
             {/* Column 2 onwards: Checkboxes */}
             <div className="flex items-center gap-4" style={{ marginLeft: '65px' }}>
-              <label className="text-xs flex items-center gap-1">
-                <input type="checkbox" checked={columnPrefs.showMethod} onChange={(e) => setColumnPrefs({ ...columnPrefs, showMethod: e.target.checked })} />
+              <label className="text-sm flex items-center gap-2">
+                <input className="w-5 h-5" type="checkbox" checked={columnPrefs.showMethod} onChange={(e) => setColumnPrefs({ ...columnPrefs, showMethod: e.target.checked })} />
                 Method
               </label>
-              <label className="text-xs flex items-center gap-1">
-                <input type="checkbox" checked={columnPrefs.showPages} onChange={(e) => setColumnPrefs({ ...columnPrefs, showPages: e.target.checked })} />
+              <label className="text-sm flex items-center gap-2">
+                <input className="w-5 h-5" type="checkbox" checked={columnPrefs.showPages} onChange={(e) => setColumnPrefs({ ...columnPrefs, showPages: e.target.checked })} />
                 Pages
               </label>
-              <label className="text-xs flex items-center gap-1">
-                <input type="checkbox" checked={columnPrefs.showBookOfDeeds} onChange={(e) => setColumnPrefs({ ...columnPrefs, showBookOfDeeds: e.target.checked })} />
+              <label className="text-sm flex items-center gap-2">
+                <input className="w-5 h-5" type="checkbox" checked={columnPrefs.showBookOfDeeds} onChange={(e) => setColumnPrefs({ ...columnPrefs, showBookOfDeeds: e.target.checked })} />
                 Book of deeds
               </label>
-              <label className="text-xs flex items-center gap-1">
-                <input type="checkbox" checked={columnPrefs.showCLCRef} onChange={(e) => setColumnPrefs({ ...columnPrefs, showCLCRef: e.target.checked })} />
+              <label className="text-sm flex items-center gap-2">
+                <input className="w-5 h-5" type="checkbox" checked={columnPrefs.showCLCRef} onChange={(e) => setColumnPrefs({ ...columnPrefs, showCLCRef: e.target.checked })} />
                 CLC reference
               </label>
-              <label className="text-xs flex items-center gap-1">
-                <input type="checkbox" checked={columnPrefs.showExhibitNumber} onChange={(e) => setColumnPrefs({ ...columnPrefs, showExhibitNumber: e.target.checked })} />
+              <label className="text-sm flex items-center gap-2">
+                <input className="w-5 h-5" type="checkbox" checked={columnPrefs.showExhibitNumber} onChange={(e) => setColumnPrefs({ ...columnPrefs, showExhibitNumber: e.target.checked })} />
                 Exhibit #
               </label>
             </div>
           </div>
         </div>
         {!isCollapsed && (
-          <div className={`flex-1 ${isStatic ? 'max-h-[75vh] overflow-y-auto overflow-x-hidden' : 'overflow-y-auto'} ${!isStatic ? 'overflow-x-auto' : ''}`} style={{ scrollbarGutter: isStatic ? 'stable both-edges' as any : undefined, maxWidth: '794px' }}>
+          <div className={`flex-1 ${isStatic ? 'max-h-[75vh] overflow-y-auto overflow-x-hidden' : 'overflow-y-auto'} ${!isStatic ? 'overflow-x-auto' : ''}`} style={{ scrollbarGutter: isStatic ? 'stable both-edges' as any : undefined, maxWidth: '1100px' }}>
             <table className={`min-w-full ${isStatic ? 'table-fixed' : 'table-auto'} divide-y divide-yellow-400/20`}>
             <thead className="bg-yellow-400/10">
               <tr>
                 {!isGuest && amendMode && (
-                  <th className={`px-2 py-3 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-12' : 'w-10'}`}>
+                  <th className={`px-2 py-3 text-left text-sm font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-12' : 'w-10'}`}>
                     <input
                       type="checkbox"
+                      className="w-5 h-5"
                       checked={filteredEvidence.every((e) => selectedIds[e.id as any]) && filteredEvidence.length > 0}
                       onChange={(e) => {
                         const next: Record<string, boolean> = { ...selectedIds }
@@ -1702,38 +1703,38 @@ USING (
                     />
                   </th>
                 )}
-                <th className={`pl-[10px] pr-2 py-2 text-left text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-48' : ''}`}>
+                <th className={`pl-[10px] pr-2 py-3 text-left text-sm font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-48' : ''}`}>
                   File Name
                 </th>
                 {columnPrefs.showMethod && (
-                  <th className={`px-2 py-2 text-center text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-20' : ''}`}>
+                  <th className={`px-2 py-3 text-center text-sm font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-20' : ''}`}>
                     Method
                   </th>
                 )}
                 {columnPrefs.showPages && (
-                  <th className={`px-2 py-2 text-center text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-16' : ''}`}>
+                  <th className={`px-2 py-3 text-center text-sm font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-16' : ''}`}>
                     Pages
                   </th>
                 )}
-                <th className={`px-2 py-2 text-center text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-24' : ''}`}>
+                <th className={`px-2 py-3 text-center text-sm font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-24' : ''}`}>
                   Date Submitted
                 </th>
                 {columnPrefs.showBookOfDeeds && (
-                  <th className={`px-2 py-2 text-center text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-20' : ''}`}>
+                  <th className={`px-2 py-3 text-center text-sm font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-20' : ''}`}>
                     Book of Deeds #
                   </th>
                 )}
                 {columnPrefs.showCLCRef && (
-                  <th className={`px-2 py-2 text-center text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-20' : ''}`}>
+                  <th className={`px-2 py-3 text-center text-sm font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-20' : ''}`}>
                     CLC Ref #
                   </th>
                 )}
                 {columnPrefs.showExhibitNumber && (
-                  <th className={`px-2 py-2 text-center text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-20' : ''}`}>
+                  <th className={`px-2 py-3 text-center text-sm font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-20' : ''}`}>
                     Exhibit #
                   </th>
                 )}
-                <th className={`px-2 py-2 text-center text-xs font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-24' : ''}`}>
+                <th className={`px-2 py-3 text-center text-sm font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-24' : ''}`}>
                   Actions
                 </th>
               </tr>
@@ -1753,52 +1754,53 @@ USING (
                         expandedEvidence === item.id ? 'bg-yellow-400/20' : ''
                       } ${dragOverItem === item.id ? 'border-t-2 border-blue-500' : ''} ${
                         draggedItem === item.id ? 'opacity-50' : ''
-                      } align-middle ${isStatic ? 'h-14' : 'h-12'}`}
+                      } align-middle ${isStatic ? 'h-16' : 'h-14'}`}
                       onClick={() => (isInteractive ? handleRowClick(item) : undefined)}
                     >
                     {/* Order column hidden as requested */}
                     {!isGuest && amendMode && (
-                      <td className={`px-2 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-sm text-gray-500`}>
+                      <td className={`px-2 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-base text-gray-500`}>
                         <input
                           type="checkbox"
+                          className="w-5 h-5"
                           checked={!!selectedIds[item.id]}
                           onChange={(e) => setSelectedIds({ ...selectedIds, [item.id]: e.target.checked })}
                           title="Select for bulk link"
                         />
                       </td>
                     )}
-                    <td className={`pl-[10px] pr-2 ${isStatic ? 'py-2' : 'py-2'} whitespace-nowrap text-sm text-gray-900 text-left`}>
+                    <td className={`pl-[10px] pr-2 ${isStatic ? 'py-3' : 'py-3'} whitespace-nowrap text-base text-gray-900 text-left`}>
                       {item.title || item.file_name || item.name || '-'}
                     </td>
                     {columnPrefs.showMethod && (
-                      <td className={`px-2 ${isStatic ? 'py-2' : 'py-2'} whitespace-nowrap text-sm text-gray-500 text-center`}>
+                      <td className={`px-2 ${isStatic ? 'py-3' : 'py-3'} whitespace-nowrap text-base text-gray-500 text-center`}>
                         {item.method || '-'}
                       </td>
                     )}
                     {columnPrefs.showPages && (
-                      <td className={`px-2 ${isStatic ? 'py-2' : 'py-2'} whitespace-nowrap text-sm text-gray-500 text-center`}>
+                      <td className={`px-2 ${isStatic ? 'py-3' : 'py-3'} whitespace-nowrap text-base text-gray-500 text-center`}>
                         {item.number_of_pages || '-'}
                       </td>
                     )}
-                    <td className={`px-2 ${isStatic ? 'py-2' : 'py-2'} whitespace-nowrap text-sm text-gray-500 text-center`}>
+                    <td className={`px-2 ${isStatic ? 'py-3' : 'py-3'} whitespace-nowrap text-base text-gray-500 text-center`}>
                       {item.date_submitted ? new Date(item.date_submitted).toLocaleDateString() : '-'}
                     </td>
                     {columnPrefs.showBookOfDeeds && (
-                      <td className={`px-2 ${isStatic ? 'py-2' : 'py-2'} whitespace-nowrap text-sm text-gray-500 text-center`}>
+                      <td className={`px-2 ${isStatic ? 'py-3' : 'py-3'} whitespace-nowrap text-base text-gray-500 text-center`}>
                         {item.book_of_deeds_ref || '-'}
                       </td>
                     )}
                     {columnPrefs.showCLCRef && (
-                      <td className={`px-2 ${isStatic ? 'py-2' : 'py-2'} whitespace-nowrap text-sm text-gray-500 text-center`}>
+                      <td className={`px-2 ${isStatic ? 'py-3' : 'py-3'} whitespace-nowrap text-base text-gray-500 text-center`}>
                         {item.book_of_deeds_ref || '-'}
                       </td>
                     )}
                     {columnPrefs.showExhibitNumber && (
-                      <td className={`px-2 ${isStatic ? 'py-2' : 'py-2'} whitespace-nowrap text-sm text-gray-500 text-center`}>
+                      <td className={`px-2 ${isStatic ? 'py-3' : 'py-3'} whitespace-nowrap text-base text-gray-500 text-center`}>
                         {(item as any).exhibit_number || '-'}
                       </td>
                     )}
-                    <td className={`px-2 ${isStatic ? 'py-2' : 'py-2'} whitespace-nowrap text-sm font-medium text-center`}>
+                    <td className={`px-2 ${isStatic ? 'py-3' : 'py-3'} whitespace-nowrap text-base font-medium text-center`}>
                       <div className="flex justify-center items-center gap-[2px]">
                         {item.file_url && (!isGuest || (guestDownloadAllowed && (linkPermissions[item.id] !== false))) && (
                           <>
@@ -1904,9 +1906,9 @@ USING (
                           (columnPrefs.showExhibitNumber ? 1 : 0) + 
                           1 // Actions
                         } className="px-2 py-3 bg-yellow-400/10 border-t">
-                          <div className="card-enhanced p-6 border-l-4" style={{ borderLeftColor: claimColor, width: '700px' }}>
+                          <div className="card-enhanced p-8 border-l-4" style={{ borderLeftColor: claimColor, maxWidth: '100%' }}>
                             <div className="flex justify-between items-center mb-4">
-                              <h4 className="text-lg font-semibold">Edit Evidence</h4>
+                              <h4 className="text-xl font-semibold">Edit Evidence</h4>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1915,23 +1917,23 @@ USING (
                                 }}
                                 className="bg-transparent text-red-600 border border-red-600 p-2 rounded-lg hover:bg-red-600/10 flex items-center justify-center"
                               >
-                                <X className="w-5 h-5" />
+                                <X className="w-6 h-6" />
                               </button>
                             </div>
-                            <form onSubmit={handleUpdate} className="space-y-4">
+                            <form onSubmit={handleUpdate} className="space-y-6">
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                  <label className="block text-sm font-medium mb-1">Title</label>
+                                  <label className="block text-base font-medium mb-1">Title</label>
                                   <input
                                     type="text"
                                     value={editingEvidence.title || ''}
                                     onChange={(e) => setEditingEvidence({ ...editingEvidence, title: e.target.value })}
-                                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-3 text-base bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                                     placeholder="Enter evidence title"
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-medium mb-1">Replace File</label>
+                                  <label className="block text-base font-medium mb-1">Replace File</label>
                                   <div className="relative">
                                     <input
                                       type="file"
@@ -1966,15 +1968,15 @@ USING (
                                           title: titleCase
                                         })
                                       }}
-                                      className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold file:bg-white/10 file:text-gold file:border-0 file:mr-4 file:py-1 file:px-2 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                                      className="w-full border border-yellow-400/30 rounded-lg px-3 py-3 text-base bg-white/10 text-gold file:bg-white/10 file:text-gold file:border-0 file:mr-4 file:py-2 file:px-3 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                                     />
-                                    <Upload className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-yellow-400 pointer-events-none" />
+                                    <Upload className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-yellow-400 pointer-events-none" />
                                   </div>
                                 </div>
                               </div>
                               <div className="grid grid-cols-4 gap-4">
                                 <div>
-                                  <label className="block text-sm font-medium mb-1">Number of Pages</label>
+                                  <label className="block text-base font-medium mb-1">Number of Pages</label>
                                   <input
                                     type="number"
                                     value={editingEvidence.number_of_pages ?? ''}
@@ -1983,26 +1985,26 @@ USING (
                                       const numValue = value === '' ? null : (isNaN(parseInt(value)) ? null : parseInt(value))
                                       setEditingEvidence({ ...editingEvidence, number_of_pages: numValue })
                                     }}
-                                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-3 text-base bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-medium mb-1">Date Submitted</label>
+                                  <label className="block text-base font-medium mb-1">Date Submitted</label>
                                   <input
                                     type="date"
                                     value={editingEvidence.date_submitted ? (typeof editingEvidence.date_submitted === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(editingEvidence.date_submitted) 
                                       ? editingEvidence.date_submitted 
                                       : new Date(editingEvidence.date_submitted).toISOString().split('T')[0]) : ''}
                                     onChange={(e) => setEditingEvidence({ ...editingEvidence, date_submitted: e.target.value })}
-                                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-3 text-base bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-medium mb-1">Method</label>
+                                  <label className="block text-base font-medium mb-1">Method</label>
                                   <select
                                     value={editingEvidence.method || 'Post'}
                                     onChange={(e) => setEditingEvidence({ ...editingEvidence, method: e.target.value })}
-                                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-3 text-base bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                                   >
                                     <option value="Post">Post</option>
                                     <option value="Email">Email</option>
@@ -2011,31 +2013,31 @@ USING (
                                   </select>
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-medium mb-1">Exhibit Number</label>
+                                  <label className="block text-base font-medium mb-1">Exhibit Number</label>
                                   <input
                                     type="number"
                                     value={editingEvidence.exhibit_number || ''}
                                     onChange={(e) => setEditingEvidence({ ...editingEvidence, exhibit_number: parseInt(e.target.value) || null })}
-                                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-3 text-base bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                                   />
                                 </div>
                               </div>
                               {/* Description removed per requirements */}
                               <div className="flex items-end justify-between gap-4">
                                 <div>
-                                  <label className="block text-sm font-medium mb-1">Book-Of-Deeds #</label>
+                                  <label className="block text-base font-medium mb-1">Book-Of-Deeds #</label>
                                   <input
                                     type="text"
                                     value={editingEvidence.book_of_deeds_ref || ''}
                                     onChange={(e) => setEditingEvidence({ ...editingEvidence, book_of_deeds_ref: e.target.value })}
-                                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-3 text-base bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                                     style={{ width: '175px' }}
                                   />
                                 </div>
                                 <button
                                   type="submit"
                                   disabled={updateEvidenceMutation.isPending}
-                                  className="px-4 py-2 rounded-lg disabled:opacity-50"
+                                  className="px-5 py-3 text-base rounded-lg disabled:opacity-50"
                                   style={{ 
                                     backgroundColor: 'rgba(30, 58, 138, 0.3)',
                                     border: '2px solid #10b981',
