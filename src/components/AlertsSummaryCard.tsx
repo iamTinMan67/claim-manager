@@ -41,7 +41,7 @@ export function AlertsSummaryCard({ scope }: { scope: 'private' | 'shared' }) {
   }
 
   return (
-    <div className="card-enhanced p-4 mb-4">
+    <div className="card-enhanced p-4 mb-4 w-1/2 mx-auto">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2">

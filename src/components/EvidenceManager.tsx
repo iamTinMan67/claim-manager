@@ -1567,7 +1567,7 @@ USING (
 
       {/* Evidence Table - Hide when editing */}
       {!editingEvidence && (
-        <div className={`card-enhanced w-full mt-12 py-2.5 ${isStatic ? 'min-h-[75vh]' : ''}`} style={{ maxWidth: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div className={`card-enhanced w-full mt-12 py-2.5 px-5 ${isStatic ? 'min-h-[75vh]' : ''}`} style={{ maxWidth: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
         <div className="px-6 py-4 border-b border-yellow-400/20 sticky z-40 backdrop-blur-md flex-shrink-0" style={{ backgroundColor: 'rgba(30, 27, 75, 0.3)', top: '60px' }}>
           {/* Row 1: Title, Search boxes, and Buttons */}
           <div className="flex items-center mb-3 w-full">
