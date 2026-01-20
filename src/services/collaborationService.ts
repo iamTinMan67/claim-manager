@@ -2,6 +2,26 @@ import { supabase } from '@/integrations/supabase/client';
 import { ClaimShare, SharePermissions, UserProfile } from '@/types/collaboration';
 import { getClaimIdFromCaseNumber } from '@/utils/claimUtils';
 
+function normalizeClaimSharePermission(raw: unknown): ClaimShare['permission'] {
+  if (raw === 'view' || raw === 'edit') return raw;
+
+  // Least-privilege fallback: if the DB contains an unexpected value, treat it as view-only.
+  // This keeps the UI working without accidentally granting edit capability.
+  console.warn('Unexpected claim share permission value; defaulting to "view".', { raw });
+  return 'view';
+}
+
+function toClaimShare(row: any): ClaimShare {
+  return {
+    ...(row ?? {}),
+    permission: normalizeClaimSharePermission(row?.permission),
+  } as ClaimShare;
+}
+
+function toClaimShares(rows: any[] | null): ClaimShare[] {
+  return (rows ?? []).map(toClaimShare);
+}
+
 export class CollaborationService {
   // Get all shares for a claim (for claim owners)
   static async getClaimShares(claimId: string): Promise<ClaimShare[]> {
@@ -29,7 +49,7 @@ export class CollaborationService {
       .eq('claim_id', claimIdUuid);
 
     if (error) throw error;
-    return data || [];
+    return toClaimShares(data);
   }
 
   // Get shares where current user is the recipient
@@ -44,7 +64,7 @@ export class CollaborationService {
       .eq('shared_with_id', (await supabase.auth.getUser()).data.user?.id);
 
     if (error) throw error;
-    return data || [];
+    return toClaimShares(data);
   }
 
   // Search for users by email
@@ -194,10 +214,10 @@ export class CollaborationService {
             throw new Error('Share exists but could not be retrieved after update');
           }
           
-          return updatedShare;
+          return toClaimShare(updatedShare);
         } else {
           // Share exists with same permissions - just return it
-          return existingShare as ClaimShare;
+          return toClaimShare(existingShare);
         }
       } else {
         // Share exists but owned by someone else - this shouldn't happen, but handle it
@@ -263,7 +283,14 @@ export class CollaborationService {
 
       // Check if RPC function exists (error code 42883 = function does not exist)
       if (rpcError) {
-        if (rpcError.code === '42883' || rpcError.message?.includes('does not exist')) {
+        // Postgres function-not-found (direct from Postgres)
+        const isPgFnMissing = rpcError.code === '42883' || rpcError.message?.includes('does not exist');
+        // PostgREST schema-cache function-not-found (what you're seeing in the browser)
+        const isPostgrestFnMissing =
+          rpcError.code === 'PGRST202' ||
+          rpcError.message?.includes('Could not find the function');
+
+        if (isPgFnMissing || isPostgrestFnMissing) {
           // Function doesn't exist, use direct insert
           console.log('RPC function create_claim_share does not exist, using direct insert');
         } else {
@@ -284,7 +311,7 @@ export class CollaborationService {
           .single();
 
         if (!fetchError && createdShare) {
-          return createdShare;
+          return toClaimShare(createdShare);
         } else if (fetchError) {
           console.warn('RPC succeeded but could not fetch created share:', fetchError);
           // Fall through to direct insert as backup
@@ -292,7 +319,12 @@ export class CollaborationService {
       }
     } catch (rpcErr: any) {
       // RPC function doesn't exist or failed, fall through to direct insert
-      if (rpcErr.message && !rpcErr.message.includes('does not exist')) {
+      const msg = rpcErr?.message || '';
+      const code = rpcErr?.code;
+      const isPgFnMissing = code === '42883' || msg.includes('does not exist');
+      const isPostgrestFnMissing = code === 'PGRST202' || msg.includes('Could not find the function');
+
+      if (!isPgFnMissing && !isPostgrestFnMissing) {
         // Re-throw if it's a real error (not just "function doesn't exist")
         throw rpcErr;
       }
@@ -395,7 +427,7 @@ export class CollaborationService {
       }
       throw error;
     }
-    return data;
+    return toClaimShare(data);
   }
 
   // Create donation payment session
