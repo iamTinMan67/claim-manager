@@ -154,7 +154,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
           return []
         }
       } else {
-        // Show user's own claims
+        // Show user's own claims ONLY - exclude any claims where user is just a guest
         console.log('ClaimsTable: Querying for user claims with user_id:', user.id)
         query = query.eq('user_id', user.id)
       }
@@ -178,8 +178,29 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
       }
       
       // Additional filter: ensure closed claims are never shown in shared/guest view
-      // This is a safety net in case the database query doesn't catch all cases
+      // Also exclude claims where user is only a guest (not owner) from private claims view
       let filteredData = data || []
+      
+      if (!isGuest) {
+        // For private claims view, exclude any claims where user is only a guest (not owner)
+        // Get claim IDs where user is a guest but NOT the owner
+        const { data: guestShares } = await supabase
+          .from('claim_shares')
+          .select('claim_id, owner_id')
+          .eq('shared_with_id', user.id)
+        
+        const guestOnlyClaimIds = (guestShares || [])
+          .filter((share: any) => share.owner_id !== user.id)
+          .map((share: any) => share.claim_id)
+          .filter(Boolean)
+        
+        if (guestOnlyClaimIds.length > 0) {
+          filteredData = filteredData.filter((claim: Claim) => 
+            !guestOnlyClaimIds.includes(claim.claim_id)
+          )
+        }
+      }
+      
       if (isGuest && !statusFilter) {
         filteredData = filteredData.filter((claim: Claim) => {
           const status = claim.status?.toString().toLowerCase()

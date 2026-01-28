@@ -7,6 +7,7 @@ import PendingEvidenceReview from './PendingEvidenceReview'
 import { AddEvidenceModal } from './AddEvidenceModal'
 import { LinkEvidenceModal } from './LinkEvidenceModal'
 import { CopyEvidenceModal } from './CopyEvidenceModal'
+import { ShareEvidenceModal } from './ShareEvidenceModal'
 import { toast } from '@/hooks/use-toast'
 import { getClaimIdFromCaseNumber } from '@/utils/claimUtils'
 
@@ -43,6 +44,7 @@ const EvidenceManager = ({
   const [showAddModal, setShowAddModal] = useState(false)
   const [showLinkModal, setShowLinkModal] = useState(false)
   const [showCopyModal, setShowCopyModal] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
   const [availableEvidence, setAvailableEvidence] = useState<Evidence[]>([])
   
   // Fetch claim title for Copy Evidence modal
@@ -422,14 +424,24 @@ const EvidenceManager = ({
 
       // No need to filter by case_number since evidence is already linked via evidence_claims table
 
-      // Sort: first by display_order desc (nulls last), then created_at desc
+      // Sort so that exhibit numbers are consistently in
+      // DESCENDING order (highest exhibit at the top).
+      // Primary: numeric exhibit_number descending
+      // Tie‑breaker: created_at descending (newest first)
       merged.sort((a, b) => {
-        const ao = a.display_order ?? -Infinity
-        const bo = b.display_order ?? -Infinity
-        if (ao !== bo) return bo - ao
-        const at = new Date(a.created_at).getTime()
-        const bt = new Date(b.created_at).getTime()
-        return bt - at
+        const axRaw = (a as any).exhibit_number
+        const bxRaw = (b as any).exhibit_number
+
+        const ax = axRaw == null ? -Infinity : Number(String(axRaw).replace(/^Exhibit\s*/i, '').trim()) || 0
+        const bx = bxRaw == null ? -Infinity : Number(String(bxRaw).replace(/^Exhibit\s*/i, '').trim()) || 0
+
+        if (ax !== bx) return bx - ax
+
+        const at = new Date(a.created_at).getTime() || 0
+        const bt = new Date(b.created_at).getTime() || 0
+        if (at !== bt) return bt - at
+
+        return 0
       })
 
       console.log('EvidenceManager: Final merged evidence result:', merged.length, 'items')
@@ -1331,18 +1343,19 @@ USING (
     
     if (draggedIndex === -1 || targetIndex === -1) return
     
-    // Create new order
+    // Create new order based on current visual list
     const newOrder = [...evidenceData]
     const [draggedElement] = newOrder.splice(draggedIndex, 1)
     newOrder.splice(targetIndex, 0, draggedElement)
     
-    // Update display_order and exhibit_number for all items
-    // display_order: descending (highest first, since list is sorted descending)
-    // exhibit_number: ascending (1, 2, 3... based on position in list)
+    // Update display_order and exhibit_number for all items so that:
+    // - exhibit_number is highest at the TOP of the list and
+    //   counts downwards (N, N-1, ..., 1)
+    // - display_order mirrors that same descending order
     const updates = newOrder.map((item, index) => ({
       id: item.id,
       display_order: newOrder.length - index,
-      exhibit_number: index + 1 // Position 0 = Exhibit 1, Position 1 = Exhibit 2, etc.
+      exhibit_number: newOrder.length - index // Position 0 = Exhibit N, Position 1 = Exhibit N-1, etc.
     }))
     
     updateDisplayOrderMutation.mutate(updates)
@@ -1605,7 +1618,17 @@ USING (
             </select>
             </div>
             <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
-              {/* Order: Amend, Add, then Show */}
+              {/* Order: Share, Amend, Add, Copy, then Show */}
+            {isInteractive && Object.keys(selectedIds).filter(id => selectedIds[id]).length > 0 && (
+              <button
+                onClick={() => setShowShareModal(true)}
+                className="bg-white/10 border border-purple-400 text-purple-400 px-3 h-8 rounded-lg flex items-center space-x-2 hover:opacity-90"
+                title="Share selected evidence to another claim"
+              >
+                <Link className="w-4 h-4" />
+                <span>Share ({Object.keys(selectedIds).filter(id => selectedIds[id]).length})</span>
+              </button>
+            )}
             {!isCollapsed && onSetAmendMode && isInteractive && (
               <button
                 onClick={() => onSetAmendMode(!amendMode)}
@@ -1684,7 +1707,7 @@ USING (
             <table className={`min-w-full ${isStatic ? 'table-fixed' : 'table-auto'} divide-y divide-yellow-400/20`}>
             <thead className="bg-yellow-400/10">
               <tr>
-                {!isGuest && amendMode && (
+                {isInteractive && (
                   <th className={`px-2 py-3 text-left text-sm font-medium text-gold-light uppercase tracking-wider ${isStatic ? 'w-12' : 'w-10'}`}>
                     <input
                       type="checkbox"
@@ -1758,14 +1781,14 @@ USING (
                       onClick={() => (isInteractive ? handleRowClick(item) : undefined)}
                     >
                     {/* Order column hidden as requested */}
-                    {!isGuest && amendMode && (
+                    {isInteractive && (
                       <td className={`px-2 ${isStatic ? 'py-3' : 'py-4'} whitespace-nowrap text-base text-gray-500`}>
                         <input
                           type="checkbox"
                           className="w-5 h-5"
                           checked={!!selectedIds[item.id]}
                           onChange={(e) => setSelectedIds({ ...selectedIds, [item.id]: e.target.checked })}
-                          title="Select for bulk link"
+                          title="Select to share to another claim"
                         />
                       </td>
                     )}
@@ -2239,6 +2262,29 @@ USING (
           availableEvidence={evidenceData || []}
           onSuccess={() => {
             queryClient.invalidateQueries({ queryKey: ['evidence'] })
+          }}
+        />
+      )}
+
+      {/* Share Evidence Modal - For All Users */}
+      {showShareModal && selectedClaim && (
+        <ShareEvidenceModal
+          open={showShareModal}
+          onOpenChange={(open) => {
+            setShowShareModal(open)
+            if (!open) {
+              // Clear selection when modal closes
+              setSelectedIds({})
+            }
+          }}
+          selectedEvidenceIds={Object.keys(selectedIds).filter(id => selectedIds[id])}
+          currentClaimCaseNumber={selectedClaim}
+          currentClaimTitle={currentClaimTitle || 'Claim'}
+          isGuest={isGuest}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['evidence'] })
+            queryClient.invalidateQueries({ queryKey: ['evidence', selectedClaim] })
+            setSelectedIds({})
           }}
         />
       )}
