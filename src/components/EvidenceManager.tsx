@@ -81,6 +81,7 @@ const EvidenceManager = ({
   const [filterText, setFilterText] = useState('')
   const [methodFilter, setMethodFilter] = useState<string>('')
   const [tagFilter, setTagFilter] = useState<string>('')
+  const [showAmendHelp, setShowAmendHelp] = useState(false)
   const [columnPrefs, setColumnPrefs] = useState<{ showMethod: boolean; showPages: boolean; showBookOfDeeds: boolean; showCLCRef: boolean; showExhibitNumber: boolean }>(() => {
     return { showMethod: true, showPages: true, showBookOfDeeds: false, showCLCRef: false, showExhibitNumber: true }
   })
@@ -282,6 +283,18 @@ const EvidenceManager = ({
     }
     runCleanup()
   }, [])
+
+  // When Amend mode is enabled, optionally show a one-time help message
+  useEffect(() => {
+    if (!amendMode) return
+    try {
+      const hidden = localStorage.getItem('evidence_amend_help_hidden') === '1'
+      if (!hidden) setShowAmendHelp(true)
+    } catch {
+      // If localStorage fails, still safe to show the help
+      setShowAmendHelp(true)
+    }
+  }, [amendMode])
 
   // Get evidence data from evidence table (support both legacy case_number and new evidence_claims link)
   const { data: evidenceData, isLoading, error } = useQuery({
@@ -719,6 +732,207 @@ const EvidenceManager = ({
       console.log('EvidenceManager: Updating evidence with data:', data)
       console.log('EvidenceManager: Original filename:', data.file_name)
 
+      // CLAIM-SAFE EDITS:
+      // If this evidence is linked to multiple claims via evidence_claims,
+      // clone it for the CURRENT claim before applying edits so that
+      // changing method/exhibit/etc here does NOT affect other claims.
+      let targetId = id
+      let cloneAttempted = false
+      let cloneSucceeded = false
+      let wasSharedAcrossClaims = false
+      
+      try {
+        if (selectedClaim) {
+          const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+          let claimId: string | null = null
+          if (uuidPattern.test(selectedClaim)) {
+            claimId = selectedClaim
+          } else {
+            claimId = await getClaimIdFromCaseNumber(selectedClaim)
+          }
+
+          if (claimId) {
+            const { data: links, error: linksErr } = await supabase
+              .from('evidence_claims')
+              .select('evidence_id, claim_id')
+              .eq('evidence_id', id)
+
+            if (!linksErr && links) {
+              const claimIds = links.map((l: any) => l.claim_id).filter(Boolean)
+              const uniqueClaimIds = Array.from(new Set(claimIds))
+              const isSharedAcrossClaims = uniqueClaimIds.length > 1
+              wasSharedAcrossClaims = isSharedAcrossClaims
+
+              console.log('EvidenceManager: Edit check - evidence links:', {
+                evidenceId: id,
+                currentClaimId: claimId,
+                linkedClaimIds: uniqueClaimIds,
+                isShared: isSharedAcrossClaims
+              })
+
+              if (isSharedAcrossClaims) {
+                cloneAttempted = true
+                console.log('EvidenceManager: Edit detected shared evidence; cloning for claim-safe edit', {
+                  evidenceId: id,
+                  claimId,
+                  linkedClaims: uniqueClaimIds
+                })
+
+                // Fetch source evidence to clone
+                const { data: src, error: srcErr } = await supabase
+                  .from('evidence')
+                  .select('*')
+                  .eq('id', id)
+                  .maybeSingle()
+                if (srcErr) throw srcErr
+                if (!src) throw new Error('Source evidence not found for edit clone')
+
+                const { data: { user } } = await supabase.auth.getUser()
+                const ownerUserId = currentUserId || user?.id || (src as any).user_id
+
+                // Insert new evidence row - only copy file-related fields, not metadata
+                // This allows edits (method/exhibit/etc) to be per-claim independent
+                const { data: cloned, error: insErr } = await supabase
+                  .from('evidence')
+                  .insert([{
+                    user_id: ownerUserId,
+                    case_number: selectedClaim,
+                    // Copy file information (same physical file, just linked)
+                    file_name: (src as any).file_name,
+                    file_url: (src as any).file_url,
+                    file_size: (src as any).file_size,
+                    file_type: (src as any).file_type,
+                    number_of_pages: (src as any).number_of_pages,
+                    date_submitted: (src as any).date_submitted,
+                    // Copy title for reference (user can edit later)
+                    title: (src as any).title || (src as any).name,
+                    // Copy current method/exhibit/description from source for this claim
+                    // (user will edit these after cloning)
+                    method: (src as any).method || 'To-Do',
+                    exhibit_number: (src as any).exhibit_number,
+                    display_order: (src as any).display_order,
+                    description: (src as any).description,
+                    // Do NOT copy: book_of_deeds_ref, url_link (these stay per-claim)
+                  }])
+                  .select('id')
+                  .single()
+                if (insErr) throw insErr
+                const clonedId = cloned?.id
+                if (!clonedId) throw new Error('Failed to create cloned evidence for edit')
+
+                // Link clone to THIS claim
+                const { error: linkErr } = await supabase
+                  .from('evidence_claims')
+                  .insert([{ evidence_id: clonedId, claim_id: claimId }])
+                if (linkErr) throw linkErr
+
+                // Unlink shared original from THIS claim (keep it for other claims)
+                const { error: unlinkErr } = await supabase
+                  .from('evidence_claims')
+                  .delete()
+                  .eq('evidence_id', id)
+                  .eq('claim_id', claimId)
+                if (unlinkErr) throw unlinkErr
+
+                // Verify the clone was created and linked correctly
+                const { data: verifyClone } = await supabase
+                  .from('evidence_claims')
+                  .select('id')
+                  .eq('evidence_id', clonedId)
+                  .eq('claim_id', claimId)
+                  .maybeSingle()
+                
+                if (!verifyClone) {
+                  throw new Error('Failed to verify cloned evidence link')
+                }
+
+                targetId = clonedId
+                cloneSucceeded = true
+                console.log('EvidenceManager: Claim-safe edit clone complete and verified', { 
+                  originalId: id, 
+                  clonedId,
+                  claimId,
+                  targetIdWillBe: targetId
+                })
+              }
+            }
+          }
+        }
+      } catch (e: any) {
+        console.error('EvidenceManager: claim-safe edit clone failed', e)
+        console.error('EvidenceManager: Clone error details:', {
+          message: e.message,
+          code: e.code,
+          details: e.details,
+          hint: e.hint,
+          cloneAttempted,
+          cloneSucceeded,
+          wasSharedAcrossClaims
+        })
+        
+        // If cloning was attempted but failed, and evidence is shared, we MUST block the update
+        // to prevent cross-claim contamination
+        if (cloneAttempted && !cloneSucceeded && wasSharedAcrossClaims) {
+          // Re-verify sharing status to be absolutely sure
+          try {
+            if (selectedClaim) {
+              const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+              let claimId: string | null = null
+              if (uuidPattern.test(selectedClaim)) {
+                claimId = selectedClaim
+              } else {
+                claimId = await getClaimIdFromCaseNumber(selectedClaim)
+              }
+              if (claimId) {
+                const { data: links } = await supabase
+                  .from('evidence_claims')
+                  .select('claim_id')
+                  .eq('evidence_id', id)
+                const claimIds = (links || []).map((l: any) => l.claim_id).filter(Boolean)
+                const isStillShared = new Set(claimIds).size > 1
+                
+                if (isStillShared) {
+                  // Evidence is confirmed shared and clone failed - BLOCK update to prevent cross-claim changes
+                  console.error('EvidenceManager: BLOCKING update - evidence is shared and cloning failed', {
+                    evidenceId: id,
+                    sharedClaims: Array.from(new Set(claimIds)),
+                    error: e.message
+                  })
+                  throw new Error(`Failed to isolate evidence for this claim. The evidence is shared with ${claimIds.length} claim(s) and cloning failed: ${e.message || 'Unknown error'}. Please try again or contact support.`)
+                }
+              }
+            }
+          } catch (checkErr: any) {
+            // If the check itself fails, but we know cloning failed and it was shared, block the update
+            if (checkErr.message?.includes('Failed to isolate')) {
+              throw checkErr
+            }
+            // If we can't verify, err on the side of caution and block
+            console.error('EvidenceManager: Cannot verify sharing status after clone failure - blocking update to be safe', checkErr)
+            throw new Error(`Failed to clone shared evidence and cannot verify sharing status. Update blocked to prevent cross-claim changes. Error: ${e.message || 'Unknown error'}`)
+          }
+        } else {
+          // Clone wasn't attempted or evidence isn't shared - allow update to proceed normally
+          console.log('EvidenceManager: Clone not needed or not attempted - proceeding with normal update', {
+            cloneAttempted,
+            cloneSucceeded,
+            wasSharedAcrossClaims
+          })
+        }
+      }
+      
+      // Final safety check: if targetId is still the original ID but we attempted cloning, something went wrong
+      if (targetId === id && cloneAttempted && wasSharedAcrossClaims) {
+        console.error('EvidenceManager: CRITICAL - targetId is still original ID after clone attempt', {
+          originalId: id,
+          targetId,
+          cloneAttempted,
+          cloneSucceeded,
+          wasSharedAcrossClaims
+        })
+        throw new Error('Failed to create isolated copy of shared evidence. Update blocked to prevent affecting other claims.')
+      }
+
       // Clean the data - only include fields that can be updated
       // Exclude: id, created_at, updated_at, user_id, claimIds, display_order
       const { id: _, created_at: __, updated_at: ___, user_id: ____, claimIds: _____, display_order: ______, ...restData } = data as any
@@ -768,14 +982,31 @@ const EvidenceManager = ({
       console.log('EvidenceManager: Full cleanData being sent:', JSON.stringify(cleanData, null, 2))
 
       console.log('EvidenceManager: Clean data being sent:', cleanData)
-      console.log('EvidenceManager: Updating evidence with id:', id)
+      console.log('EvidenceManager: Updating evidence - original ID:', id, 'target ID (may be cloned):', targetId, 'cloneAttempted:', cloneAttempted, 'cloneSucceeded:', cloneSucceeded)
+      if (targetId !== id) {
+        console.log('EvidenceManager: ✅ Using CLONED evidence ID for update - original will NOT be affected', {
+          originalId: id,
+          clonedTargetId: targetId
+        })
+      } else {
+        if (cloneAttempted && !cloneSucceeded) {
+          console.warn('EvidenceManager: ⚠️ WARNING - Using ORIGINAL ID but cloning was attempted and failed!', {
+            originalId: id,
+            cloneAttempted,
+            cloneSucceeded
+          })
+        } else {
+          console.log('EvidenceManager: Using ORIGINAL evidence ID - evidence is NOT shared across claims')
+        }
+      }
 
       // Perform the update without select to avoid 400 errors
       // We'll rely on refetch to get the updated data
+      console.log('EvidenceManager: Executing UPDATE query for evidence ID:', targetId)
       const { error: updateError, status, statusText } = await supabase
         .from('evidence')
         .update(cleanData)
-        .eq('id', id)
+        .eq('id', targetId)
       
       console.log('EvidenceManager: Update response status:', status, statusText)
       
@@ -790,7 +1021,7 @@ const EvidenceManager = ({
       await new Promise(resolve => setTimeout(resolve, 100))
       
       // Return the original data with updates applied - the refetch will get the real data from the database
-      return { ...data, ...cleanData, id } as Evidence
+      return { ...data, ...cleanData, id: targetId } as Evidence
     },
     onSuccess: async (data) => {
       console.log('EvidenceManager: Update mutation onSuccess called with data:', data)
@@ -799,6 +1030,12 @@ const EvidenceManager = ({
       // Invalidate queries to trigger refetch
       await queryClient.invalidateQueries({ queryKey: ['evidence', selectedClaim] })
       await queryClient.invalidateQueries({ queryKey: ['evidence'] })
+      // Also invalidate todo counts so the counter badges update
+      await queryClient.invalidateQueries({ queryKey: ['todo-evidence-counts'] })
+      // Also invalidate todo counts so the counter badges update
+      await queryClient.invalidateQueries({ queryKey: ['todo-evidence-counts'] })
+      // Also invalidate todo counts so the counter badges update
+      await queryClient.invalidateQueries({ queryKey: ['todo-evidence-counts'] })
       
       // Manually refetch the query
       try {
@@ -1269,6 +1506,9 @@ USING (
         }
       }, 500)
       
+      // Invalidate todo counts so the counter badges update
+      await queryClient.invalidateQueries({ queryKey: ['todo-evidence-counts'] })
+      
       // Verify deletion and refresh the list
       setTimeout(async () => {
         try {
@@ -1333,33 +1573,135 @@ USING (
     setDragOverItem(null)
   }
 
-  const handleDrop = (e: React.DragEvent, targetId: string) => {
+  const handleDrop = async (e: React.DragEvent, targetId: string) => {
     e.preventDefault()
-    
+
     if (!draggedItem || draggedItem === targetId || !evidenceData) return
-    
+
     const draggedIndex = evidenceData.findIndex(item => item.id === draggedItem)
     const targetIndex = evidenceData.findIndex(item => item.id === targetId)
-    
+
     if (draggedIndex === -1 || targetIndex === -1) return
-    
+
     // Create new order based on current visual list
-    const newOrder = [...evidenceData]
+    let newOrder: any[] = [...(evidenceData as any[])]
     const [draggedElement] = newOrder.splice(draggedIndex, 1)
     newOrder.splice(targetIndex, 0, draggedElement)
-    
+
+    // CRITICAL:
+    // Evidence items can now be linked to multiple claims (evidence_claims).
+    // If we reorder by updating exhibit_number/display_order on the shared evidence row,
+    // it will change numbering in OTHER claims too.
+    //
+    // Fix: for any evidence item linked to multiple claims, CLONE it for THIS claim
+    // (new evidence row pointing to same file_url; no re-upload), relink this claim
+    // to the clone, unlink this claim from the shared original, then reorder safely.
+    try {
+      if (selectedClaim) {
+        const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+        const claimId = uuidPattern.test(selectedClaim) ? selectedClaim : await getClaimIdFromCaseNumber(selectedClaim)
+        if (claimId) {
+          const ids = newOrder.map((it) => it.id).filter(Boolean)
+
+          // Find evidence linked to multiple claims
+          const { data: links, error: linksErr } = await supabase
+            .from('evidence_claims')
+            .select('evidence_id, claim_id')
+            .in('evidence_id', ids as any)
+          if (linksErr) throw linksErr
+
+          const claimIdsByEvidence = new Map<string, Set<string>>()
+          for (const row of links || []) {
+            if (!row?.evidence_id) continue
+            if (!claimIdsByEvidence.has(row.evidence_id)) claimIdsByEvidence.set(row.evidence_id, new Set())
+            claimIdsByEvidence.get(row.evidence_id)!.add(row.claim_id)
+          }
+
+          const sharedIds = ids.filter((id) => (claimIdsByEvidence.get(id)?.size || 0) > 1)
+
+          if (sharedIds.length > 0) {
+            console.warn('EvidenceManager: Reorder detected shared evidence; cloning for claim-safe reorder', {
+              claimId,
+              sharedCount: sharedIds.length
+            })
+
+            for (const sharedEvidenceId of sharedIds) {
+              // Fetch the evidence row to clone
+              const { data: src, error: srcErr } = await supabase
+                .from('evidence')
+                .select('*')
+                .eq('id', sharedEvidenceId)
+                .maybeSingle()
+              if (srcErr) throw srcErr
+              if (!src) continue
+
+              const { data: { user } } = await supabase.auth.getUser()
+              const ownerUserId = currentUserId || user?.id || src.user_id
+
+              // Insert new evidence row - only copy file-related fields + current metadata
+              // This isolates the record for reordering so it doesn't affect other claims
+              const { data: cloned, error: insErr } = await supabase
+                .from('evidence')
+                .insert([{
+                  user_id: ownerUserId,
+                  case_number: selectedClaim, // keep legacy compatibility
+                  // Copy file information (same physical file, just linked)
+                  file_name: (src as any).file_name,
+                  file_url: (src as any).file_url,
+                  file_size: (src as any).file_size,
+                  file_type: (src as any).file_type,
+                  number_of_pages: (src as any).number_of_pages,
+                  date_submitted: (src as any).date_submitted,
+                  // Copy title for reference
+                  title: (src as any).title || (src as any).name,
+                  // Preserve current method/description for reordering (will be renumbered below)
+                  method: (src as any).method || 'To-Do',
+                  description: (src as any).description,
+                  // exhibit_number/display_order will be set by reorder below
+                }])
+                .select('id')
+                .single()
+              if (insErr) throw insErr
+
+              const clonedId = cloned?.id
+              if (!clonedId) continue
+
+              // Link clone to THIS claim
+              const { error: linkErr } = await supabase
+                .from('evidence_claims')
+                .insert([{ evidence_id: clonedId, claim_id: claimId }])
+              if (linkErr) throw linkErr
+
+              // Unlink shared original from THIS claim (keep it for other claims)
+              const { error: unlinkErr } = await supabase
+                .from('evidence_claims')
+                .delete()
+                .eq('evidence_id', sharedEvidenceId)
+                .eq('claim_id', claimId)
+              if (unlinkErr) throw unlinkErr
+
+              // Replace in the reorder list so we only update this claim's copies
+              newOrder = newOrder.map((it) => (it.id === sharedEvidenceId ? { ...it, id: clonedId } : it))
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      console.error('EvidenceManager: Claim-safe reorder cloning failed; falling back to direct reorder', err)
+      // If cloning fails, silently fall back to direct reorder for safety.
+    }
+
     // Update display_order and exhibit_number for all items so that:
-    // - exhibit_number is highest at the TOP of the list and
-    //   counts downwards (N, N-1, ..., 1)
+    // - exhibit_number is highest at the TOP of the list and counts downwards (N..1)
     // - display_order mirrors that same descending order
     const updates = newOrder.map((item, index) => ({
       id: item.id,
       display_order: newOrder.length - index,
-      exhibit_number: newOrder.length - index // Position 0 = Exhibit N, Position 1 = Exhibit N-1, etc.
+      exhibit_number: newOrder.length - index
     }))
-    
+
     updateDisplayOrderMutation.mutate(updates)
-    
+
     setDraggedItem(null)
     setDragOverItem(null)
   }
@@ -1701,6 +2043,34 @@ USING (
               </label>
             </div>
           </div>
+
+          {/* Optional one-time help for Amend mode, with \"Don't show again\" */}
+          {amendMode && showAmendHelp && (
+            <div className="mt-2 mb-2 px-3 py-2 rounded-md bg-yellow-400/10 border border-yellow-400/40 text-xs text-yellow-100 max-w-2xl">
+              <p className="font-semibold mb-1">Amend mode: cloning & reordering</p>
+              <ul className="list-disc list-inside space-y-1 mb-2">
+                <li>Dragging items will renumber exhibits from top (highest) to bottom (lowest) for this claim only.</li>
+                <li>If an exhibit is shared with another claim, this claim now works on its own cloned copy so other claims are not affected.</li>
+                <li>Use the Share button to clone files from one claim into another without re‑uploading.</li>
+              </ul>
+              <label className="inline-flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4"
+                  onChange={(e) => {
+                    const hide = e.target.checked
+                    if (hide) {
+                      try {
+                        localStorage.setItem('evidence_amend_help_hidden', '1')
+                      } catch {}
+                      setShowAmendHelp(false)
+                    }
+                  }}
+                />
+                <span>Don&apos;t show this message again</span>
+              </label>
+            </div>
+          )}
         </div>
         {!isCollapsed && (
           <div className={`flex-1 ${isStatic ? 'max-h-[75vh] overflow-y-auto overflow-x-hidden' : 'overflow-y-auto'} ${!isStatic ? 'overflow-x-auto' : ''}`} style={{ scrollbarGutter: isStatic ? 'stable both-edges' as any : undefined, maxWidth: '1100px' }}>

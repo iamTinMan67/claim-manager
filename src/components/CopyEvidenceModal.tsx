@@ -109,29 +109,94 @@ export const CopyEvidenceModal = ({
         throw new Error("Could not find target claim");
       }
 
-      // Link each selected evidence item to the target claim
+      // Calculate next exhibit number for target claim (before loop, so multiple items get sequential numbers)
+      let nextExhibitNumber = 1;
+      try {
+        const { data: linkRows } = await supabase
+          .from('evidence_claims')
+          .select('evidence_id')
+          .eq('claim_id', targetClaimId);
+        
+        if (linkRows && linkRows.length > 0) {
+          const linkedIds = linkRows.map(r => r.evidence_id).filter(Boolean);
+          if (linkedIds.length > 0) {
+            const { data: evidenceRows } = await supabase
+              .from('evidence')
+              .select('exhibit_number')
+              .in('id', linkedIds);
+            
+            if (evidenceRows) {
+              let maxNum = 0;
+              evidenceRows.forEach((row: any) => {
+                if (row.exhibit_number && Number.isFinite(row.exhibit_number)) {
+                  maxNum = Math.max(maxNum, Number(row.exhibit_number));
+                }
+              });
+              nextExhibitNumber = maxNum + 1;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Could not calculate next exhibit number, defaulting to 1', err);
+      }
+
+      // CLONE each selected evidence item to the target claim (no re-upload; same file_url),
+      // so reordering/renumbering in one claim never affects another claim.
       let successCount = 0;
       let errorCount = 0;
 
       for (const evidenceId of selectedEvidence) {
         try {
-          // Check if evidence is already linked to this claim
-          const { data: existingLink } = await supabase
-            .from('evidence_claims')
-            .select('id')
-            .eq('evidence_id', evidenceId)
-            .eq('claim_id', targetClaimId)
-            .maybeSingle();
+          // Fetch source evidence row to clone
+          const { data: src, error: srcErr } = await supabase
+            .from('evidence')
+            .select('*')
+            .eq('id', evidenceId)
+            .maybeSingle()
+          if (srcErr) throw srcErr
+          if (!src) throw new Error('Evidence not found')
 
-          if (!existingLink) {
-            await EvidenceService.linkEvidenceToClaim(evidenceId, targetClaimId);
-            successCount++;
-          } else {
-            // Already linked, skip silently
-            successCount++;
-          }
+          const { data: { user } } = await supabase.auth.getUser()
+          if (!user) throw new Error('Not authenticated')
+
+          // Insert new evidence row - only copy file-related fields, not metadata
+          // This allows each claim to have independent method/exhibit/description
+          const { data: cloned, error: insErr } = await supabase
+            .from('evidence')
+            .insert([{
+              user_id: user.id,
+              case_number: selectedTargetClaim,
+              // Copy file information (same physical file, just linked)
+              file_name: (src as any).file_name,
+              file_url: (src as any).file_url,
+              file_size: (src as any).file_size,
+              file_type: (src as any).file_type,
+              number_of_pages: (src as any).number_of_pages,
+              date_submitted: (src as any).date_submitted,
+              // Copy title for reference (user can edit later)
+              title: (src as any).title || (src as any).name,
+              // Set default method to To-Do (per-claim, independent)
+              method: 'To-Do',
+              // Assign next sequential exhibit number for this claim
+              exhibit_number: nextExhibitNumber++,
+              // Do NOT copy: description, display_order, 
+              // book_of_deeds_ref, url_link (these stay per-claim)
+            }])
+            .select('id')
+            .single()
+          if (insErr) throw insErr
+          const clonedId = cloned?.id
+          if (!clonedId) throw new Error('Clone failed')
+
+          // Link cloned evidence to the target claim
+          const { error: linkErr } = await supabase
+            .from('evidence_claims')
+            .insert([{ evidence_id: clonedId, claim_id: targetClaimId }])
+          if (linkErr) throw linkErr
+
+          successCount++;
         } catch (error: any) {
-          console.error(`Error linking evidence ${evidenceId}:`, error);
+          console.error(`Error cloning evidence ${evidenceId}:`, error);
           errorCount++;
         }
       }

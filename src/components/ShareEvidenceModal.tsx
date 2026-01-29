@@ -5,7 +5,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { EvidenceService } from "@/services/evidenceService";
 import { getClaimIdFromCaseNumber } from "@/utils/claimUtils";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
@@ -138,34 +137,99 @@ export const ShareEvidenceModal = ({
         throw new Error("Could not find target claim");
       }
 
-      // Link each selected evidence item to the target claim
+      // Calculate next exhibit number for target claim (before loop, so multiple items get sequential numbers)
+      let nextExhibitNumber = 1;
+      try {
+        const { data: linkRows } = await supabase
+          .from('evidence_claims')
+          .select('evidence_id')
+          .eq('claim_id', targetClaimId);
+        
+        if (linkRows && linkRows.length > 0) {
+          const linkedIds = linkRows.map(r => r.evidence_id).filter(Boolean);
+          if (linkedIds.length > 0) {
+            const { data: evidenceRows } = await supabase
+              .from('evidence')
+              .select('exhibit_number')
+              .in('id', linkedIds);
+            
+            if (evidenceRows) {
+              let maxNum = 0;
+              evidenceRows.forEach((row: any) => {
+                if (row.exhibit_number && Number.isFinite(row.exhibit_number)) {
+                  maxNum = Math.max(maxNum, Number(row.exhibit_number));
+                }
+              });
+              nextExhibitNumber = maxNum + 1;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Could not calculate next exhibit number, defaulting to 1', err);
+      }
+
+      // CLONE each selected evidence item to the target claim (no re-upload; same file_url),
+      // so reordering/renumbering in one claim never affects another claim.
       let successCount = 0;
       let errorCount = 0;
 
       for (const evidenceId of selectedEvidenceIds) {
         try {
-          // Check if evidence is already linked to this claim
-          const { data: existingLink } = await supabase
-            .from('evidence_claims')
-            .select('id')
-            .eq('evidence_id', evidenceId)
-            .eq('claim_id', targetClaimId)
-            .maybeSingle();
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error('Not authenticated');
 
-          if (!existingLink) {
-            await EvidenceService.linkEvidenceToClaim(evidenceId, targetClaimId);
-            successCount++;
-          } else {
-            // Already linked, skip silently
-            successCount++;
-          }
+          // Fetch source evidence row to clone
+          const { data: src, error: srcErr } = await supabase
+            .from('evidence')
+            .select('*')
+            .eq('id', evidenceId)
+            .maybeSingle();
+          if (srcErr) throw srcErr;
+          if (!src) throw new Error('Evidence not found');
+
+          // Insert new evidence row - only copy file-related fields, not metadata
+          // This allows each claim to have independent method/exhibit/description
+          const { data: cloned, error: insErr } = await supabase
+            .from('evidence')
+            .insert([{
+              user_id: user.id,
+              case_number: selectedTargetClaim,
+              // Copy file information (same physical file, just linked)
+              file_name: (src as any).file_name,
+              file_url: (src as any).file_url,
+              file_size: (src as any).file_size,
+              file_type: (src as any).file_type,
+              number_of_pages: (src as any).number_of_pages,
+              date_submitted: (src as any).date_submitted,
+              // Copy title for reference (user can edit later)
+              title: (src as any).title || (src as any).name,
+              // Set default method to To-Do (per-claim, independent)
+              method: 'To-Do',
+              // Assign next sequential exhibit number for this claim
+              exhibit_number: nextExhibitNumber++,
+              // Do NOT copy: description, display_order, 
+              // book_of_deeds_ref, url_link (these stay per-claim)
+            }])
+            .select('id')
+            .single();
+          if (insErr) throw insErr;
+          const clonedId = cloned?.id;
+          if (!clonedId) throw new Error('Clone failed');
+
+          // Link cloned evidence to the target claim
+          const { error: linkErr } = await supabase
+            .from('evidence_claims')
+            .insert([{ evidence_id: clonedId, claim_id: targetClaimId }]);
+          if (linkErr) throw linkErr;
+
+          successCount++;
         } catch (error: any) {
-          console.error(`Error linking evidence ${evidenceId}:`, error);
+          console.error(`Error cloning evidence ${evidenceId}:`, error);
           errorCount++;
         }
       }
 
-      // If sharing to a shared claim (not a private claim), also link to each guest's private claim
+      // If sharing to a shared claim (not a private claim), also CLONE to each guest's private claim
       const targetClaim = availableClaims.find(c => c.case_number === selectedTargetClaim);
       if (targetClaim && (targetClaim as any).isShared && !isGuest) {
         // Get the claim_id for the shared claim
@@ -178,7 +242,7 @@ export const ShareEvidenceModal = ({
             .eq('claim_id', sharedClaimId);
 
           if (guests && guests.length > 0) {
-            // For each guest, link evidence to their private claims
+            // For each guest, clone evidence to their private claims
             for (const guestShare of guests) {
               const guestUserId = guestShare.shared_with_id;
               
@@ -193,21 +257,81 @@ export const ShareEvidenceModal = ({
               if (guestClaims && guestClaims.length > 0) {
                 const guestClaimId = await getClaimIdFromCaseNumber(guestClaims[0].case_number);
                 if (guestClaimId) {
-                  // Link each evidence item to the guest's private claim
+                  // Clone each evidence item to the guest's private claim
                   for (const evidenceId of selectedEvidenceIds) {
                     try {
-                      const { data: existingLink } = await supabase
-                        .from('evidence_claims')
-                        .select('id')
-                        .eq('evidence_id', evidenceId)
-                        .eq('claim_id', guestClaimId)
+                      const { data: src, error: srcErr } = await supabase
+                        .from('evidence')
+                        .select('*')
+                        .eq('id', evidenceId)
                         .maybeSingle();
+                      if (srcErr) throw srcErr;
+                      if (!src) continue;
 
-                      if (!existingLink) {
-                        await EvidenceService.linkEvidenceToClaim(evidenceId, guestClaimId);
+                      // Calculate next exhibit number for guest's private claim
+                      let guestNextExhibit = 1;
+                      try {
+                        const { data: guestLinkRows } = await supabase
+                          .from('evidence_claims')
+                          .select('evidence_id')
+                          .eq('claim_id', guestClaimId);
+                        
+                        if (guestLinkRows && guestLinkRows.length > 0) {
+                          const guestLinkedIds = guestLinkRows.map(r => r.evidence_id).filter(Boolean);
+                          if (guestLinkedIds.length > 0) {
+                            const { data: guestEvidenceRows } = await supabase
+                              .from('evidence')
+                              .select('exhibit_number')
+                              .in('id', guestLinkedIds);
+                            
+                            if (guestEvidenceRows) {
+                              let guestMaxNum = 0;
+                              guestEvidenceRows.forEach((row: any) => {
+                                if (row.exhibit_number && Number.isFinite(row.exhibit_number)) {
+                                  guestMaxNum = Math.max(guestMaxNum, Number(row.exhibit_number));
+                                }
+                              });
+                              guestNextExhibit = guestMaxNum + 1;
+                            }
+                          }
+                        }
+                      } catch (err) {
+                        console.warn('Could not calculate guest exhibit number, defaulting to 1', err);
                       }
+
+                      const { data: cloned, error: insErr } = await supabase
+                        .from('evidence')
+                        .insert([{
+                          user_id: guestUserId,
+                          case_number: guestClaims[0].case_number,
+                          // Copy file information (same physical file, just linked)
+                          file_name: (src as any).file_name,
+                          file_url: (src as any).file_url,
+                          file_size: (src as any).file_size,
+                          file_type: (src as any).file_type,
+                          number_of_pages: (src as any).number_of_pages,
+                          date_submitted: (src as any).date_submitted,
+                          // Copy title for reference (user can edit later)
+                          title: (src as any).title || (src as any).name,
+                          // Set default method to To-Do (per-claim, independent)
+                          method: 'To-Do',
+                          // Assign next sequential exhibit number for guest's claim
+                          exhibit_number: guestNextExhibit++,
+                          // Do NOT copy: description, display_order, 
+                          // book_of_deeds_ref, url_link (these stay per-claim)
+                        }])
+                        .select('id')
+                        .single();
+                      if (insErr) throw insErr;
+                      const clonedId = cloned?.id;
+                      if (!clonedId) continue;
+
+                      const { error: linkErr } = await supabase
+                        .from('evidence_claims')
+                        .insert([{ evidence_id: clonedId, claim_id: guestClaimId }]);
+                      if (linkErr) throw linkErr;
                     } catch (error) {
-                      console.error(`Error linking to guest claim:`, error);
+                      console.error(`Error cloning to guest claim:`, error);
                     }
                   }
                 }

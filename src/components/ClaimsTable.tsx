@@ -70,6 +70,63 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
     }
   })
 
+  // Per-claim count of evidence items with method = 'To-Do'
+  const { data: todoEvidenceCounts } = useQuery({
+    queryKey: ['todo-evidence-counts', isGuest, statusFilter],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return {} as Record<string, number>
+
+      // Find relevant claim_ids depending on context (private vs shared)
+      let claimIds: string[] = []
+
+      if (isGuest) {
+        // Guest: claims shared with this user
+        const { data: sharedClaimIds } = await supabase
+          .from('claim_shares')
+          .select('claim_id')
+          .eq('shared_with_id', user.id)
+        claimIds = (sharedClaimIds || []).map((s: any) => s.claim_id).filter(Boolean)
+      } else {
+        // Private: user's own claims
+        const { data: myClaims } = await supabase
+          .from('claims')
+          .select('claim_id')
+          .eq('user_id', user.id)
+        claimIds = (myClaims || []).map((c: any) => c.claim_id).filter(Boolean)
+      }
+
+      if (!claimIds.length) return {} as Record<string, number>
+
+      // Get all evidence links for these claims with method To-Do
+      const { data, error } = await supabase
+        .from('evidence_claims')
+        .select(`
+          claim_id,
+          evidence:evidence_id (
+            method
+          )
+        `)
+        .in('claim_id', claimIds as any)
+
+      if (error || !data) return {} as Record<string, number>
+
+      const counts: Record<string, number> = {}
+      for (const row of data as any[]) {
+        const claimId = row.claim_id
+        const method = row.evidence?.method as string | null | undefined
+        if (!claimId || !method) continue
+
+        const normalized = method.toLowerCase().replace(/[\s-]/g, '')
+        if (normalized === 'todo') {
+          counts[claimId] = (counts[claimId] || 0) + 1
+        }
+      }
+
+      return counts
+    }
+  })
+
   // Stop persisting add-claim form data; clear any previous stored values once
   React.useEffect(() => {
     try { localStorage.removeItem('claimFormData') } catch {}
@@ -131,7 +188,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
       let query = supabase
         .from('claims')
         .select('*')
-        .order('created_at', { ascending: false })
+        // Don't order here - we'll sort by status priority in JavaScript
       
       if (isGuest) {
         // If user is a guest, show only shared claims they have access to
@@ -208,10 +265,35 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
         })
       }
       
-      console.log('ClaimsTable: Claims data received:', filteredData)
+      // Sort by status priority: Active > Appealing > Pending > (others)
+      // Within each status, sort by created_at descending (newest first)
+      const statusPriority: { [key: string]: number } = {
+        'Active': 1,
+        'Appealing': 2,
+        'Pending': 3
+      }
+      
+      const sortedData = [...filteredData].sort((a, b) => {
+        const statusA = (a.status || '').toString()
+        const statusB = (b.status || '').toString()
+        const priorityA = statusPriority[statusA] || 999
+        const priorityB = statusPriority[statusB] || 999
+        
+        // First, sort by status priority
+        if (priorityA !== priorityB) {
+          return priorityA - priorityB
+        }
+        
+        // If same priority, sort by created_at descending (newest first)
+        const dateA = new Date(a.created_at || 0).getTime()
+        const dateB = new Date(b.created_at || 0).getTime()
+        return dateB - dateA
+      })
+      
+      console.log('ClaimsTable: Claims data received:', sortedData)
       console.log('ClaimsTable: Query was for isGuest:', isGuest)
       console.log('ClaimsTable: User ID:', user.id)
-      return filteredData as Claim[]
+      return sortedData as Claim[]
     }
   })
 
@@ -1206,6 +1288,15 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                 <h3 className="text-lg font-semibold truncate">{claim.title}</h3>
               </div>
               <div className="flex items-center space-x-2 flex-shrink-0">
+                {/* To-Do evidence counter (only when there are outstanding items) */}
+                {todoEvidenceCounts && claim.claim_id && todoEvidenceCounts[claim.claim_id] > 0 && (
+                  <div
+                    className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-600 text-white text-[10px] font-semibold"
+                    title={`${todoEvidenceCounts[claim.claim_id]} evidence item(s) marked To-Do`}
+                  >
+                    {todoEvidenceCounts[claim.claim_id]}
+                  </div>
+                )}
                 {/* Sharing status icon: Users if shared, Crown if private */}
                 {!isGuest ? (
                   (ownedSharedClaimIds && claim.claim_id && ownedSharedClaimIds.has(claim.claim_id)) ? (
