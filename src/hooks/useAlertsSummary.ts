@@ -86,12 +86,6 @@ export function useAlertsSummary(scope: AlertsScope) {
         }
       }
 
-      const now = new Date()
-      const nowIso = now.toISOString()
-      const endOfToday = new Date(now)
-      endOfToday.setHours(23, 59, 59, 999)
-      const endOfTodayIso = endOfToday.toISOString()
-
       // Assignment logic:
       // - New rows use responsible_user_id
       // - Older rows may have responsible_user_id = null, so we treat user_id as implicit assignee
@@ -102,51 +96,28 @@ export function useAlertsSummary(scope: AlertsScope) {
         .select('id,title,due_date,alarm_time,case_number', { head: false })
         .eq('completed', false)
         .or(assignedToMeFilter)
-
-      const todoDueQuery = sharedCaseNumbers?.length
-        ? todoBase.in('case_number', sharedCaseNumbers as any).lte('due_date', endOfTodayIso)
-        : todoBase.lte('due_date', endOfTodayIso)
-
-      const todoAlarmQuery = sharedCaseNumbers?.length
-        ? todoBase
-            .in('case_number', sharedCaseNumbers as any)
-            .eq('alarm_enabled', true)
-            .not('alarm_time', 'is', null)
-            .lte('alarm_time', nowIso)
+      const todoQuery = sharedCaseNumbers?.length
+        ? todoBase.in('case_number', sharedCaseNumbers as any)
         : todoBase
-            .eq('alarm_enabled', true)
-            .not('alarm_time', 'is', null)
-            .lte('alarm_time', nowIso)
 
-      const [dueTodosRes, alarmTodosRes] = await Promise.all([todoDueQuery, todoAlarmQuery])
-      const todoById = new Map<string, AlertsTodoItem>()
-      for (const row of (dueTodosRes.data || []) as any[]) {
-        if (!row?.id) continue
-        todoById.set(row.id, {
-          id: row.id,
-          title: row.title || 'Untitled task',
-          due_date: row.due_date,
-          alarm_time: row.alarm_time ?? null,
-          case_number: row.case_number ?? null,
-        })
-      }
-      for (const row of (alarmTodosRes.data || []) as any[]) {
-        if (!row?.id) continue
-        todoById.set(row.id, {
-          id: row.id,
-          title: row.title || 'Untitled task',
-          due_date: row.due_date,
-          alarm_time: row.alarm_time ?? null,
-          case_number: row.case_number ?? null,
-        })
-      }
+      const todosRes = await todoQuery
+      const todos = ((todosRes.data || []) as any[]).map((row) => ({
+        id: row.id,
+        title: row.title || 'Untitled task',
+        due_date: row.due_date,
+        alarm_time: row.alarm_time ?? null,
+        case_number: row.case_number ?? null,
+      })) as AlertsTodoItem[]
 
-      const todos = Array.from(todoById.values()).sort((a, b) => {
+      todos.sort((a, b) => {
         // Sort by alarm_time (if present) else due_date
         const aTime = (a.alarm_time || a.due_date) ?? ''
         const bTime = (b.alarm_time || b.due_date) ?? ''
         return aTime.localeCompare(bTime)
       })
+
+      const now = new Date()
+      const nowIso = now.toISOString()
 
       const eventsBase = supabase
         .from('calendar_events')
