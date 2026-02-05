@@ -24,11 +24,17 @@ export function AlertsSummaryCard({ scope }: { scope: 'private' | 'shared' }) {
     total: privateData?.total ?? 0,
     todoAlerts: privateData?.todoAlerts ?? 0,
     calendarAlerts: privateData?.calendarAlerts ?? 0,
+    myTodoAlerts: privateData?.myTodoAlerts ?? 0,
+    othersTodoAlerts: privateData?.othersTodoAlerts ?? 0,
+    overdueTodoAlerts: privateData?.overdueTodoAlerts ?? 0,
   }
   const sharedTotals = {
     total: sharedData?.total ?? 0,
     todoAlerts: sharedData?.todoAlerts ?? 0,
     calendarAlerts: sharedData?.calendarAlerts ?? 0,
+    myTodoAlerts: sharedData?.myTodoAlerts ?? 0,
+    othersTodoAlerts: sharedData?.othersTodoAlerts ?? 0,
+    overdueTodoAlerts: sharedData?.overdueTodoAlerts ?? 0,
   }
 
   const isLoading = loadingPrivate || loadingShared
@@ -47,6 +53,16 @@ export function AlertsSummaryCard({ scope }: { scope: 'private' | 'shared' }) {
 
   const todos = (isPrivateScope ? privateData?.todos : sharedData?.todos) ?? []
   const events = (isPrivateScope ? privateData?.events : sharedData?.events) ?? []
+
+  const myTodoAlerts = isPrivateScope
+    ? privateTotals.myTodoAlerts + sharedTotals.myTodoAlerts
+    : sharedTotals.myTodoAlerts
+  const othersTodoAlerts = isPrivateScope
+    ? privateTotals.othersTodoAlerts + sharedTotals.othersTodoAlerts
+    : sharedTotals.othersTodoAlerts
+  const overdueTodoAlerts = isPrivateScope
+    ? privateTotals.overdueTodoAlerts + sharedTotals.overdueTodoAlerts
+    : sharedTotals.overdueTodoAlerts
 
   const [open, setOpen] = React.useState(false)
   const [activeSection, setActiveSection] = React.useState<'todos' | 'events'>('todos')
@@ -83,10 +99,18 @@ export function AlertsSummaryCard({ scope }: { scope: 'private' | 'shared' }) {
           <p className="text-sm text-gray-600 mt-1">
             {isLoading ? 'Loading…' : `${total} total outstanding`}
           </p>
-          {isPrivateScope && !isLoading && (
-            <p className="text-xs text-gray-500 mt-1">
-              Private: {privateTotals.total} • Shared: {sharedTotals.total}
-            </p>
+          {!isLoading && (
+            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 mt-1">
+              {isPrivateScope && (
+                <span>
+                  Private: {privateTotals.total} • Shared: {sharedTotals.total}
+                </span>
+              )}
+              <span>
+                Tasks: {myTodoAlerts} assigned to you, {othersTodoAlerts} to others
+                {overdueTodoAlerts > 0 && ` • ${overdueTodoAlerts} overdue`}
+              </span>
+            </div>
           )}
         </div>
 

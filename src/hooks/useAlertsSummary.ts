@@ -9,6 +9,7 @@ export interface AlertsTodoItem {
   due_date: string
   alarm_time: string | null
   case_number: string | null
+  responsible_user_id?: string | null
 }
 
 export interface AlertsCalendarEventItem {
@@ -24,6 +25,9 @@ export interface PerClaimAlerts {
     todoAlerts: number
     calendarAlerts: number
     total: number
+    myTodoAlerts: number
+    othersTodoAlerts: number
+    overdueTodoAlerts: number
   }
 }
 
@@ -93,7 +97,7 @@ export function useAlertsSummary(scope: AlertsScope) {
 
       const todoBase = supabase
         .from('todos')
-        .select('id,title,due_date,alarm_time,case_number', { head: false })
+        .select('id,title,due_date,alarm_time,case_number,responsible_user_id', { head: false })
         .eq('completed', false)
         .or(assignedToMeFilter)
       const todoQuery = sharedCaseNumbers?.length
@@ -101,12 +105,15 @@ export function useAlertsSummary(scope: AlertsScope) {
         : todoBase
 
       const todosRes = await todoQuery
+      const now = new Date()
+
       const todos = ((todosRes.data || []) as any[]).map((row) => ({
         id: row.id,
         title: row.title || 'Untitled task',
         due_date: row.due_date,
         alarm_time: row.alarm_time ?? null,
         case_number: row.case_number ?? null,
+        responsible_user_id: row.responsible_user_id ?? null,
       })) as AlertsTodoItem[]
 
       todos.sort((a, b) => {
@@ -116,7 +123,6 @@ export function useAlertsSummary(scope: AlertsScope) {
         return aTime.localeCompare(bTime)
       })
 
-      const now = new Date()
       const nowIso = now.toISOString()
 
       const eventsBase = supabase
@@ -144,6 +150,30 @@ export function useAlertsSummary(scope: AlertsScope) {
       const calendarAlerts = events.length
       const todoAlerts = todos.length
 
+      // Global assignment/overdue breakdown
+      let myTodoAlerts = 0
+      let othersTodoAlerts = 0
+      let overdueTodoAlerts = 0
+
+      for (const t of todos) {
+        const isMine =
+          t.responsible_user_id === userId ||
+          (!t.responsible_user_id && scope === 'private')
+
+        if (isMine) {
+          myTodoAlerts += 1
+        } else {
+          othersTodoAlerts += 1
+        }
+
+        if (t.due_date) {
+          const due = new Date(t.due_date)
+          if (due.getTime() < now.getTime()) {
+            overdueTodoAlerts += 1
+          }
+        }
+      }
+
       // Build per-claim breakdown only for shared scope (used by shared claims UI)
       let perClaimAlerts: PerClaimAlerts = {}
       if (scope === 'shared') {
@@ -158,9 +188,30 @@ export function useAlertsSummary(scope: AlertsScope) {
         for (const t of todos) {
           if (!t.case_number) continue
           if (!perClaimAlerts[t.case_number]) {
-            perClaimAlerts[t.case_number] = { todoAlerts: 0, calendarAlerts: 0, total: 0 }
+            perClaimAlerts[t.case_number] = {
+              todoAlerts: 0,
+              calendarAlerts: 0,
+              total: 0,
+              myTodoAlerts: 0,
+              othersTodoAlerts: 0,
+              overdueTodoAlerts: 0,
+            }
           }
           perClaimAlerts[t.case_number].todoAlerts += 1
+          const isMine =
+            t.responsible_user_id === userId ||
+            (!t.responsible_user_id && scope === 'private')
+          if (isMine) {
+            perClaimAlerts[t.case_number].myTodoAlerts += 1
+          } else {
+            perClaimAlerts[t.case_number].othersTodoAlerts += 1
+          }
+          if (t.due_date) {
+            const due = new Date(t.due_date)
+            if (due.getTime() < now.getTime()) {
+              perClaimAlerts[t.case_number].overdueTodoAlerts += 1
+            }
+          }
         }
 
         // Group events by claim_id, then map to case_number
@@ -169,7 +220,14 @@ export function useAlertsSummary(scope: AlertsScope) {
           const caseNumber = claimIdToCaseNumber[e.claim_id]
           if (!caseNumber) continue
           if (!perClaimAlerts[caseNumber]) {
-            perClaimAlerts[caseNumber] = { todoAlerts: 0, calendarAlerts: 0, total: 0 }
+            perClaimAlerts[caseNumber] = {
+              todoAlerts: 0,
+              calendarAlerts: 0,
+              total: 0,
+              myTodoAlerts: 0,
+              othersTodoAlerts: 0,
+              overdueTodoAlerts: 0,
+            }
           }
           perClaimAlerts[caseNumber].calendarAlerts += 1
         }
@@ -185,6 +243,9 @@ export function useAlertsSummary(scope: AlertsScope) {
         todoAlerts,
         calendarAlerts,
         total: todoAlerts + calendarAlerts,
+        myTodoAlerts,
+        othersTodoAlerts,
+        overdueTodoAlerts,
         todos,
         events,
         perClaimAlerts,
