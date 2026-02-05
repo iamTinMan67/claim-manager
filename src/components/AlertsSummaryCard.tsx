@@ -7,14 +7,46 @@ import { format } from 'date-fns'
 import { useNavigation } from '@/contexts/NavigationContext'
 
 export function AlertsSummaryCard({ scope }: { scope: 'private' | 'shared' }) {
-  const { data, isLoading } = useAlertsSummary(scope)
+  // Always load both private and shared summaries so we can present a global view.
+  const {
+    data: privateData,
+    isLoading: loadingPrivate,
+  } = useAlertsSummary('private')
+  const {
+    data: sharedData,
+    isLoading: loadingShared,
+  } = useAlertsSummary('shared')
   const { navigateTo } = useNavigation()
 
-  const total = data?.total ?? 0
-  const todoAlerts = data?.todoAlerts ?? 0
-  const calendarAlerts = data?.calendarAlerts ?? 0
-  const todos = data?.todos ?? []
-  const events = data?.events ?? []
+  const isPrivateScope = scope === 'private'
+
+  const privateTotals = {
+    total: privateData?.total ?? 0,
+    todoAlerts: privateData?.todoAlerts ?? 0,
+    calendarAlerts: privateData?.calendarAlerts ?? 0,
+  }
+  const sharedTotals = {
+    total: sharedData?.total ?? 0,
+    todoAlerts: sharedData?.todoAlerts ?? 0,
+    calendarAlerts: sharedData?.calendarAlerts ?? 0,
+  }
+
+  const isLoading = loadingPrivate || loadingShared
+
+  const total = isPrivateScope
+    ? privateTotals.total + sharedTotals.total
+    : sharedTotals.total
+
+  const todoAlerts = isPrivateScope
+    ? privateTotals.todoAlerts + sharedTotals.todoAlerts
+    : sharedTotals.todoAlerts
+
+  const calendarAlerts = isPrivateScope
+    ? privateTotals.calendarAlerts + sharedTotals.calendarAlerts
+    : sharedTotals.calendarAlerts
+
+  const todos = (isPrivateScope ? privateData?.todos : sharedData?.todos) ?? []
+  const events = (isPrivateScope ? privateData?.events : sharedData?.events) ?? []
 
   const [open, setOpen] = React.useState(false)
   const [activeSection, setActiveSection] = React.useState<'todos' | 'events'>('todos')
@@ -49,8 +81,13 @@ export function AlertsSummaryCard({ scope }: { scope: 'private' | 'shared' }) {
             <h3 className="text-base font-semibold text-gray-900 truncate">Alerts</h3>
           </div>
           <p className="text-sm text-gray-600 mt-1">
-            {isLoading ? 'Loading…' : `${total} total`}
+            {isLoading ? 'Loading…' : `${total} total outstanding`}
           </p>
+          {isPrivateScope && !isLoading && (
+            <p className="text-xs text-gray-500 mt-1">
+              Private: {privateTotals.total} • Shared: {sharedTotals.total}
+            </p>
+          )}
         </div>
 
         <div className="flex items-center gap-6 text-sm text-gray-700">
