@@ -229,35 +229,24 @@ const SharedClaims = ({
                         {share.claims?.title || `Claim ${share.claim_id}`}
                       </h3>
                     </div>
-                    {/* Per-claim notification counters for outstanding tasks and reminders */}
+                  </div>
+                  <div className="flex items-center space-x-2 flex-shrink-0">
                     {(() => {
                       const caseNumber = share.claims?.case_number as string | undefined
                       const perClaim = sharedAlerts?.perClaimAlerts || {}
                       const claimAlerts = caseNumber ? perClaim[caseNumber] : undefined
-                      if (!claimAlerts || (claimAlerts.todoAlerts <= 0 && claimAlerts.calendarAlerts <= 0)) {
+                      if (!claimAlerts || claimAlerts.total <= 0) {
                         return null
                       }
                       return (
-                        <div className="flex items-center gap-3 text-xs mt-1">
-                          {claimAlerts.todoAlerts > 0 && (
-                            <div className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-blue-700 px-2 py-0.5">
-                              <CheckSquare className="w-3 h-3" />
-                              <span className="font-medium">{claimAlerts.todoAlerts}</span>
-                              <span>tasks</span>
-                            </div>
-                          )}
-                          {claimAlerts.calendarAlerts > 0 && (
-                            <div className="inline-flex items-center gap-1 rounded-full bg-green-50 text-green-700 px-2 py-0.5">
-                              <CalendarClock className="w-3 h-3" />
-                              <span className="font-medium">{claimAlerts.calendarAlerts}</span>
-                              <span>reminders</span>
-                            </div>
-                          )}
+                        <div
+                          className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-600 text-white text-[10px] font-semibold"
+                          title={`${claimAlerts.total} outstanding alert(s) for this shared claim`}
+                        >
+                          {claimAlerts.total}
                         </div>
                       )
                     })()}
-                  </div>
-                  <div className="flex items-center space-x-2 flex-shrink-0">
                     {share.owner_id !== currentUserId && (
                       <Users className="w-4 h-4 text-green-500" aria-label="Shared with you" />
                     )}

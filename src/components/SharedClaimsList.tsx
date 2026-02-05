@@ -72,25 +72,6 @@ export const SharedClaimsList = ({ onSelectClaim }: Props) => {
                     <CardTitle className="text-lg">
                       {share.claim?.title || 'Unknown Claim'}
                     </CardTitle>
-                    {/* Per-claim notification counters for outstanding tasks and reminders */}
-                    {claimAlerts && (claimAlerts.todoAlerts > 0 || claimAlerts.calendarAlerts > 0) && (
-                      <div className="flex items-center gap-3 text-xs mt-1">
-                        {claimAlerts.todoAlerts > 0 && (
-                          <div className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-blue-700 px-2 py-0.5">
-                            <CheckSquare className="w-3 h-3" />
-                            <span className="font-medium">{claimAlerts.todoAlerts}</span>
-                            <span>tasks</span>
-                          </div>
-                        )}
-                        {claimAlerts.calendarAlerts > 0 && (
-                          <div className="inline-flex items-center gap-1 rounded-full bg-green-50 text-green-700 px-2 py-0.5">
-                            <CalendarClock className="w-3 h-3" />
-                            <span className="font-medium">{claimAlerts.calendarAlerts}</span>
-                            <span>reminders</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
                   <div className="flex flex-col items-end space-y-1">
                     {share.claim?.defendant_name && (
@@ -99,6 +80,15 @@ export const SharedClaimsList = ({ onSelectClaim }: Props) => {
                       </p>
                     )}
                     <div className="flex items-center space-x-2">
+                      {/* Per-claim outstanding alerts counter, matching private red badge style */}
+                      {claimAlerts && claimAlerts.total > 0 && (
+                        <div
+                          className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-600 text-white text-[10px] font-semibold"
+                          title={`${claimAlerts.total} outstanding alert(s) for this shared claim`}
+                        >
+                          {claimAlerts.total}
+                        </div>
+                      )}
                       <Badge variant={share.claim?.status === 'Active' ? 'default' : 'secondary'}>
                         {share.claim?.status}
                       </Badge>
