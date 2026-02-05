@@ -89,7 +89,8 @@ export function AlertsSummaryCard({ scope }: { scope: 'private' | 'shared' }) {
   }
 
   return (
-    <div className="card-enhanced p-4 mb-4 mx-auto w-[42.75%]">
+    // Start from the previous 47.5% width and reduce it by 5% for a slightly narrower card.
+    <div className="card-enhanced p-4 mb-4 mx-auto w-[45.125%]">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -100,7 +101,7 @@ export function AlertsSummaryCard({ scope }: { scope: 'private' | 'shared' }) {
             {isLoading ? 'Loading…' : `${total} total outstanding`}
           </p>
           {!isLoading && (
-            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 mt-1">
+            <div className="flex items-center justify-between gap-3 text-xs text-gray-500 mt-1 w-full">
               {isPrivateScope && (
                 <span>
                   Private: {privateTotals.total} • Shared: {sharedTotals.total}
