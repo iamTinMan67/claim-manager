@@ -47,6 +47,48 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
 
   const queryClient = useQueryClient()
 
+  // Ensure a matching profile row exists for the current auth user.
+  // This prevents FK errors like `claims_user_id_fkey` when inserting claims
+  // for newly verified users whose profile row hasn't been created yet.
+  const ensureProfileForUser = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: existing, error: existingError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (existingError) {
+        console.warn('ClaimsTable.ensureProfileForUser: check error (continuing):', existingError)
+        return
+      }
+      if (existing) {
+        return
+      }
+
+      const profileData = {
+        id: user.id,
+        email: user.email ?? null,
+        nickname: (user.user_metadata as any)?.nickname || user.email || 'User',
+      }
+
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert(profileData)
+
+      if (insertError) {
+        console.warn('ClaimsTable.ensureProfileForUser: insert error (continuing):', insertError)
+      } else {
+        console.log('ClaimsTable.ensureProfileForUser: profile created for user', user.id)
+      }
+    } catch (err) {
+      console.warn('ClaimsTable.ensureProfileForUser: unexpected error (continuing):', err)
+    }
+  }
+
   // Listen for global connect toggle so the hub can open in selected-claim view
   React.useEffect(() => {
     const onToggle = () => setShowCollaboration(v => !v)
@@ -432,6 +474,10 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
       }
 
       console.log('Creating claim with user_id:', user.id)
+
+      // Make sure the auth user has a corresponding profile row so
+      // the `claims.user_id` foreign key constraint is satisfied.
+      await ensureProfileForUser()
 
       // Check if case number already exists
       const { data: existingClaim, error: checkError } = await supabase
