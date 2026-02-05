@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { Claim } from '@/types/database'
-import { Edit, Trash2, Plus, X, Settings, Home, ChevronLeft, Users, Crown, Lock, Share2, FileText } from 'lucide-react'
+import { Edit, Trash2, Plus, X, Settings, Home, ChevronLeft, Users, Crown, Lock, Share2, FileText, CheckSquare, CalendarClock } from 'lucide-react'
 import { useNavigation } from '@/contexts/NavigationContext'
 import EvidenceManager from './EvidenceManager'
 import CollaborationHub from './CollaborationHub'
@@ -14,6 +14,7 @@ import { ShareClaimModal } from './ShareClaimModal'
 import { useCollaboration } from '@/hooks/useCollaboration'
 import { CommunicationLog } from './CommunicationLog'
 import { AlertsSummaryCard } from './AlertsSummaryCard'
+import { useAlertsSummary } from '@/hooks/useAlertsSummary'
 
 interface ClaimsTableProps {
   onClaimSelect: (claimId: string | null) => void
@@ -46,6 +47,10 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
   const [showCommunicationLog, setShowCommunicationLog] = useState(false)
 
   const queryClient = useQueryClient()
+
+  // Per-claim alerts (todos + calendar reminders); per-claim breakdown is
+  // populated for shared scope and used to show guest-facing counters.
+  const { data: alertsSummary } = useAlertsSummary(isGuest ? 'shared' : 'private')
 
   // Ensure a matching profile row exists for the current auth user.
   // This prevents FK errors like `claims_user_id_fkey` when inserting claims
@@ -1318,7 +1323,12 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
             <AlertsSummaryCard scope={isGuest ? 'shared' : 'private'} />
           )}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {claims.map((claim, index) => (
+        {claims.map((claim, index) => {
+          const caseNumber = claim.case_number as string | undefined
+          const perClaim = alertsSummary?.perClaimAlerts || {}
+          const claimAlerts = caseNumber ? perClaim[caseNumber] : undefined
+
+          return (
           <div
             key={claim.case_number}
             className="card-enhanced p-4 cursor-pointer hover:shadow-lg transition-shadow max-w-xl"
@@ -1334,6 +1344,25 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                 <h3 className="text-lg font-semibold truncate">{claim.title}</h3>
               </div>
               <div className="flex items-center space-x-2 flex-shrink-0">
+                {/* Per-claim notification counters for outstanding tasks and reminders (guest/shared view) */}
+                {isGuest && claimAlerts && (claimAlerts.todoAlerts > 0 || claimAlerts.calendarAlerts > 0) && (
+                  <div className="flex items-center gap-2 mr-1">
+                    {claimAlerts.todoAlerts > 0 && (
+                      <div className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-blue-700 px-2 py-0.5 text-[10px]">
+                        <CheckSquare className="w-3 h-3" />
+                        <span className="font-semibold">{claimAlerts.todoAlerts}</span>
+                        <span>tasks</span>
+                      </div>
+                    )}
+                    {claimAlerts.calendarAlerts > 0 && (
+                      <div className="inline-flex items-center gap-1 rounded-full bg-green-50 text-green-700 px-2 py-0.5 text-[10px]">
+                        <CalendarClock className="w-3 h-3" />
+                        <span className="font-semibold">{claimAlerts.calendarAlerts}</span>
+                        <span>reminders</span>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {/* To-Do evidence counter (only when there are outstanding items) */}
                 {todoEvidenceCounts && claim.claim_id && todoEvidenceCounts[claim.claim_id] > 0 && (
                   <div
@@ -1416,7 +1445,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
               </span>
             </div>
           </div>
-        ))}
+        )})}
         {/* Closed Cases navigation card - only on main private claims view */}
         {!isGuest && !statusFilter && (
           <div
