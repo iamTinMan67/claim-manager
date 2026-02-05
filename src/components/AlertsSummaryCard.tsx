@@ -97,18 +97,47 @@ export function AlertsSummaryCard({ scope }: { scope: 'private' | 'shared' }) {
             <Bell className="w-6 h-6 text-yellow-500" />
             <h3 className="text-base font-semibold text-gray-900 truncate">Alerts</h3>
           </div>
-          <p className="text-sm text-gray-600 mt-1">
+          <p
+            className={`text-sm mt-1 ${
+              !isLoading && total > 0 ? 'text-red-500' : 'text-gray-600'
+            }`}
+          >
             {isLoading ? 'Loading…' : `${total} total outstanding`}
           </p>
           {!isLoading && (
             <div className="flex items-center justify-between gap-4 text-xs text-gray-500 mt-1 w-full">
               {isPrivateScope && (
                 <span className="whitespace-nowrap">
-                  Private: {privateTotals.total} • Shared: {sharedTotals.total}
+                  Private:{' '}
+                  <span className={privateTotals.total > 0 ? 'text-red-500' : ''}>
+                    {privateTotals.total}
+                  </span>{' '}
+                  • Shared:{' '}
+                  <span className={sharedTotals.total > 0 ? 'text-red-500' : ''}>
+                    {sharedTotals.total}
+                  </span>
                 </span>
               )}
               <span className="whitespace-nowrap">
-                Tasks: {myTodoAlerts} assigned to you, {othersTodoAlerts} to others
+                Tasks:{' '}
+                <span
+                  className={
+                    myTodoAlerts > 0 || othersTodoAlerts > 0 || overdueTodoAlerts > 0
+                      ? 'text-red-500'
+                      : ''
+                  }
+                >
+                  {myTodoAlerts}
+                </span>{' '}
+                assigned to you,{' '}
+                <span
+                  className={
+                    othersTodoAlerts > 0 || overdueTodoAlerts > 0 ? 'text-red-500' : ''
+                  }
+                >
+                  {othersTodoAlerts}
+                </span>{' '}
+                to others
                 {overdueTodoAlerts > 0 && ` • ${overdueTodoAlerts} overdue`}
               </span>
             </div>
@@ -126,7 +155,13 @@ export function AlertsSummaryCard({ scope }: { scope: 'private' | 'shared' }) {
             title={todoAlerts > 1 ? 'View tasks' : todoAlerts === 1 ? 'Open task' : 'No task alerts'}
           >
             <CheckSquare className="w-6 h-6 text-blue-600" />
-            <span className="text-lg font-semibold">{todoAlerts}</span>
+            <span
+              className={`text-lg font-semibold ${
+                todoAlerts > 0 ? 'text-red-500' : ''
+              }`}
+            >
+              {todoAlerts}
+            </span>
             <span className="text-gray-600">tasks</span>
           </button>
 
@@ -140,7 +175,13 @@ export function AlertsSummaryCard({ scope }: { scope: 'private' | 'shared' }) {
             title={calendarAlerts > 1 ? 'View reminders' : calendarAlerts === 1 ? 'Open reminder' : 'No reminders'}
           >
             <CalendarClock className="w-6 h-6 text-green-600" />
-            <span className="text-lg font-semibold">{calendarAlerts}</span>
+            <span
+              className={`text-lg font-semibold ${
+                calendarAlerts > 0 ? 'text-red-500' : ''
+              }`}
+            >
+              {calendarAlerts}
+            </span>
             <span className="text-gray-600">reminders</span>
           </button>
         </div>
