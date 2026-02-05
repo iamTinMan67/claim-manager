@@ -101,13 +101,13 @@ export function AlertsSummaryCard({ scope }: { scope: 'private' | 'shared' }) {
             {isLoading ? 'Loading…' : `${total} total outstanding`}
           </p>
           {!isLoading && (
-            <div className="flex items-center justify-between gap-3 text-xs text-gray-500 mt-1 w-full">
+            <div className="flex items-center justify-between gap-4 text-xs text-gray-500 mt-1 w-full">
               {isPrivateScope && (
-                <span>
+                <span className="whitespace-nowrap">
                   Private: {privateTotals.total} • Shared: {sharedTotals.total}
                 </span>
               )}
-              <span>
+              <span className="whitespace-nowrap">
                 Tasks: {myTodoAlerts} assigned to you, {othersTodoAlerts} to others
                 {overdueTodoAlerts > 0 && ` • ${overdueTodoAlerts} overdue`}
               </span>
