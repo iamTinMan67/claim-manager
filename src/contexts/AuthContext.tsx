@@ -139,7 +139,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('Signing up user:', email);
     
     try {
-      const redirectUrl = `${window.location.origin}/`;
+      // Prefer an explicit deployed app URL when available so that
+      // Supabase email verification links don't point at localhost.
+      const appUrl =
+        (import.meta as any)?.env?.VITE_SITE_URL ||
+        window.location.origin;
+      const redirectUrl = `${appUrl}/`;
       
       const { data, error } = await supabase.auth.signUp({
         email,

@@ -1782,7 +1782,8 @@ USING (
             <button
               type="button"
               onClick={() => setEditingEvidence(null)}
-              className="bg-transparent text-red-600 border border-red-600 p-2 rounded-lg hover:bg-red-600/10 flex items-center justify-center"
+              // No hover background to avoid motion animations
+              className="bg-transparent text-red-600 border border-red-600 p-2 rounded-lg flex items-center justify-center"
             >
               <X className="w-5 h-5" />
             </button>
@@ -1923,7 +1924,7 @@ USING (
       {/* Evidence Table - Hide when editing */}
       {!editingEvidence && (
         <div className={`card-enhanced w-full mt-12 py-2.5 px-5 ${isStatic ? 'min-h-[75vh]' : ''}`} style={{ maxWidth: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
-        <div className="px-6 py-4 border-b border-yellow-400/20 sticky z-40 backdrop-blur-md flex-shrink-0" style={{ backgroundColor: 'rgba(30, 27, 75, 0.3)', top: '60px' }}>
+        <div className="px-6 py-4 border-b border-yellow-400/20 flex-shrink-0" style={{ backgroundColor: 'rgba(30, 27, 75, 0.3)' }}>
           {/* Row 1: Title, Search boxes, and Buttons */}
           <div className="flex items-center mb-3 w-full">
             <h3 className="text-lg font-semibold text-gold flex-shrink-0 mr-4">Evidence List</h3>
@@ -2073,7 +2074,7 @@ USING (
           )}
         </div>
         {!isCollapsed && (
-          <div className={`flex-1 ${isStatic ? 'max-h-[75vh] overflow-y-auto overflow-x-hidden' : 'overflow-y-auto'} ${!isStatic ? 'overflow-x-auto' : ''}`} style={{ scrollbarGutter: isStatic ? 'stable both-edges' as any : undefined, maxWidth: '1100px' }}>
+          <div className="w-full overflow-x-auto">
             <table className={`min-w-full ${isStatic ? 'table-fixed' : 'table-auto'} divide-y divide-yellow-400/20`}>
             <thead className="bg-yellow-400/10">
               <tr>
@@ -2143,10 +2144,9 @@ USING (
                       onDragLeave={handleDragLeave}
                       onDrop={(e) => handleDrop(e, item.id)}
                       onDragEnd={handleDragEnd}
-                      className={`${isInteractive ? 'hover:bg-yellow-400/10' : ''} ${isInteractive && amendMode ? 'cursor-pointer' : ''} ${
+                      // Keep row completely static while scrolling: no hover or drag animations
+                      className={`${isInteractive && amendMode ? 'cursor-pointer' : ''} ${
                         expandedEvidence === item.id ? 'bg-yellow-400/20' : ''
-                      } ${dragOverItem === item.id ? 'border-t-2 border-blue-500' : ''} ${
-                        draggedItem === item.id ? 'opacity-50' : ''
                       } align-middle ${isStatic ? 'h-16' : 'h-14'}`}
                       onClick={() => (isInteractive ? handleRowClick(item) : undefined)}
                     >
@@ -2219,10 +2219,10 @@ USING (
                             </button>
                           </>
                         )}
-                            {!isGuest && amendMode && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
+                        {!isGuest && amendMode && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
                               if (window.confirm('Are you sure you want to delete this evidence item? This action cannot be undone.')) {
                                 deleteEvidenceMutation.mutate(item.id, {
                                   onSuccess: () => {
@@ -2235,11 +2235,12 @@ USING (
                               }
                             }}
                             disabled={deleteEvidenceMutation.isPending}
-                            className="text-red-600 hover:text-red-900 p-[2px] disabled:opacity-50"
-                                title="Delete evidence"
-                              >
+                            // No hover color change to avoid motion animations
+                            className="text-red-600 p-[2px] disabled:opacity-50"
+                            title="Delete evidence"
+                          >
                             <Trash2 className="w-6 h-6" />
-                              </button>
+                          </button>
                         )}
                         {!isGuest && amendMode && (
                           <button
@@ -2308,7 +2309,8 @@ USING (
                                   setExpandedEvidence(null)
                                   setEditingEvidence(null)
                                 }}
-                                className="bg-transparent text-red-600 border border-red-600 p-2 rounded-lg hover:bg-red-600/10 flex items-center justify-center"
+                                // No hover background to avoid motion animations
+                                className="bg-transparent text-red-600 border border-red-600 p-2 rounded-lg flex items-center justify-center"
                               >
                                 <X className="w-6 h-6" />
                               </button>
@@ -2466,7 +2468,7 @@ USING (
               )}
             </tbody>
           </table>
-        </div>
+          </div>
         )}
       </div>
       )}

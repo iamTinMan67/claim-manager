@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { useNavigation } from '@/contexts/NavigationContext'
 import CollaborationHub from './CollaborationHub'
 import EvidenceManager from './EvidenceManager'
-import { Users, Crown, Edit, Trash2, Plus, UserPlus } from 'lucide-react'
+import { Users, Edit, Trash2, UserPlus, CheckSquare, CalendarClock } from 'lucide-react'
 import { AlertsSummaryCard } from './AlertsSummaryCard'
+import { useAlertsSummary } from '@/hooks/useAlertsSummary'
 
 interface SharedClaimsProps {
   selectedClaim: string | null
@@ -24,6 +25,9 @@ const SharedClaims = ({
 }: SharedClaimsProps) => {
   const { navigateBack, navigateTo } = useNavigation()
   const [showCollaboration, setShowCollaboration] = useState(false)
+
+  // Shared-scope alerts give us per-claim counters for tasks and calendar reminders
+  const { data: sharedAlerts } = useAlertsSummary('shared')
 
   React.useEffect(() => {
     const onToggle = () => setShowCollaboration((v) => !v)
@@ -212,73 +216,102 @@ const SharedClaims = ({
                   console.warn('Error handling shared claim selection:', e)
                 }
               }}
-            >
-              {/* Header row: title + owner/shared icons */}
-              <div className="flex justify-between items-start mb-2">
-                <div className="flex items-center space-x-2 min-w-0">
-                  <div 
-                    className="w-4 h-4 rounded-full" 
-                    style={{ backgroundColor: share.claims?.color || '#3B82F6' }}
-                  />
-                  <h3 className="text-lg font-semibold text-gray-900 truncate">
-                    {share.claims?.title || `Claim ${share.claim_id}`}
-                  </h3>
-                </div>
-                <div className="flex items-center space-x-2 flex-shrink-0">
-                  {share.owner_id !== currentUserId && (
-                    <Users className="w-4 h-4 text-green-500" aria-label="Shared with you" />
-                  )}
-                  {/* Owner actions: Edit and Delete */}
-                  {share.owner_id === currentUserId && (
-                    <>
-                      <button
-                        onClick={async (e) => {
-                          e.stopPropagation()
-                          try {
-                            // Ensure case number is available
-                            let caseNumber = share.claims?.case_number as string | undefined
-                            if (!caseNumber && share.claim_id) {
-                              const { data } = await supabase
-                                .from('claims')
-                                .select('case_number')
-                                .eq('claim_id', share.claim_id)
-                                .maybeSingle()
-                              caseNumber = data?.case_number
+              >
+                {/* Header row: title + owner/shared icons + per-claim counters */}
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <div className="flex items-center space-x-2 min-w-0">
+                      <div 
+                        className="w-4 h-4 rounded-full" 
+                        style={{ backgroundColor: share.claims?.color || '#3B82F6' }}
+                      />
+                      <h3 className="text-lg font-semibold text-gray-900 truncate">
+                        {share.claims?.title || `Claim ${share.claim_id}`}
+                      </h3>
+                    </div>
+                    {/* Per-claim notification counters for outstanding tasks and reminders */}
+                    {(() => {
+                      const caseNumber = share.claims?.case_number as string | undefined
+                      const perClaim = sharedAlerts?.perClaimAlerts || {}
+                      const claimAlerts = caseNumber ? perClaim[caseNumber] : undefined
+                      if (!claimAlerts || (claimAlerts.todoAlerts <= 0 && claimAlerts.calendarAlerts <= 0)) {
+                        return null
+                      }
+                      return (
+                        <div className="flex items-center gap-3 text-xs mt-1">
+                          {claimAlerts.todoAlerts > 0 && (
+                            <div className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-blue-700 px-2 py-0.5">
+                              <CheckSquare className="w-3 h-3" />
+                              <span className="font-medium">{claimAlerts.todoAlerts}</span>
+                              <span>tasks</span>
+                            </div>
+                          )}
+                          {claimAlerts.calendarAlerts > 0 && (
+                            <div className="inline-flex items-center gap-1 rounded-full bg-green-50 text-green-700 px-2 py-0.5">
+                              <CalendarClock className="w-3 h-3" />
+                              <span className="font-medium">{claimAlerts.calendarAlerts}</span>
+                              <span>reminders</span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
+                  </div>
+                  <div className="flex items-center space-x-2 flex-shrink-0">
+                    {share.owner_id !== currentUserId && (
+                      <Users className="w-4 h-4 text-green-500" aria-label="Shared with you" />
+                    )}
+                    {/* Owner actions: Edit and Delete */}
+                    {share.owner_id === currentUserId && (
+                      <>
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation()
+                            try {
+                              // Ensure case number is available
+                              let caseNumber = share.claims?.case_number as string | undefined
+                              if (!caseNumber && share.claim_id) {
+                                const { data } = await supabase
+                                  .from('claims')
+                                  .select('case_number')
+                                  .eq('claim_id', share.claim_id)
+                                  .maybeSingle()
+                                caseNumber = data?.case_number
+                              }
+                              if (caseNumber) {
+                                window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: caseNumber, claimColor: share.claims?.color || '#3B82F6' } }))
+                                navigateTo('claims')
+                              }
+                            } catch {}
+                          }}
+                          className="p-1 rounded hover:bg-yellow-100 transition-colors"
+                          title="Edit"
+                        >
+                          <Edit className="w-4 h-4 text-yellow-500" />
+                        </button>
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation()
+                            if (!share.claim_id) return
+                            const ok = window.confirm('Delete this claim? This cannot be undone.')
+                            if (!ok) return
+                            const { error } = await supabase
+                              .from('claims')
+                              .delete()
+                              .eq('claim_id', share.claim_id)
+                            if (!error) {
+                              try { (window as any).toast?.({ title: 'Deleted', description: 'Claim removed.' }) } catch {}
                             }
-                            if (caseNumber) {
-                              window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: caseNumber, claimColor: share.claims?.color || '#3B82F6' } }))
-                              navigateTo('claims')
-                            }
-                          } catch {}
-                        }}
-                        className="p-1 rounded hover:bg-yellow-100 transition-colors"
-                        title="Edit"
-                      >
-                        <Edit className="w-4 h-4 text-yellow-500" />
-                      </button>
-                      <button
-                        onClick={async (e) => {
-                          e.stopPropagation()
-                          if (!share.claim_id) return
-                          const ok = window.confirm('Delete this claim? This cannot be undone.')
-                          if (!ok) return
-                          const { error } = await supabase
-                            .from('claims')
-                            .delete()
-                            .eq('claim_id', share.claim_id)
-                          if (!error) {
-                            try { (window as any).toast?.({ title: 'Deleted', description: 'Claim removed.' }) } catch {}
-                          }
-                        }}
-                        className="p-1 rounded hover:bg-red-100 transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </button>
-                    </>
-                  )}
+                          }}
+                          className="p-1 rounded hover:bg-red-100 transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
 
               {/* Row 2: Court (left) + Defendant (right, aligned with card edge) */}
               <div className="flex items-baseline justify-between gap-2 whitespace-nowrap">

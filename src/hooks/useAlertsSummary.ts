@@ -19,6 +19,14 @@ export interface AlertsCalendarEventItem {
   claim_id: string | null
 }
 
+export interface PerClaimAlerts {
+  [caseNumber: string]: {
+    todoAlerts: number
+    calendarAlerts: number
+    total: number
+  }
+}
+
 export function useAlertsSummary(scope: AlertsScope) {
   return useQuery({
     queryKey: ['alerts-summary', scope],
@@ -26,12 +34,20 @@ export function useAlertsSummary(scope: AlertsScope) {
       const { data: auth } = await supabase.auth.getUser()
       const userId = auth.user?.id
       if (!userId) {
-        return { todoAlerts: 0, calendarAlerts: 0, total: 0, todos: [] as AlertsTodoItem[], events: [] as AlertsCalendarEventItem[] }
+        return {
+          todoAlerts: 0,
+          calendarAlerts: 0,
+          total: 0,
+          todos: [] as AlertsTodoItem[],
+          events: [] as AlertsCalendarEventItem[],
+          perClaimAlerts: {} as PerClaimAlerts,
+        }
       }
 
       // If we're on the shared claims screen, filter alerts to shared claims only.
       let sharedClaimIds: string[] | null = null
       let sharedCaseNumbers: string[] | null = null
+      let sharedClaimsMeta: { claim_id: string; case_number: string | null }[] = []
 
       if (scope === 'shared') {
         const { data: shares, error: sharesError } = await supabase
@@ -40,13 +56,20 @@ export function useAlertsSummary(scope: AlertsScope) {
           .or(`owner_id.eq.${userId},shared_with_id.eq.${userId}`)
 
         if (!sharesError) {
-          sharedClaimIds = Array.from(new Set((shares || []).map(s => s.claim_id).filter(Boolean)))
+          sharedClaimIds = Array.from(new Set((shares || []).map((s) => s.claim_id).filter(Boolean)))
         } else {
           sharedClaimIds = []
         }
 
         if (!sharedClaimIds.length) {
-          return { todoAlerts: 0, calendarAlerts: 0, total: 0, todos: [] as AlertsTodoItem[], events: [] as AlertsCalendarEventItem[] }
+          return {
+            todoAlerts: 0,
+            calendarAlerts: 0,
+            total: 0,
+            todos: [] as AlertsTodoItem[],
+            events: [] as AlertsCalendarEventItem[],
+            perClaimAlerts: {} as PerClaimAlerts,
+          }
         }
 
         const { data: claims, error: claimsError } = await supabase
@@ -55,8 +78,10 @@ export function useAlertsSummary(scope: AlertsScope) {
           .in('claim_id', sharedClaimIds as any)
 
         if (!claimsError) {
-          sharedCaseNumbers = Array.from(new Set((claims || []).map(c => c.case_number).filter(Boolean)))
+          sharedClaimsMeta = (claims || []) as { claim_id: string; case_number: string | null }[]
+          sharedCaseNumbers = Array.from(new Set(sharedClaimsMeta.map((c) => c.case_number).filter(Boolean) as string[]))
         } else {
+          sharedClaimsMeta = []
           sharedCaseNumbers = []
         }
       }
@@ -146,9 +171,53 @@ export function useAlertsSummary(scope: AlertsScope) {
       events.sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''))
 
       const calendarAlerts = events.length
-
       const todoAlerts = todos.length
-      return { todoAlerts, calendarAlerts, total: todoAlerts + calendarAlerts, todos, events }
+
+      // Build per-claim breakdown only for shared scope (used by shared claims UI)
+      let perClaimAlerts: PerClaimAlerts = {}
+      if (scope === 'shared') {
+        const claimIdToCaseNumber: Record<string, string> = {}
+        for (const c of sharedClaimsMeta) {
+          if (c.claim_id && c.case_number) {
+            claimIdToCaseNumber[c.claim_id] = c.case_number
+          }
+        }
+
+        // Group todos by case_number
+        for (const t of todos) {
+          if (!t.case_number) continue
+          if (!perClaimAlerts[t.case_number]) {
+            perClaimAlerts[t.case_number] = { todoAlerts: 0, calendarAlerts: 0, total: 0 }
+          }
+          perClaimAlerts[t.case_number].todoAlerts += 1
+        }
+
+        // Group events by claim_id, then map to case_number
+        for (const e of events) {
+          if (!e.claim_id) continue
+          const caseNumber = claimIdToCaseNumber[e.claim_id]
+          if (!caseNumber) continue
+          if (!perClaimAlerts[caseNumber]) {
+            perClaimAlerts[caseNumber] = { todoAlerts: 0, calendarAlerts: 0, total: 0 }
+          }
+          perClaimAlerts[caseNumber].calendarAlerts += 1
+        }
+
+        // Finalize totals
+        for (const key of Object.keys(perClaimAlerts)) {
+          const entry = perClaimAlerts[key]
+          entry.total = entry.todoAlerts + entry.calendarAlerts
+        }
+      }
+
+      return {
+        todoAlerts,
+        calendarAlerts,
+        total: todoAlerts + calendarAlerts,
+        todos,
+        events,
+        perClaimAlerts,
+      }
     },
     staleTime: 30_000,
     refetchInterval: 60_000,

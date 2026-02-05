@@ -4,7 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useCollaboration } from '@/hooks/useCollaboration';
 import { SubscriptionStatus } from '@/components/SubscriptionStatus';
-import { Share2, Eye, Edit, Clock, FileText, Users } from 'lucide-react';
+import { Share2, Eye, Edit, Clock, FileText, Users, CheckSquare, CalendarClock } from 'lucide-react';
+import { useAlertsSummary } from '@/hooks/useAlertsSummary';
 
 interface Props {
   onSelectClaim?: (claimId: string) => void;
@@ -12,6 +13,7 @@ interface Props {
 
 export const SharedClaimsList = ({ onSelectClaim }: Props) => {
   const { sharedWithMe, fetchSharedWithMe } = useCollaboration();
+  const { data: sharedAlerts } = useAlertsSummary('shared');
 
   useEffect(() => {
     fetchSharedWithMe();
@@ -57,6 +59,9 @@ export const SharedClaimsList = ({ onSelectClaim }: Props) => {
       <h2 className="text-xl font-semibold mb-4">Claims Shared With Me</h2>
       {sharedWithMe.map((share) => {
         const permissionIcons = getPermissionIcons(share);
+        const caseNumber = share.claim?.case_number as string | undefined;
+        const perClaim = sharedAlerts?.perClaimAlerts || {};
+        const claimAlerts = caseNumber ? perClaim[caseNumber] : undefined;
         
         return (
           <Card key={share.id} className="hover:shadow-md transition-shadow max-w-2xl">
@@ -67,6 +72,25 @@ export const SharedClaimsList = ({ onSelectClaim }: Props) => {
                     <CardTitle className="text-lg">
                       {share.claim?.title || 'Unknown Claim'}
                     </CardTitle>
+                    {/* Per-claim notification counters for outstanding tasks and reminders */}
+                    {claimAlerts && (claimAlerts.todoAlerts > 0 || claimAlerts.calendarAlerts > 0) && (
+                      <div className="flex items-center gap-3 text-xs mt-1">
+                        {claimAlerts.todoAlerts > 0 && (
+                          <div className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-blue-700 px-2 py-0.5">
+                            <CheckSquare className="w-3 h-3" />
+                            <span className="font-medium">{claimAlerts.todoAlerts}</span>
+                            <span>tasks</span>
+                          </div>
+                        )}
+                        {claimAlerts.calendarAlerts > 0 && (
+                          <div className="inline-flex items-center gap-1 rounded-full bg-green-50 text-green-700 px-2 py-0.5">
+                            <CalendarClock className="w-3 h-3" />
+                            <span className="font-medium">{claimAlerts.calendarAlerts}</span>
+                            <span>reminders</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-col items-end space-y-1">
                     {share.claim?.defendant_name && (
