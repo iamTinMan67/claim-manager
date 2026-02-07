@@ -1924,7 +1924,7 @@ USING (
       {/* Evidence Table - Hide when editing */}
       {!editingEvidence && (
         <div className={`card-enhanced w-full mt-12 py-2.5 px-5 ${isStatic ? 'min-h-[75vh]' : ''}`} style={{ maxWidth: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
-        <div className="px-6 py-4 border-b border-yellow-400/20 flex-shrink-0" style={{ backgroundColor: 'rgba(30, 27, 75, 0.3)' }}>
+        <div className="px-6 py-4 border-b border-yellow-400/20 flex-shrink-0" style={{ backgroundColor: 'transparent' }}>
           {/* Row 1: Title, Search boxes, and Buttons */}
           <div className="flex items-center mb-3 w-full">
             <h3 className="text-lg font-semibold text-gold flex-shrink-0 mr-4">Evidence List</h3>
@@ -2009,7 +2009,7 @@ USING (
             )}
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="bg-white/10 border border-yellow-400 text-yellow-400 px-3 h-8 rounded-lg flex items-center space-x-2 hover:opacity-90"
+              className="bg-white/10 border border-blue-400 text-blue-400 px-3 h-8 rounded-lg flex items-center space-x-2 hover:opacity-90"
               title={isCollapsed ? 'Show evidence' : 'Hide evidence'}
             >
               <span>{isCollapsed ? 'Show' : 'Hide'}</span>

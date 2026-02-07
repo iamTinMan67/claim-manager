@@ -68,14 +68,20 @@ export const useClaims = () => {
 
       // Map database results to frontend Claim type
       const mappedClaims: Claim[] = (data || []).map((item: any) => ({
+        claim_id: item.claim_id,
         case_number: item.case_number,
         title: item.title,
         court: item.court,
         plaintiff_name: item.plaintiff_name,
         defendant_name: item.defendant_name,
-        email: item.email,
+        contact_number: item.contact_number ?? null,
+        email: item.email ?? null,
+        claimant_email: item.claimant_email ?? null,
+        claimant_contact_number: item.claimant_contact_number ?? null,
         description: item.description,
         status: item.status as 'Active' | 'Pending' | 'Closed',
+        color: item.color ?? null,
+        user_id: item.user_id,
         created_at: item.created_at,
         updated_at: item.updated_at
       }));
@@ -111,14 +117,20 @@ export const useClaims = () => {
       if (error) throw error;
       
       const mappedClaim: Claim = {
+        claim_id: data.claim_id,
         case_number: data.case_number,
         title: data.title,
         court: data.court,
         plaintiff_name: data.plaintiff_name,
         defendant_name: data.defendant_name,
-        email: data.email,
+        contact_number: data.contact_number ?? null,
+        email: data.email ?? null,
+        claimant_email: data.claimant_email ?? null,
+        claimant_contact_number: data.claimant_contact_number ?? null,
         description: data.description,
         status: data.status as 'Active' | 'Pending' | 'Closed',
+        color: data.color ?? null,
+        user_id: data.user_id,
         created_at: data.created_at,
         updated_at: data.updated_at
       };
@@ -151,14 +163,20 @@ export const useClaims = () => {
       if (error) throw error;
       
       const mappedClaim: Claim = {
+        claim_id: data.claim_id,
         case_number: data.case_number,
         title: data.title,
         court: data.court,
         plaintiff_name: data.plaintiff_name,
         defendant_name: data.defendant_name,
-        email: data.email,
+        contact_number: data.contact_number ?? null,
+        email: data.email ?? null,
+        claimant_email: data.claimant_email ?? null,
+        claimant_contact_number: data.claimant_contact_number ?? null,
         description: data.description,
         status: data.status as 'Active' | 'Pending' | 'Closed',
+        color: data.color ?? null,
+        user_id: data.user_id,
         created_at: data.created_at,
         updated_at: data.updated_at
       };

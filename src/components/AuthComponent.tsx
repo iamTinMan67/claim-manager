@@ -481,7 +481,7 @@ export default function AuthComponent({
       <div className="flex-shrink-0">
         {subReady && !gating && (
           <div className="card-smudge shadow-lg border-b border-yellow-400/20 backdrop-blur-md">
-            <div className="container mx-auto px-4">
+            <div className="container mx-auto pl-2 pr-4">
               <div className="flex justify-between items-center">
                 <div className="flex space-x-8">
                   {/* Show navbar items only when welcome is not visible */}
@@ -520,17 +520,17 @@ export default function AuthComponent({
                   })}
                 </div>
                 
-                {/* Selected Claim Information - Center */}
-                <div className="flex-1 flex justify-center">
-                  <div className="text-center">
+                {/* Selected Claim Information - Center (fixed size so position does not shift) */}
+                <div className="flex-1 flex justify-center items-center min-h-[2.75rem]">
+                  <div className="text-center min-h-[2.75rem] flex items-center justify-center w-full max-w-md -translate-x-[60px]">
                     {selectedClaim && selectedClaimData ? (
-                      <div className="text-lg font-semibold text-green-600">
-                        <span className="font-bold">
+                      <div className="text-2xl font-bold text-green-600 leading-tight">
+                        <span>
                           {selectedClaimData.court || 'Unknown Court'} - {selectedClaimData.title}
                         </span>
                       </div>
                     ) : (
-                      <div className="text-3xl font-bold text-green-600">
+                      <div className="text-2xl font-bold text-green-600 leading-tight">
                         <span>Claim Manager</span>
                       </div>
                     )}

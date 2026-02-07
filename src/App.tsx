@@ -292,7 +292,7 @@ function LoggedInContent({
     <>
       {/* Navigation Buttons for Events pages - Positioned like private claims page */}
         {(activeTab === 'todos-private' || activeTab === 'calendar-private' || activeTab === 'todos-shared' || activeTab === 'calendar-shared' || activeTab === 'events-private' || activeTab === 'events-shared') && (
-          <div className="flex justify-between items-center mb-4 px-4 sticky top-0 z-40 backdrop-blur-md py-2 -mx-4 px-4" style={{ backgroundColor: 'rgba(30, 27, 75, 0.3)' }}>
+          <div className="flex justify-between items-center mb-4 px-4 sticky top-0 z-40 backdrop-blur-md py-2 -mx-4 px-4" style={{ backgroundColor: 'transparent' }}>
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => {

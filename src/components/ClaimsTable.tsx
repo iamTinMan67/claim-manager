@@ -37,6 +37,8 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
     defendant_name: '',
     contact_number: '',
     email: 'enquiries.northampton.countycourt@justice.gov.uk',
+    claimant_email: '',
+    claimant_contact_number: '',
     description: '',
     status: 'Active',
     color: '#3B82F6'
@@ -510,6 +512,8 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
         defendant_name: claimData.defendant_name?.trim() || null,
         contact_number: claimData.contact_number?.trim() || null,
         email: claimData.email?.trim() || null,
+        claimant_email: claimData.claimant_email?.trim() || null,
+        claimant_contact_number: claimData.claimant_contact_number?.trim() || null,
         description: claimData.description?.trim() || null,
         status: claimData.status || 'Active',
         color: claimData.color || '#3B82F6',
@@ -550,6 +554,10 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
         court: 'NCCBC',
         plaintiff_name: '',
         defendant_name: '',
+        contact_number: '',
+        email: 'enquiries.northampton.countycourt@justice.gov.uk',
+        claimant_email: '',
+        claimant_contact_number: '',
         description: '',
         status: 'Active',
         color: '#3B82F6'
@@ -575,6 +583,12 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
       }
       if (updateData.contact_number === '') {
         updateData.contact_number = null
+      }
+      if (updateData.claimant_email === '') {
+        updateData.claimant_email = null
+      }
+      if (updateData.claimant_contact_number === '') {
+        updateData.claimant_contact_number = null
       }
       
       // Check if case_number is being changed and if it already exists
@@ -786,8 +800,8 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
             </div>
           </div>
         )}
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-2">
+        <div className="flex justify-between items-center gap-4">
+          <div className="flex items-center space-x-2 flex-1 justify-start min-w-0">
             <button
               onClick={() => {
                 try {
@@ -825,8 +839,8 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
               </button>
             )}
           </div>
-          <h2 className="text-2xl font-bold text-gold text-center flex-1">Claim Details</h2>
-          <div className="flex items-center space-x-2">
+          <h2 className="text-2xl font-bold text-gold text-center flex-1 shrink-0 min-w-0 mx-2">Claim Details</h2>
+          <div className="flex items-center space-x-2 flex-1 justify-end min-w-0">
             {!isGuest && (
               <>
                 <button
@@ -842,7 +856,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                     }
                   }}
                   disabled={!resolvedClaimId}
-                  className="bg-white/10 border border-blue-400 text-blue-400 px-3 py-1 rounded-lg flex items-center space-x-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-white/10 border border-yellow-400 text-yellow-400 px-3 py-1 rounded-lg flex items-center space-x-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                   title={resolvedClaimId ? "View communication log for this claim" : "Loading claim information..."}
                 >
                   <FileText className="w-4 h-4" />
@@ -861,7 +875,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                     }
                   }}
                   disabled={!resolvedClaimId}
-                  className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-white/10 border border-red-400 text-red-400 px-3 py-1 rounded-lg flex items-center space-x-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                   title={resolvedClaimId ? "Share this claim with others" : "Loading claim information..."}
                 >
                   <Share2 className="w-4 h-4" />
@@ -1046,10 +1060,10 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                 </div>
               </div>
 
-              {/* Row 3: Contact Number and Email */}
+              {/* Row 3: Court Number, Court Email */}
               <div className="grid grid-cols-3 gap-4 items-end">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Contact Number</label>
+                  <label className="block text-sm font-medium mb-1">Court Number</label>
                   <input
                     type="tel"
                     value={newClaim.contact_number}
@@ -1062,7 +1076,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Email</label>
+                  <label className="block text-sm font-medium mb-1">Court Email</label>
                   <input
                     type="email"
                     value={newClaim.email}
@@ -1073,6 +1087,36 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                     className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                     placeholder="e.g., contact@example.com"
                     required={false}
+                  />
+                </div>
+                <div />
+              </div>
+              {/* Row 4: Claimant Contact Number (col 1), Claimant Email (col 2), Add Claim button */}
+              <div className="grid grid-cols-3 gap-4 items-end">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Claimant Contact Number</label>
+                  <input
+                    type="tel"
+                    value={newClaim.claimant_contact_number}
+                    onChange={(e) => {
+                      const updated = { ...newClaim, claimant_contact_number: e.target.value }
+                      setNewClaim(updated)
+                    }}
+                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                    placeholder="e.g., 01234 567890"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Claimant Email</label>
+                  <input
+                    type="email"
+                    value={newClaim.claimant_email}
+                    onChange={(e) => {
+                      const updated = { ...newClaim, claimant_email: e.target.value }
+                      setNewClaim(updated)
+                    }}
+                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                    placeholder="e.g., claimant@example.com"
                   />
                 </div>
                 <div className="flex justify-end">
@@ -1125,7 +1169,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
       ) : (
         // Main content when form is not open
         <>
-          <div className="flex justify-between items-center sticky top-0 z-40 backdrop-blur-md py-2 -mx-4 px-4 mb-4" style={{ backgroundColor: 'rgba(30, 27, 75, 0.3)' }}>
+          <div className="flex justify-between items-center sticky top-0 z-40 backdrop-blur-md py-2 -mx-4 px-4 mb-4" style={{ backgroundColor: 'transparent' }}>
             <div className="flex items-center space-x-2">
               {isGuest && (
                 <>
@@ -1237,10 +1281,10 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                 />
               </div>
             </div>
-            {/* Row 3: Contact Number, Email, and Update Claim button */}
+            {/* Row 3: Court Number, Court Email */}
             <div className="grid grid-cols-3 gap-4 items-end">
               <div>
-                <label className="block text-sm font-medium mb-1">Contact Number</label>
+                <label className="block text-sm font-medium mb-1">Court Number</label>
                 <input
                   type="tel"
                   value={editingClaim.contact_number || ''}
@@ -1250,13 +1294,37 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Email</label>
+                <label className="block text-sm font-medium mb-1">Court Email</label>
                 <input
                   type="email"
                   value={editingClaim.email || ''}
                   onChange={(e) => setEditingClaim({ ...editingClaim, email: e.target.value })}
                   className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                   placeholder="e.g., contact@example.com"
+                />
+              </div>
+              <div />
+            </div>
+            {/* Row 4: Claimant Contact Number (col 1), Claimant Email (col 2), Update Claim button */}
+            <div className="grid grid-cols-3 gap-4 items-end">
+              <div>
+                <label className="block text-sm font-medium mb-1">Claimant Contact Number</label>
+                <input
+                  type="tel"
+                  value={editingClaim.claimant_contact_number || ''}
+                  onChange={(e) => setEditingClaim({ ...editingClaim, claimant_contact_number: e.target.value })}
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  placeholder="e.g., 01234 567890"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Claimant Email</label>
+                <input
+                  type="email"
+                  value={editingClaim.claimant_email || ''}
+                  onChange={(e) => setEditingClaim({ ...editingClaim, claimant_email: e.target.value })}
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  placeholder="e.g., claimant@example.com"
                 />
               </div>
               <div className="flex justify-end">

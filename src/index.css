@@ -7,42 +7,34 @@
   box-sizing: border-box;
 }
 
-/* Royal Blue with Purple & Sky Blue Gradient Background */
+/* Lighter Blue Gradient Background (login-style) with shimmer */
 html {
   background: linear-gradient(135deg, 
-    #1e1b4b 0%, 
-    #312e81 10%, 
-    #3730a3 20%, 
-    #4338ca 30%, 
-    #4f46e5 40%, 
-    #6366f1 50%, 
-    #8b5cf6 60%, 
-    #a855f7 70%, 
-    #c084fc 80%, 
-    #ddd6fe 90%, 
-    #e0e7ff 100%) !important;
+    #1e3a8a 0%, 
+    #2563eb 15%, 
+    #3b82f6 35%, 
+    #60a5fa 55%, 
+    #93c5fd 75%, 
+    #bfdbfe 90%, 
+    #dbeafe 100%) !important;
   background-size: 400% 400% !important;
   background-attachment: fixed !important;
-  animation: royalPurpleGradient 12s ease infinite !important;
+  animation: royalGradient 18s ease infinite !important;
   min-height: 100vh !important;
 }
 
 body {
   background: linear-gradient(135deg, 
-    #1e1b4b 0%, 
-    #312e81 10%, 
-    #3730a3 20%, 
-    #4338ca 30%, 
-    #4f46e5 40%, 
-    #6366f1 50%, 
-    #8b5cf6 60%, 
-    #a855f7 70%, 
-    #c084fc 80%, 
-    #ddd6fe 90%, 
-    #e0e7ff 100%) !important;
+    #1e3a8a 0%, 
+    #2563eb 15%, 
+    #3b82f6 35%, 
+    #60a5fa 55%, 
+    #93c5fd 75%, 
+    #bfdbfe 90%, 
+    #dbeafe 100%) !important;
   background-size: 400% 400% !important;
   background-attachment: fixed !important;
-  animation: royalPurpleGradient 12s ease infinite !important;
+  animation: royalGradient 18s ease infinite !important;
   color: #ffffff !important;
   margin: 0;
   padding: 0;
@@ -50,7 +42,15 @@ body {
   overflow-x: hidden;
 }
 
-/* Animated Royal Purple Gradient */
+/* Animated gradient (background-position shift for shimmer effect) */
+@keyframes royalGradient {
+  0% { background-position: 0% 50%; }
+  25% { background-position: 50% 0%; }
+  50% { background-position: 100% 50%; }
+  75% { background-position: 50% 100%; }
+  100% { background-position: 0% 50%; }
+}
+
 @keyframes royalPurpleGradient {
   0% { background-position: 0% 50%; }
   25% { background-position: 50% 0%; }
@@ -59,7 +59,7 @@ body {
   100% { background-position: 0% 50%; }
 }
 
-/* Floating Particles Animation with Purple & Sky Blue */
+/* Shimmer overlay – light blue soft glow */
 html::before {
   content: '';
   position: fixed;
@@ -68,10 +68,10 @@ html::before {
   width: 100%;
   height: 100%;
   background-image: 
-    radial-gradient(circle at 20% 80%, rgba(139, 92, 246, 0.4) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.4) 0%, transparent 50%),
-    radial-gradient(circle at 40% 40%, rgba(96, 165, 250, 0.4) 0%, transparent 50%),
-    radial-gradient(circle at 60% 60%, rgba(192, 132, 252, 0.3) 0%, transparent 50%);
+    radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.25) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(96, 165, 250, 0.2) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(147, 197, 253, 0.2) 0%, transparent 50%),
+    radial-gradient(circle at 60% 60%, rgba(191, 219, 254, 0.15) 0%, transparent 50%);
   animation: floatingParticles 20s ease-in-out infinite;
   pointer-events: none;
   z-index: -1;
@@ -276,12 +276,12 @@ button.auth-button-blue-green:hover,
     0 0 0 1px rgba(59, 130, 246, 1) !important;
 }
 
-/* Force Background Override */
+/* Force Background Override – same lighter blue gradient everywhere */
 html, body, #root, .min-h-screen, div[class*="min-h-screen"] {
-  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 15%, #1d4ed8 30%, #2563eb 45%, #3b82f6 60%, #60a5fa 75%, #93c5fd 90%, #dbeafe 100%) !important;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 15%, #3b82f6 35%, #60a5fa 55%, #93c5fd 75%, #bfdbfe 90%, #dbeafe 100%) !important;
   background-size: 400% 400% !important;
   background-attachment: fixed !important;
-  animation: royalGradient 15s ease infinite !important;
+  animation: royalGradient 18s ease infinite !important;
 }
 
 /* Enhanced Input Fields */
@@ -342,10 +342,10 @@ select option {
 
 /* Dark Mode Overrides */
 .dark {
-  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 15%, #1d4ed8 30%, #2563eb 45%, #3b82f6 60%, #60a5fa 75%, #93c5fd 90%, #dbeafe 100%) !important;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 15%, #3b82f6 35%, #60a5fa 55%, #93c5fd 75%, #bfdbfe 90%, #dbeafe 100%) !important;
   background-size: 400% 400% !important;
   background-attachment: fixed !important;
-  animation: royalGradient 15s ease infinite !important;
+  animation: royalGradient 18s ease infinite !important;
 }
 
 .dark .card-enhanced {
@@ -362,12 +362,12 @@ select option {
   border: 2px solid rgba(59, 130, 246, 0.6) !important;
 }
 
-/* Light Mode (Royal Blue Theme) */
+/* Light Mode (lighter blue theme) */
 .light {
-  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 15%, #1d4ed8 30%, #2563eb 45%, #3b82f6 60%, #60a5fa 75%, #93c5fd 90%, #dbeafe 100%) !important;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 15%, #3b82f6 35%, #60a5fa 55%, #93c5fd 75%, #bfdbfe 90%, #dbeafe 100%) !important;
   background-size: 400% 400% !important;
   background-attachment: fixed !important;
-  animation: royalGradient 15s ease infinite !important;
+  animation: royalGradient 18s ease infinite !important;
 }
 
 .light .card-enhanced {

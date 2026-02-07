@@ -22,7 +22,10 @@ export const EditableClaimInfo = ({ claim, onUpdate }: Props) => {
       court: editedClaim.court,
       plaintiff_name: editedClaim.plaintiff_name,
       defendant_name: editedClaim.defendant_name,
+      contact_number: editedClaim.contact_number,
       email: editedClaim.email,
+      claimant_email: editedClaim.claimant_email,
+      claimant_contact_number: editedClaim.claimant_contact_number,
       status: editedClaim.status,
       description: editedClaim.description
     });
@@ -113,12 +116,42 @@ export const EditableClaimInfo = ({ claim, onUpdate }: Props) => {
             />
           </div>
           <div className="flex flex-col">
-            <label className="font-medium text-blue-800 mb-1">Email:</label>
+            <label className="font-medium text-blue-800 mb-1">Court Number:</label>
+            <Input
+              type="tel"
+              value={editedClaim.contact_number || ''}
+              onChange={(e) => setEditedClaim({ ...editedClaim, contact_number: e.target.value })}
+              placeholder="e.g., 01234 567890"
+              className="text-sm"
+            />
+          </div>
+          <div className="flex flex-col">
+            <label className="font-medium text-blue-800 mb-1">Court Email:</label>
             <Input
               type="email"
               value={editedClaim.email || ''}
               onChange={(e) => setEditedClaim({ ...editedClaim, email: e.target.value })}
               placeholder="e.g., contact@example.com"
+              className="text-sm"
+            />
+          </div>
+          <div className="flex flex-col">
+            <label className="font-medium text-blue-800 mb-1">Claimant Contact Number:</label>
+            <Input
+              type="tel"
+              value={editedClaim.claimant_contact_number || ''}
+              onChange={(e) => setEditedClaim({ ...editedClaim, claimant_contact_number: e.target.value })}
+              placeholder="e.g., 01234 567890"
+              className="text-sm"
+            />
+          </div>
+          <div className="flex flex-col">
+            <label className="font-medium text-blue-800 mb-1">Claimant Email:</label>
+            <Input
+              type="email"
+              value={editedClaim.claimant_email || ''}
+              onChange={(e) => setEditedClaim({ ...editedClaim, claimant_email: e.target.value })}
+              placeholder="e.g., claimant@example.com"
               className="text-sm"
             />
           </div>
@@ -176,8 +209,20 @@ export const EditableClaimInfo = ({ claim, onUpdate }: Props) => {
           <span className="text-blue-700">{claim.defendant_name || 'N/A'}</span>
         </div>
         <div className="flex flex-wrap">
-          <span className="font-medium text-blue-800 mr-2">Email:</span>
+          <span className="font-medium text-blue-800 mr-2">Court Number:</span>
+          <span className="text-blue-700">{claim.contact_number || 'N/A'}</span>
+        </div>
+        <div className="flex flex-wrap">
+          <span className="font-medium text-blue-800 mr-2">Court Email:</span>
           <span className="text-blue-700">{claim.email || 'N/A'}</span>
+        </div>
+        <div className="flex flex-wrap">
+          <span className="font-medium text-blue-800 mr-2">Claimant Contact Number:</span>
+          <span className="text-blue-700">{claim.claimant_contact_number || 'N/A'}</span>
+        </div>
+        <div className="flex flex-wrap">
+          <span className="font-medium text-blue-800 mr-2">Claimant Email:</span>
+          <span className="text-blue-700">{claim.claimant_email || 'N/A'}</span>
         </div>
       </div>
       

@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
-import { CheckCircle, XCircle, Clock, UserPlus, AlertCircle, Send } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, AlertCircle, Send, Bell } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 
 interface PendingInvitation {
@@ -412,7 +412,7 @@ const InvitationNotifications = () => {
         onClick={() => setShowNotifications(!showNotifications)}
         className="p-2 text-gray-400 hover:text-white relative"
       >
-        <UserPlus className="w-5 h-5" />
+        <Bell className="w-5 h-5" />
         {totalUnread > 0 && (
           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
             {totalUnread}
