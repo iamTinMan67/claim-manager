@@ -357,10 +357,21 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
 
             <div className="flex space-x-3">
               <button
-                onClick={() => approveMutation.mutate({ 
-                  pendingId: selectedPending.id, 
-                  claimIds: selectedClaimIds 
-                })}
+                onClick={() => approveMutation.mutate(
+                  {
+                    pendingId: selectedPending.id,
+                    claimIds: selectedClaimIds
+                  },
+                  {
+                    onSuccess: () => {
+                      queryClient.invalidateQueries({ queryKey: ['pending-evidence'] })
+                      queryClient.invalidateQueries({ queryKey: ['evidence'] })
+                      setShowApproveModal(false)
+                      setSelectedPending(null)
+                      setSelectedClaimIds([])
+                    }
+                  }
+                )}
                 disabled={approveMutation.isPending || selectedClaimIds.length === 0}
                 className="px-4 py-2 rounded-lg disabled:opacity-50"
                 style={{ 

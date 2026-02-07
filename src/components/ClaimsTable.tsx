@@ -1084,7 +1084,8 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                       const updated = { ...newClaim, email: e.target.value }
                       setNewClaim(updated)
                     }}
-                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20 text-sm"
+                    style={{ minWidth: 'calc(100% + 15px)' }}
                     placeholder="e.g., contact@example.com"
                     required={false}
                   />
@@ -1115,7 +1116,8 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                       const updated = { ...newClaim, claimant_email: e.target.value }
                       setNewClaim(updated)
                     }}
-                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                    className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20 text-sm"
+                    style={{ minWidth: 'calc(100% + 15px)' }}
                     placeholder="e.g., claimant@example.com"
                   />
                 </div>
@@ -1299,7 +1301,8 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                   type="email"
                   value={editingClaim.email || ''}
                   onChange={(e) => setEditingClaim({ ...editingClaim, email: e.target.value })}
-                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20 text-sm"
+                  style={{ minWidth: 'calc(100% + 15px)' }}
                   placeholder="e.g., contact@example.com"
                 />
               </div>
@@ -1323,7 +1326,8 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                   type="email"
                   value={editingClaim.claimant_email || ''}
                   onChange={(e) => setEditingClaim({ ...editingClaim, claimant_email: e.target.value })}
-                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
+                  className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20 text-sm"
+                  style={{ minWidth: 'calc(100% + 15px)' }}
                   placeholder="e.g., claimant@example.com"
                 />
               </div>
