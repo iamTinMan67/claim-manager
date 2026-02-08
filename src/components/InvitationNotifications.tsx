@@ -2,8 +2,9 @@ import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
-import { CheckCircle, XCircle, Clock, AlertCircle, Send, Bell } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, AlertCircle, Send, Bell, FileText } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
+import { useNavigation } from '@/contexts/NavigationContext'
 
 interface PendingInvitation {
   id: string
@@ -41,9 +42,19 @@ interface Notification {
   created_at: string
 }
 
+interface PendingEvidenceForHost {
+  id: string
+  claim_id: string
+  file_name: string | null
+  description: string
+  submitted_at: string
+  claims: { case_number: string; title: string; color: string } | null
+}
+
 const InvitationNotifications = () => {
   const [showNotifications, setShowNotifications] = useState(false)
   const queryClient = useQueryClient()
+  const { navigateTo } = useNavigation()
 
   // Fetch pending invitations RECEIVED (I'm the invited user)
   const { data: pendingInvitationsReceived } = useQuery({
@@ -168,6 +179,46 @@ const InvitationNotifications = () => {
     }
   })
 
+  // Pending evidence for claims I own (host approvals to accept/reject) – list for dropdown and count for badge
+  const { data: pendingEvidenceForHost = [] } = useQuery({
+    queryKey: ['pending-evidence-count-host'],
+    queryFn: async (): Promise<PendingEvidenceForHost[]> => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return []
+      const { data: myClaims, error: claimsError } = await supabase
+        .from('claims')
+        .select('claim_id')
+        .eq('user_id', user.id)
+      if (claimsError || !myClaims?.length) return []
+      const claimIds = myClaims.map((c: { claim_id: string }) => c.claim_id)
+      const { data, error } = await supabase
+        .from('pending_evidence')
+        .select(`
+          id,
+          claim_id,
+          file_name,
+          description,
+          submitted_at,
+          claims!claim_id ( case_number, title, color )
+        `)
+        .eq('status', 'pending')
+        .in('claim_id', claimIds)
+        .order('submitted_at', { ascending: false })
+      if (error) return []
+      return (data || []).map((row: any) => {
+        const claim = Array.isArray(row.claims) ? row.claims[0] : row.claims
+        return {
+          id: row.id,
+          claim_id: row.claim_id,
+          file_name: row.file_name,
+          description: row.description,
+          submitted_at: row.submitted_at,
+          claims: claim || null
+        }
+      })
+    }
+  })
+
   // Accept invitation mutation
   const acceptInvitationMutation = useMutation({
     mutationFn: async (invitationId: string) => {
@@ -255,9 +306,19 @@ const InvitationNotifications = () => {
     }
   })
 
-  // Only count pending invitations received + unread non-invite notifications
+  // Count: pending invitations received + unread notifications + pending evidence for host to approve
   const unreadNotifications = (notifications || []).filter(n => !n.read_at)
-  const totalUnread = (pendingInvitationsReceived?.length || 0) + unreadNotifications.length
+  const totalUnread =
+    (pendingInvitationsReceived?.length || 0) +
+    unreadNotifications.length +
+    (pendingEvidenceForHost?.length || 0)
+
+  const goToClaimForEvidenceReview = (caseNumber: string, color: string) => {
+    setShowNotifications(false)
+    window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: caseNumber, claimColor: color || '#3B82F6' } }))
+    window.dispatchEvent(new CustomEvent('tabChange', { detail: 'claims' }))
+    navigateTo('claims')
+  }
 
   const Dropdown = (
     <div className="fixed right-4 top-16 w-96 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-[5000] max-h-96 overflow-y-auto">
@@ -307,6 +368,48 @@ const InvitationNotifications = () => {
                       <XCircle className="w-4 h-4" />
                     </button>
                   </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Pending evidence to review (host) */}
+        {pendingEvidenceForHost && pendingEvidenceForHost.length > 0 && (
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
+              <FileText className="w-4 h-4 mr-2 text-amber-500" /> Evidence to review
+            </h4>
+            {pendingEvidenceForHost.map((item) => (
+              <div key={item.id} className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg mb-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <div
+                        className="w-3 h-3 rounded-full shrink-0"
+                        style={{ backgroundColor: item.claims?.color || '#3B82F6' }}
+                      />
+                      <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        {item.claims?.title || item.claims?.case_number || 'Claim'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                      {item.file_name || item.description}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500">
+                      Submitted {new Date(item.submitted_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      item.claims &&
+                      goToClaimForEvidenceReview(item.claims.case_number, item.claims.color)
+                    }
+                    className="shrink-0 px-2 py-1 text-xs font-medium rounded bg-amber-600 text-white hover:bg-amber-700"
+                  >
+                    Review
+                  </button>
                 </div>
               </div>
             ))}
@@ -397,6 +500,7 @@ const InvitationNotifications = () => {
         {/* No notifications */}
         {(!pendingInvitationsReceived || pendingInvitationsReceived.length === 0) &&
          (!pendingInvitationsSent || pendingInvitationsSent.length === 0) &&
+         (!pendingEvidenceForHost || pendingEvidenceForHost.length === 0) &&
          (!notifications || notifications.length === 0) && (
           <div className="p-4 text-center text-gray-500 dark:text-gray-400">
             No notifications

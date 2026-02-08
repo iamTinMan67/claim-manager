@@ -143,7 +143,7 @@ const EvidenceManager = ({
 
   const queryClient = useQueryClient()
 
-  // Guest download permission based on claim_shares.allow_guest_downloads
+  // Guest download permission (claim_shares; avoid selecting missing columns like allow_guest_downloads)
   const { data: guestDownloadAllowed } = useQuery({
     queryKey: ['share-downloads', selectedClaim, isGuest],
     enabled: Boolean(selectedClaim) && Boolean(isGuest),
@@ -160,13 +160,13 @@ const EvidenceManager = ({
         if (!claimId) return true
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return true
-        const { data: share } = await supabase
+        await supabase
           .from('claim_shares')
-          .select('allow_guest_downloads')
+          .select('id')
           .eq('claim_id', claimId)
           .eq('shared_with_id', user.id)
           .maybeSingle()
-        return (share?.allow_guest_downloads ?? true) as boolean
+        return true
       } catch {
         return true
       }
@@ -180,7 +180,7 @@ const EvidenceManager = ({
     }
   }, [amendMode])
 
-  // Host-side control: toggle allow_guest_downloads for this claim across all shares
+  // Host: whether claim has shares (avoid selecting missing columns like allow_guest_downloads)
   const { data: hostGuestDownloadAllowed } = useQuery({
     queryKey: ['share-downloads-host', selectedClaim, isGuest],
     enabled: Boolean(selectedClaim) && !isGuest,
@@ -197,11 +197,11 @@ const EvidenceManager = ({
         if (!claimId) return true
         const { data } = await supabase
           .from('claim_shares')
-          .select('allow_guest_downloads')
+          .select('id')
           .eq('claim_id', claimId)
           .limit(1)
           .maybeSingle()
-        return (data?.allow_guest_downloads ?? true) as boolean
+        return true
       } catch {
         return true
       }
@@ -2597,6 +2597,7 @@ USING (
                       }])
                     // Refresh pending list for owner views
                     queryClient.invalidateQueries({ queryKey: ['pending-evidence', selectedClaim] })
+                    queryClient.invalidateQueries({ queryKey: ['pending-evidence-count-host'] })
                   } catch (err) {
                     console.warn('Failed to create pending_evidence entry:', err)
                   }

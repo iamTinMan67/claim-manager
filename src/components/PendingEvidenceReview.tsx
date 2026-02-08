@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { PendingEvidence, Claim } from '@/types/database'
 import { CheckCircle, XCircle, Clock, FileText, ExternalLink, Calendar, Eye, Trash } from 'lucide-react'
 import { getClaimIdFromCaseNumber } from '@/utils/claimUtils'
+import { toast } from '@/hooks/use-toast'
 
 interface PendingEvidenceReviewProps {
   selectedClaim?: string
@@ -55,32 +56,33 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
     setSelectedIds(next)
   }
 
-  // Get all claims for the approve modal
+  // Get all claims for the approve modal (include claim_id so we don't need case_number lookup)
   const { data: allClaims } = useQuery({
     queryKey: ['claims'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('claims')
-        .select('case_number, title')
+        .select('claim_id, case_number, title')
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      return data as Claim[]
+      return data as (Claim & { claim_id: string })[]
     }
   })
 
-  // Approve mutation
+  // Approve mutation: uses public.approve_pending_evidence(pending_id, reviewer_notes_param)
   const approveMutation = useMutation({
-    mutationFn: async ({ pendingId, claimIds }: { pendingId: string, claimIds: string[] }) => {
-      const { data, error } = await supabase.rpc('promote_pending_evidence', {
-        p_pending_id: pendingId,
-        p_claim_ids: claimIds
+    mutationFn: async ({ pendingId, reviewerNotes }: { pendingId: string, reviewerNotes?: string | null }) => {
+      const { data, error } = await supabase.rpc('approve_pending_evidence', {
+        pending_id: pendingId,
+        reviewer_notes_param: reviewerNotes ?? null
       })
       if (error) throw error
       return data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-evidence'] })
+      queryClient.invalidateQueries({ queryKey: ['pending-evidence-count-host'] })
       queryClient.invalidateQueries({ queryKey: ['evidence'] })
       setShowApproveModal(false)
       setSelectedPending(null)
@@ -100,6 +102,7 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-evidence'] })
+      queryClient.invalidateQueries({ queryKey: ['pending-evidence-count-host'] })
       setShowRejectModal(false)
       setSelectedPending(null)
       setRejectReason('')
@@ -122,6 +125,7 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-evidence', selectedClaim] })
+      queryClient.invalidateQueries({ queryKey: ['pending-evidence-count-host'] })
       setSelectedIds({})
       setShowBatchRejectModal(false)
       setBatchRejectReason('')
@@ -151,6 +155,7 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
       }
     }
     queryClient.invalidateQueries({ queryKey: ['pending-evidence', selectedClaim] })
+    queryClient.invalidateQueries({ queryKey: ['pending-evidence-count-host'] })
     setSelectedIds({})
   }
 
@@ -312,6 +317,7 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
                         .eq('id', evidence.id)
                         .eq('status', 'pending')
                       queryClient.invalidateQueries({ queryKey: ['pending-evidence'] })
+                      queryClient.invalidateQueries({ queryKey: ['pending-evidence-count-host'] })
                     } catch {}
                   }}
                   className="px-4 py-2 rounded-lg flex items-center space-x-2 bg-white/10 border border-red-500 text-red-500 hover:bg-red-500/20"
@@ -337,15 +343,15 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
             
             <div className="space-y-2 mb-4 max-h-40 overflow-y-auto">
               {allClaims?.map((claim) => (
-                <label key={claim.case_number} className="flex items-center space-x-2">
+                <label key={claim.claim_id} className="flex items-center space-x-2">
                   <input
                     type="checkbox"
-                    checked={selectedClaimIds.includes(claim.case_number)}
+                    checked={selectedClaimIds.includes(claim.claim_id)}
                     onChange={(e) => {
                       if (e.target.checked) {
-                        setSelectedClaimIds([...selectedClaimIds, claim.case_number])
+                        setSelectedClaimIds([...selectedClaimIds, claim.claim_id])
                       } else {
-                        setSelectedClaimIds(selectedClaimIds.filter(id => id !== claim.case_number))
+                        setSelectedClaimIds(selectedClaimIds.filter(id => id !== claim.claim_id))
                       }
                     }}
                     className="rounded"
@@ -357,22 +363,16 @@ const PendingEvidenceReview: React.FC<PendingEvidenceReviewProps> = ({
 
             <div className="flex space-x-3">
               <button
-                onClick={() => approveMutation.mutate(
-                  {
-                    pendingId: selectedPending.id,
-                    claimIds: selectedClaimIds
-                  },
-                  {
-                    onSuccess: () => {
-                      queryClient.invalidateQueries({ queryKey: ['pending-evidence'] })
-                      queryClient.invalidateQueries({ queryKey: ['evidence'] })
-                      setShowApproveModal(false)
-                      setSelectedPending(null)
-                      setSelectedClaimIds([])
-                    }
+                onClick={async () => {
+                  if (!selectedPending) return
+                  const pendingId = selectedPending.id
+                  try {
+                    await approveMutation.mutateAsync({ pendingId, reviewerNotes: null })
+                  } catch (e: any) {
+                    toast({ title: 'Approve failed', description: e?.message || 'Could not add evidence to claim.' })
                   }
-                )}
-                disabled={approveMutation.isPending || selectedClaimIds.length === 0}
+                }}
+                disabled={approveMutation.isPending}
                 className="px-4 py-2 rounded-lg disabled:opacity-50"
                 style={{ 
                   backgroundColor: 'rgba(30, 58, 138, 0.3)',
