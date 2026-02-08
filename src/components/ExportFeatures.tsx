@@ -175,7 +175,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         .from('communication_logs')
         .select('*')
         .eq('claim_id', claimId)
-        .order('date', { ascending: false }) // Newest first
+        .order('date', { ascending: true })
       
       if (error) throw error
       return data
@@ -605,8 +605,8 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
               setIsExporting(false)
             }
           } else {
-            // CSV export for communication logs (organisation column removed)
-            const headers = ['Date & Time', 'Type', 'Name', 'Notes']
+            // CSV export for communication logs (name column removed; plaintiff at top of report)
+            const headers = ['Date & Time', 'Type', 'Notes']
             const csvContent = [
               headers.join(','),
               ...communicationLogs.map((log: any) => {
@@ -614,7 +614,6 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
                 return [
                   `"${date}"`,
                   `"${log.type}"`,
-                  `"${log.name}"`,
                   `"${(log.notes || '').replace(/"/g, '""')}"`
                 ].join(',')
               })
@@ -658,9 +657,16 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
           break
         case 'communication':
           if (communicationLogs && claim) {
-            const pdf = generateCommunicationLogPDF(claim, communicationLogs)
-            const pdfBlob = pdf.output('blob')
-            pdfUrl = URL.createObjectURL(pdfBlob)
+            try {
+              const pdf = generateCommunicationLogPDF(claim, communicationLogs)
+              const pdfBlob = pdf.output('blob')
+              pdfUrl = URL.createObjectURL(pdfBlob)
+            } catch (err) {
+              console.error('Communication log PDF preview failed:', err)
+              alert('Could not generate communication log preview. Please try again.')
+            }
+          } else if (communicationLogs?.length && !claim) {
+            alert('Claim details are still loading. Please try the preview again in a moment.')
           }
           break
       }

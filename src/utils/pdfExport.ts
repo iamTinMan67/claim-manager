@@ -622,35 +622,38 @@ export const generateCommunicationLogPDF = (
   const colWidths = {
     date: 40,
     type: 30,
-    name: 55,
-    notes: pageWidth - 2 * margin - 40 - 30 - 55 - 10, // Remaining width
+    notes: pageWidth - 2 * margin - 40 - 30 - 10, // Remaining width (name column removed; plaintiff at top)
   };
-  
-  let currentX = margin;
-  pdf.text('Date & Time', currentX, yPosition);
-  currentX += colWidths.date;
-  pdf.text('Type', currentX, yPosition);
-  currentX += colWidths.type;
-  pdf.text('Name', currentX, yPosition);
-  currentX += colWidths.name;
-  pdf.text('Notes', currentX, yPosition);
-  
+
+  const colCenters = {
+    date: margin + colWidths.date / 2,
+    type: margin + colWidths.date + colWidths.type / 2,
+  };
+  const notesColLeft = margin + colWidths.date + colWidths.type + 2;
+
+  const centerOpt = { align: 'center' as const };
+  pdf.text('Date & Time', colCenters.date, yPosition, centerOpt);
+  pdf.text('Type', colCenters.type, yPosition, centerOpt);
+  pdf.text('Notes', notesColLeft, yPosition);
+
   yPosition += 8;
-  
+
   // Draw header line
   pdf.setLineWidth(0.5);
   pdf.line(margin, yPosition - 2, pageWidth - margin, yPosition - 2);
   yPosition += 5;
 
-  // Sort logs: newest first (descending by date)
+  // Sort logs: oldest first (ascending by date)
   const sortedLogs = [...logs].sort((a, b) => {
-    return new Date(b.date).getTime() - new Date(a.date).getTime();
+    return new Date(a.date).getTime() - new Date(b.date).getTime();
   });
 
-  // Log entries (newest at top, oldest at bottom)
-  sortedLogs.forEach((log, index) => {
+  const lineHeight = 4.5;
+
+  // Log entries (oldest at top); date & type centred, notes left-aligned
+  sortedLogs.forEach((log) => {
     checkPageBreak(30);
-    
+
     const logDate = new Date(log.date);
     const formattedDate = logDate.toLocaleDateString('en-GB', {
       day: '2-digit',
@@ -662,32 +665,29 @@ export const generateCommunicationLogPDF = (
 
     pdf.setFontSize(9);
     pdf.setFont('helvetica', 'normal');
-    
+
     let rowHeight = 0;
-    currentX = margin;
 
-    // Date & Time
+    // Date & Time: centre each line in column
     const dateLines = pdf.splitTextToSize(formattedDate, colWidths.date - 2);
-    pdf.text(dateLines, currentX, yPosition);
-    rowHeight = Math.max(rowHeight, dateLines.length * 4.5);
-    currentX += colWidths.date;
+    let dateY = yPosition;
+    dateLines.forEach((line: string) => {
+      const w = pdf.getTextWidth(line);
+      pdf.text(line, colCenters.date - w / 2, dateY);
+      dateY += lineHeight;
+    });
+    rowHeight = Math.max(rowHeight, dateLines.length * lineHeight);
 
-    // Type
-    pdf.text(log.type, currentX, yPosition);
-    rowHeight = Math.max(rowHeight, 4.5);
-    currentX += colWidths.type;
+    // Type: centred in column
+    const typeW = pdf.getTextWidth(log.type);
+    pdf.text(log.type, colCenters.type - typeW / 2, yPosition);
+    rowHeight = Math.max(rowHeight, lineHeight);
 
-    // Name
-    const nameLines = pdf.splitTextToSize(log.name || '', colWidths.name - 2);
-    pdf.text(nameLines, currentX, yPosition);
-    rowHeight = Math.max(rowHeight, nameLines.length * 4.5);
-    currentX += colWidths.name;
-
-    // Notes
+    // Notes: left-aligned
     const notesText = log.notes || '-';
-    const notesLines = pdf.splitTextToSize(notesText, colWidths.notes - 2);
-    pdf.text(notesLines, currentX, yPosition);
-    rowHeight = Math.max(rowHeight, notesLines.length * 4.5);
+    const notesLines = pdf.splitTextToSize(notesText, colWidths.notes - 4);
+    pdf.text(notesLines, notesColLeft, yPosition);
+    rowHeight = Math.max(rowHeight, notesLines.length * lineHeight);
 
     // Draw row separator
     yPosition += rowHeight + 3;

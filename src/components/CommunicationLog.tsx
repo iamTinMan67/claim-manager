@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, Plus, Trash2, Edit, Calendar, User, FileText, Phone, Mail, MessageSquare, Home, Upload } from 'lucide-react';
+import { X, Plus, Trash2, Edit, Calendar, FileText, Phone, Mail, MessageSquare, Home, Upload } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { EvidenceService } from '@/services/evidenceService';
 
@@ -127,7 +127,7 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle, plai
         .from('communication_logs')
         .select('*')
         .eq('claim_id', claimId)
-        .order('date', { ascending: false });
+        .order('date', { ascending: true });
       
       if (error) throw error;
       return data as CommunicationLog[];
@@ -287,7 +287,10 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle, plai
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    saveLogMutation.mutate(formData);
+    saveLogMutation.mutate({
+      ...formData,
+      name: editingLog ? formData.name : (plaintiffName ?? (formData.name || '')),
+    });
   };
 
   const handleCancel = () => {
@@ -355,7 +358,7 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle, plai
             </div>
           </DialogTitle>
           <DialogDescription id="communication-log-description" className="sr-only">
-            View and add communication logs for this claim. Logs include date, type, contact name, and notes.
+            View and add communication logs for this claim. Logs include date, type, and notes. Plaintiff is shown at the top of the report.
           </DialogDescription>
         </DialogHeader>
 
@@ -395,27 +398,14 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle, plai
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder={plaintiffName ? undefined : "Contact name"}
-                required
-              />
-              {plaintiffName && (
-                <p className="text-xs text-gray-500">Default: plaintiff for this claim. You can change if needed.</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="notes">Notes</Label>
               <Textarea
                 id="notes"
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 placeholder="Add notes about this communication..."
-                rows={4}
+                rows={6}
+                className="min-h-[120px] w-full"
               />
             </div>
 
@@ -512,9 +502,9 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle, plai
                     key={log.id}
                     className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex-1 flex flex-col items-center justify-center text-center min-w-0">
+                        <div className="flex items-center justify-center flex-wrap gap-x-3 gap-y-1 mb-2">
                           <div className="flex items-center space-x-2 text-gray-600">
                             {getTypeIcon(log.type)}
                             <span className="font-semibold">{log.type}</span>
@@ -524,10 +514,6 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle, plai
                             {formatDate(log.date)}
                           </span>
                         </div>
-                        <div className="flex items-center space-x-2 mb-2">
-                          <User className="w-4 h-4 text-gray-500" />
-                          <span className="font-medium">{log.name}</span>
-                        </div>
                         {log.notes && (
                           <div className="mt-2 text-sm text-gray-700">
                             <FileText className="w-4 h-4 inline mr-1 text-gray-500" />
@@ -535,7 +521,7 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle, plai
                           </div>
                         )}
                       </div>
-                      <div className="flex space-x-2">
+                      <div className="flex space-x-2 shrink-0">
                         <Button
                           variant="ghost"
                           size="sm"

@@ -52,7 +52,7 @@ export const ClaimEvidenceExport = ({ claim, evidenceList, allClaims, allEvidenc
         .from('communication_logs')
         .select('*')
         .eq('claim_id', claim.claim_id)
-        .order('date', { ascending: false }); // Newest first
+        .order('date', { ascending: true })
       
       if (error) throw error;
       return data as CommunicationLog[];
