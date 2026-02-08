@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, Plus, Trash2, Edit, Calendar, User, FileText, Phone, Mail, MessageSquare, Home, Building2, Upload } from 'lucide-react';
+import { X, Plus, Trash2, Edit, Calendar, User, FileText, Phone, Mail, MessageSquare, Home, Upload } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { EvidenceService } from '@/services/evidenceService';
 
@@ -30,6 +30,8 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   claimId: string | null;
   claimTitle: string | null;
+  /** Plaintiff name from the active claim; used as default when adding a log */
+  plaintiffName?: string | null;
 }
 
 const getTypeIcon = (type: string) => {
@@ -49,7 +51,7 @@ const getTypeIcon = (type: string) => {
   }
 };
 
-export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle }: Props) => {
+export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle, plaintiffName }: Props) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
@@ -104,10 +106,17 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle }: Pr
   const [formData, setFormData] = useState({
     date: new Date().toISOString().slice(0, 16), // Format for datetime-local input
     name: '',
-    company: '',
+    company: '', // kept for DB; not shown in UI – plaintiff name used via default for name
     notes: '',
     type: 'Call' as 'Call' | 'Mail' | 'Text' | 'Email' | 'Visit',
   });
+
+  // When opening Add form (not edit), default name to plaintiff name for the active claim
+  useEffect(() => {
+    if (showAddForm && !editingLog && plaintiffName) {
+      setFormData(prev => ({ ...prev, name: plaintiffName }));
+    }
+  }, [showAddForm, editingLog, plaintiffName]);
 
   // Fetch communication logs
   const { data: logs = [], isLoading } = useQuery({
@@ -319,7 +328,7 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle }: Pr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="communication-log-description">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>Communication Log - {claimTitle || 'Claim'}</span>
@@ -345,6 +354,9 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle }: Pr
               </Button>
             </div>
           </DialogTitle>
+          <DialogDescription id="communication-log-description" className="sr-only">
+            View and add communication logs for this claim. Logs include date, type, contact name, and notes.
+          </DialogDescription>
         </DialogHeader>
 
         {showAddForm ? (
@@ -382,26 +394,18 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle }: Pr
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Staff name"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="company">Company</Label>
-                <Input
-                  id="company"
-                  value={formData.company}
-                  onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                  placeholder="Organization name"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder={plaintiffName ? undefined : "Contact name"}
+                required
+              />
+              {plaintiffName && (
+                <p className="text-xs text-gray-500">Default: plaintiff for this claim. You can change if needed.</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -524,12 +528,6 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle }: Pr
                           <User className="w-4 h-4 text-gray-500" />
                           <span className="font-medium">{log.name}</span>
                         </div>
-                        {log.company && (
-                          <div className="flex items-center space-x-2 mb-2">
-                            <Building2 className="w-4 h-4 text-gray-500" />
-                            <span className="text-gray-600">{log.company}</span>
-                          </div>
-                        )}
                         {log.notes && (
                           <div className="mt-2 text-sm text-gray-700">
                             <FileText className="w-4 h-4 inline mr-1 text-gray-500" />

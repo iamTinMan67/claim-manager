@@ -1479,7 +1479,7 @@ USING (
           // Get the updated evidence list from cache
           const currentEvidence = queryClient.getQueryData<Evidence[]>(['evidence', selectedClaim]) || []
           
-          // Sort by display_order descending (to match the display order)
+          // Sort by display_order descending (to match the display order: highest at top)
           const sortedEvidence = [...currentEvidence].sort((a, b) => {
             const ao = a.display_order ?? -Infinity
             const bo = b.display_order ?? -Infinity
@@ -1489,11 +1489,11 @@ USING (
             return bt - at
           })
           
-          // Renumber all exhibits based on their position (1, 2, 3...)
+          // Renumber so highest exhibit is at top (same convention as drag reorder and main sort)
           const renumberUpdates = sortedEvidence.map((evidence, index) => ({
             id: evidence.id,
             display_order: sortedEvidence.length - index,
-            exhibit_number: index + 1
+            exhibit_number: sortedEvidence.length - index
           }))
           
           // Update all exhibits with new numbers

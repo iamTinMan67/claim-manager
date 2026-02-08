@@ -609,10 +609,12 @@ export const generateCommunicationLogPDF = (
   yPosition += 7;
   pdf.text(`Case Number: ${claim.case_number}`, margin, yPosition);
   yPosition += 7;
+  pdf.text(`Plaintiff: ${claim.plaintiff_name || 'N/A'}`, margin, yPosition);
+  yPosition += 7;
   pdf.text(`Generated: ${new Date().toLocaleDateString()}`, margin, yPosition);
   yPosition += 15;
 
-  // Table Headers
+  // Table Headers (organisation column removed; plaintiff shown in claim info above)
   checkPageBreak(20);
   pdf.setFontSize(10);
   pdf.setFont('helvetica', 'bold');
@@ -620,9 +622,8 @@ export const generateCommunicationLogPDF = (
   const colWidths = {
     date: 40,
     type: 30,
-    name: 50,
-    company: 50,
-    notes: pageWidth - 2 * margin - 40 - 30 - 50 - 50 - 10, // Remaining width
+    name: 55,
+    notes: pageWidth - 2 * margin - 40 - 30 - 55 - 10, // Remaining width
   };
   
   let currentX = margin;
@@ -632,8 +633,6 @@ export const generateCommunicationLogPDF = (
   currentX += colWidths.type;
   pdf.text('Name', currentX, yPosition);
   currentX += colWidths.name;
-  pdf.text('Company', currentX, yPosition);
-  currentX += colWidths.company;
   pdf.text('Notes', currentX, yPosition);
   
   yPosition += 8;
@@ -683,13 +682,6 @@ export const generateCommunicationLogPDF = (
     pdf.text(nameLines, currentX, yPosition);
     rowHeight = Math.max(rowHeight, nameLines.length * 4.5);
     currentX += colWidths.name;
-
-    // Company
-    const companyText = log.company || '-';
-    const companyLines = pdf.splitTextToSize(companyText, colWidths.company - 2);
-    pdf.text(companyLines, currentX, yPosition);
-    rowHeight = Math.max(rowHeight, companyLines.length * 4.5);
-    currentX += colWidths.company;
 
     // Notes
     const notesText = log.notes || '-';

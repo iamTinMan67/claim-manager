@@ -593,11 +593,11 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
         break
       case 'communication':
         if (communicationLogs && claim) {
-          if (format === 'pdf') {
+            if (format === 'pdf') {
             setIsExporting(true)
             try {
               const pdf = generateCommunicationLogPDF(claim, communicationLogs)
-              const fileName = `${claim.case_number}_Communication_Log.pdf`
+              const fileName = `${claim.case_number}_All_Communications_Report.pdf`
               pdf.save(fileName)
             } catch (error) {
               console.error('Error generating Communication Log PDF:', error)
@@ -605,17 +605,16 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
               setIsExporting(false)
             }
           } else {
-            // CSV export for communication logs
-            const headers = ['Date & Time', 'Type', 'Name', 'Company', 'Notes']
+            // CSV export for communication logs (organisation column removed)
+            const headers = ['Date & Time', 'Type', 'Name', 'Notes']
             const csvContent = [
               headers.join(','),
-              ...communicationLogs.map(log => {
+              ...communicationLogs.map((log: any) => {
                 const date = new Date(log.date).toLocaleString('en-GB')
                 return [
                   `"${date}"`,
                   `"${log.type}"`,
                   `"${log.name}"`,
-                  `"${log.company || ''}"`,
                   `"${(log.notes || '').replace(/"/g, '""')}"`
                 ].join(',')
               })
@@ -793,6 +792,7 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
       case 'evidence': return evidence?.length ?? 0
       case 'todos': return todos?.length ?? 0
       case 'calendar': return events?.length ?? 0
+      case 'communication': return communicationLogs?.length ?? 0
       default: return 0
     }
   }
@@ -908,10 +908,10 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
                   color: claimColor
                 } : {}}
                 disabled={!selectedClaim}
-                title={!selectedClaim ? 'Please select a claim first' : ''}
+                title={!selectedClaim ? 'Please select a claim first' : 'All communications report (PDF/CSV)'}
               >
                 <MessageSquare className="w-6 h-6 mx-auto mb-2" />
-                <div className="text-sm font-medium">Comms Log</div>
+                <div className="text-sm font-medium">Communications Report</div>
                 <div className="text-xs text-gray-500">{communicationLogs?.length || 0} entries</div>
               </button>
             </div>

@@ -928,6 +928,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
               onOpenChange={setShowCommunicationLog}
               claimId={resolvedClaimId}
               claimTitle={claim?.title || null}
+              plaintiffName={claim?.plaintiff_name ?? null}
             />
           </>
         )}
