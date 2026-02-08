@@ -1030,13 +1030,9 @@ const EvidenceManager = ({
       // Invalidate queries to trigger refetch
       await queryClient.invalidateQueries({ queryKey: ['evidence', selectedClaim] })
       await queryClient.invalidateQueries({ queryKey: ['evidence'] })
-      // Also invalidate todo counts so the counter badges update
       await queryClient.invalidateQueries({ queryKey: ['todo-evidence-counts'] })
-      // Also invalidate todo counts so the counter badges update
-      await queryClient.invalidateQueries({ queryKey: ['todo-evidence-counts'] })
-      // Also invalidate todo counts so the counter badges update
-      await queryClient.invalidateQueries({ queryKey: ['todo-evidence-counts'] })
-      
+      await queryClient.invalidateQueries({ queryKey: ['alerts-summary'] })
+
       // Manually refetch the query
       try {
         const queryCache = queryClient.getQueryCache()
@@ -1506,9 +1502,9 @@ USING (
         }
       }, 500)
       
-      // Invalidate todo counts so the counter badges update
       await queryClient.invalidateQueries({ queryKey: ['todo-evidence-counts'] })
-      
+      await queryClient.invalidateQueries({ queryKey: ['alerts-summary'] })
+
       // Verify deletion and refresh the list
       setTimeout(async () => {
         try {

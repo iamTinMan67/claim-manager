@@ -1,13 +1,32 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { Bell, CalendarClock, CheckSquare } from 'lucide-react'
-import { useAlertsSummary } from '@/hooks/useAlertsSummary'
+import { useAlertsSummary, type AlertsTodoItem, type AlertsCalendarEventItem } from '@/hooks/useAlertsSummary'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { format } from 'date-fns'
 import { useNavigation } from '@/contexts/NavigationContext'
+import { useAuth } from '@/contexts/AuthContext'
+
+function mergeById<T extends { id: string }>(a: T[], b: T[]): T[] {
+  const seen = new Set<string>()
+  const out: T[] = []
+  for (const x of a) {
+    if (!seen.has(x.id)) {
+      seen.add(x.id)
+      out.push(x)
+    }
+  }
+  for (const x of b) {
+    if (!seen.has(x.id)) {
+      seen.add(x.id)
+      out.push(x)
+    }
+  }
+  return out
+}
 
 export function AlertsSummaryCard({ scope }: { scope: 'private' | 'shared' }) {
-  // Always load both private and shared summaries so we can present a global view.
+  const { user } = useAuth()
   const {
     data: privateData,
     isLoading: loadingPrivate,
@@ -24,6 +43,7 @@ export function AlertsSummaryCard({ scope }: { scope: 'private' | 'shared' }) {
     total: privateData?.total ?? 0,
     todoAlerts: privateData?.todoAlerts ?? 0,
     calendarAlerts: privateData?.calendarAlerts ?? 0,
+    evidenceToDoAlerts: privateData?.evidenceToDoAlerts ?? 0,
     myTodoAlerts: privateData?.myTodoAlerts ?? 0,
     othersTodoAlerts: privateData?.othersTodoAlerts ?? 0,
     overdueTodoAlerts: privateData?.overdueTodoAlerts ?? 0,
@@ -32,37 +52,80 @@ export function AlertsSummaryCard({ scope }: { scope: 'private' | 'shared' }) {
     total: sharedData?.total ?? 0,
     todoAlerts: sharedData?.todoAlerts ?? 0,
     calendarAlerts: sharedData?.calendarAlerts ?? 0,
+    evidenceToDoAlerts: sharedData?.evidenceToDoAlerts ?? 0,
     myTodoAlerts: sharedData?.myTodoAlerts ?? 0,
     othersTodoAlerts: sharedData?.othersTodoAlerts ?? 0,
     overdueTodoAlerts: sharedData?.overdueTodoAlerts ?? 0,
   }
 
+  // When host views (private scope), merge private + shared lists so guest-created shared todos
+  // are included in both the count and the list; dedupe by id to avoid double-counting.
+  const { todos, events, total, todoAlerts, calendarAlerts, myTodoAlerts, othersTodoAlerts, overdueTodoAlerts } = useMemo(() => {
+    if (!isPrivateScope) {
+      return {
+        todos: (sharedData?.todos ?? []) as AlertsTodoItem[],
+        events: (sharedData?.events ?? []) as AlertsCalendarEventItem[],
+        total: sharedTotals.total,
+        todoAlerts: sharedTotals.todoAlerts,
+        calendarAlerts: sharedTotals.calendarAlerts,
+        myTodoAlerts: sharedTotals.myTodoAlerts,
+        othersTodoAlerts: sharedTotals.othersTodoAlerts,
+        overdueTodoAlerts: sharedTotals.overdueTodoAlerts,
+      }
+    }
+    const mergedTodos = mergeById(
+      (privateData?.todos ?? []) as AlertsTodoItem[],
+      (sharedData?.todos ?? []) as AlertsTodoItem[]
+    )
+    const mergedEvents = mergeById(
+      (privateData?.events ?? []) as AlertsCalendarEventItem[],
+      (sharedData?.events ?? []) as AlertsCalendarEventItem[]
+    )
+    const now = new Date()
+    let my = 0
+    let others = 0
+    let overdue = 0
+    const userId = user?.id
+    if (userId) {
+      for (const t of mergedTodos) {
+        const isMine = t.responsible_user_id === userId || (!t.responsible_user_id && t.user_id === userId)
+        if (isMine) my += 1
+        else others += 1
+        if (t.due_date && new Date(t.due_date).getTime() < now.getTime()) overdue += 1
+      }
+    } else {
+      my = privateTotals.myTodoAlerts + sharedTotals.myTodoAlerts
+      others = privateTotals.othersTodoAlerts + sharedTotals.othersTodoAlerts
+      overdue = privateTotals.overdueTodoAlerts + sharedTotals.overdueTodoAlerts
+    }
+    const privEvidence = privateData?.evidenceToDoAlerts ?? 0
+    const sharedEvidence = sharedData?.evidenceToDoAlerts ?? 0
+    return {
+      todos: mergedTodos,
+      events: mergedEvents,
+      total: mergedTodos.length + mergedEvents.length + privEvidence + sharedEvidence,
+      todoAlerts: mergedTodos.length,
+      calendarAlerts: mergedEvents.length,
+      myTodoAlerts: my,
+      othersTodoAlerts: others,
+      overdueTodoAlerts: overdue,
+    }
+  }, [
+    isPrivateScope,
+    privateData?.todos,
+    privateData?.events,
+    sharedData?.todos,
+    sharedData?.events,
+    user?.id,
+    privateTotals.myTodoAlerts,
+    privateTotals.othersTodoAlerts,
+    privateTotals.overdueTodoAlerts,
+    sharedTotals.myTodoAlerts,
+    sharedTotals.othersTodoAlerts,
+    sharedTotals.overdueTodoAlerts,
+  ])
+
   const isLoading = loadingPrivate || loadingShared
-
-  const total = isPrivateScope
-    ? privateTotals.total + sharedTotals.total
-    : sharedTotals.total
-
-  const todoAlerts = isPrivateScope
-    ? privateTotals.todoAlerts + sharedTotals.todoAlerts
-    : sharedTotals.todoAlerts
-
-  const calendarAlerts = isPrivateScope
-    ? privateTotals.calendarAlerts + sharedTotals.calendarAlerts
-    : sharedTotals.calendarAlerts
-
-  const todos = (isPrivateScope ? privateData?.todos : sharedData?.todos) ?? []
-  const events = (isPrivateScope ? privateData?.events : sharedData?.events) ?? []
-
-  const myTodoAlerts = isPrivateScope
-    ? privateTotals.myTodoAlerts + sharedTotals.myTodoAlerts
-    : sharedTotals.myTodoAlerts
-  const othersTodoAlerts = isPrivateScope
-    ? privateTotals.othersTodoAlerts + sharedTotals.othersTodoAlerts
-    : sharedTotals.othersTodoAlerts
-  const overdueTodoAlerts = isPrivateScope
-    ? privateTotals.overdueTodoAlerts + sharedTotals.overdueTodoAlerts
-    : sharedTotals.overdueTodoAlerts
 
   const [open, setOpen] = React.useState(false)
   const [activeSection, setActiveSection] = React.useState<'todos' | 'events'>('todos')
