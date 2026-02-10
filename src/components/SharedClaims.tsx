@@ -56,6 +56,9 @@ const SharedClaims = ({
               court,
               color,
               status,
+              defendant_name,
+              plaintiff_name,
+              created_at,
               user_id
             )
           `)
@@ -73,6 +76,9 @@ const SharedClaims = ({
               court,
               color,
               status,
+              defendant_name,
+              plaintiff_name,
+              created_at,
               user_id
             )
           `)
@@ -97,7 +103,7 @@ const SharedClaims = ({
         if (claimIds.length) {
           const { data: claimsInfo } = await supabase
             .from('claims')
-            .select('claim_id, case_number, title, court, color, status, user_id')
+            .select('claim_id, case_number, title, court, color, status, defendant_name, plaintiff_name, created_at, user_id')
             .in('claim_id', claimIds as any)
           const byId: Record<string, any> = {}
           for (const c of claimsInfo || []) byId[c.claim_id] = c
@@ -304,7 +310,7 @@ const SharedClaims = ({
 
               {/* Row 2: Court (left) + Defendant (right, aligned with card edge) */}
               <div className="flex items-baseline justify-between gap-2 whitespace-nowrap">
-                <p className="text-sm text-gray-600 truncate">
+                <p className="text-xs text-gray-600 truncate">
                   {share.claims?.court || 'Unknown Court'}
                 </p>
                 {share.claims?.defendant_name && (
@@ -315,7 +321,7 @@ const SharedClaims = ({
               </div>
               {/* Row 3: Case Number (left) + Plaintiff (right, aligned with Defendant/date) */}
               <div className="flex items-baseline justify-between gap-2 mt-1 whitespace-nowrap">
-                <p className="text-sm text-gray-600 truncate">
+                <p className="text-xs text-gray-600 truncate">
                   Case: {share.claims?.case_number || share.claim_id}
                 </p>
                 {share.claims?.plaintiff_name && (
@@ -325,6 +331,25 @@ const SharedClaims = ({
                 )}
               </div>
 
+              {/* Row 4: Status pill (left) + created date (right), mirroring private claims cards */}
+              <div className="flex justify-between items-center mt-2">
+                <span
+                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                    share.claims?.status === 'Active'
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}
+                >
+                  {share.claims?.status || 'Unknown'}
+                </span>
+                {share.claims?.created_at && (
+                  <span className="text-xs text-gray-500">
+                    {new Date(share.claims.created_at as string).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+
+              {/* Row 5: Sharing info, aligned with private cards' metadata line */}
               <p className="text-xs text-gray-500 mt-1 truncate">
                 {(() => {
                   const profilesById = (sharedClaimsResult as any)?.profilesById || {}
