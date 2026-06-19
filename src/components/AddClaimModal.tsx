@@ -104,7 +104,7 @@ export const AddClaimModal = ({ onClose, onAdd }: Props) => {
                 <SelectContent>
                   <SelectItem value="Active">Active</SelectItem>
                   <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Closed">Closed</SelectItem>
+                  <SelectItem value="Appealing">Appealing</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -1,4 +1,5 @@
 import { Claim } from '@/hooks/useClaims';
+import { ClaimStatus } from '@/types/claim';
 import { Evidence } from '@/hooks/useEvidence';
 import { TodoItem } from '@/types/todo';
 import { supabase } from '@/integrations/supabase/client';
@@ -46,7 +47,7 @@ export const gatherClaimData = async (claimId: string): Promise<ClaimDataExport>
 
   const claim: Claim = {
     ...claimData,
-    status: claimData.status as 'Active' | 'Pending' | 'Closed'
+    status: claimData.status as ClaimStatus,
   };
 
   // Fetch evidence linked to this claim

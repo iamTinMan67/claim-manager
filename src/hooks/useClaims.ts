@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { isAuthError } from '@/utils/authUtils';
-import { Claim, ClaimInput } from '@/types/claim';
+import { Claim, ClaimInput, ClaimStatus } from '@/types/claim';
 
 export type { Claim } from '@/types/claim';
 
@@ -79,7 +79,7 @@ export const useClaims = () => {
         claimant_email: item.claimant_email ?? null,
         claimant_contact_number: item.claimant_contact_number ?? null,
         description: item.description,
-        status: item.status as 'Active' | 'Pending' | 'Closed',
+        status: item.status as ClaimStatus,
         color: item.color ?? null,
         user_id: item.user_id,
         created_at: item.created_at,
@@ -128,7 +128,7 @@ export const useClaims = () => {
         claimant_email: data.claimant_email ?? null,
         claimant_contact_number: data.claimant_contact_number ?? null,
         description: data.description,
-        status: data.status as 'Active' | 'Pending' | 'Closed',
+        status: data.status as ClaimStatus,
         color: data.color ?? null,
         user_id: data.user_id,
         created_at: data.created_at,
@@ -174,7 +174,7 @@ export const useClaims = () => {
         claimant_email: data.claimant_email ?? null,
         claimant_contact_number: data.claimant_contact_number ?? null,
         description: data.description,
-        status: data.status as 'Active' | 'Pending' | 'Closed',
+        status: data.status as ClaimStatus,
         color: data.color ?? null,
         user_id: data.user_id,
         created_at: data.created_at,

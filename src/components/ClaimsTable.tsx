@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { Claim } from '@/types/database'
+import { CREATE_CLAIM_STATUSES, EDIT_CLAIM_STATUSES } from '@/types/claim'
 import { Edit, Trash2, Plus, X, Settings, Home, ChevronLeft, Users, Crown, Lock, Share2, FileText, CheckSquare, CalendarClock } from 'lucide-react'
 import { useNavigation } from '@/contexts/NavigationContext'
 import EvidenceManager from './EvidenceManager'
@@ -573,7 +574,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
   })
 
   const updateClaimMutation = useMutation({
-    mutationFn: async ({ claim_id, data }: { claim_id: string, data: Partial<Claim> }) => {
+    mutationFn: async ({ claim_id, data }: { claim_id: string, data: Partial<Claim>, previousStatus?: string }) => {
       // Filter out read-only fields that shouldn't be updated
       const { user_id, created_at, updated_at, ...updateData } = data as any
       
@@ -628,21 +629,41 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
       console.log('Claim updated successfully:', result)
       return result
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['claims'] })
       // Always invalidate shared-claims when a claim is updated
       // This ensures closed claims are immediately removed from shared view
       // when a private claim's status is changed to "Closed"
       queryClient.invalidateQueries({ queryKey: ['shared-claims'] })
-      // If the case number was changed, keep the UI focused on the updated claim
-      if (data?.case_number) {
-        onClaimSelect(data.case_number)
+
+      const justClosed =
+        !isGuest &&
+        data?.status === 'Closed' &&
+        variables.previousStatus !== 'Closed'
+
+      if (justClosed) {
+        onClaimSelect(null)
+        try {
+          window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null } }))
+          sessionStorage.setItem('welcome_seen_session', '1')
+        } catch {}
+        navigateTo('closed-claims')
+        toast({
+          title: 'Case closed',
+          description: `"${data.title || data.case_number}" has been moved to Closed Cases.`,
+        })
+      } else {
+        // If the case number was changed, keep the UI focused on the updated claim
+        if (data?.case_number) {
+          onClaimSelect(data.case_number)
+        }
+        toast({
+          title: 'Success',
+          description: 'Claim updated successfully!',
+        })
       }
+
       setEditingClaim(null)
-      toast({
-        title: "Success",
-        description: "Claim updated successfully!",
-      })
     },
     onError: (error: any) => {
       console.error('Claim update error:', error)
@@ -717,9 +738,12 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
       return
     }
     
+    const previousStatus = claims?.find(c => c.claim_id === editingClaim.claim_id)?.status
+
     updateClaimMutation.mutate({
       claim_id: editingClaim.claim_id,
-      data: editingClaim
+      data: editingClaim,
+      previousStatus,
     })
   }
 
@@ -1029,10 +1053,9 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                     }}
                     className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                   >
-                    <option value="Pending">Pending</option>
-                    <option value="Active">Active</option>
-                    <option value="Appealing">Appealing</option>
-                    <option value="Closed">Closed</option>
+                    {CREATE_CLAIM_STATUSES.map((status) => (
+                      <option key={status} value={status}>{status}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -1174,6 +1197,18 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
         <>
           <div className="flex justify-between items-center sticky top-0 z-40 backdrop-blur-md py-2 -mx-4 px-4 mb-4" style={{ backgroundColor: 'transparent' }}>
             <div className="flex items-center space-x-2">
+              {statusFilter === 'Closed' && !isGuest && (
+                <button
+                  onClick={() => {
+                    try { sessionStorage.setItem('welcome_seen_session', '1') } catch {}
+                    navigateTo('claims')
+                  }}
+                  className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>Back to Claims</span>
+                </button>
+              )}
               {isGuest && (
                 <>
                   <button
@@ -1199,6 +1234,9 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                 </>
               )}
             </div>
+            {statusFilter === 'Closed' && (
+              <h2 className="text-xl font-bold text-gold">Closed Cases</h2>
+            )}
             <div className="flex items-center space-x-2" />
           </div>
         </>
@@ -1259,10 +1297,9 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                   onChange={(e) => setEditingClaim({ ...editingClaim, status: e.target.value })}
                   className="w-full border border-yellow-400/30 rounded-lg px-3 py-2 bg-white/10 text-gold placeholder-yellow-300/70 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
                 >
-                  <option value="Pending">Pending</option>
-                  <option value="Active">Active</option>
-                  <option value="Appealing">Appealing</option>
-                  <option value="Closed">Closed</option>
+                  {EDIT_CLAIM_STATUSES.map((status) => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -1507,9 +1544,11 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
             
             <div className="flex justify-between items-center mt-3">
               <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                claim.status === 'Active' 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-gray-100 text-gray-800'
+                claim.status === 'Active'
+                  ? 'bg-green-100 text-green-800'
+                  : claim.status === 'Closed'
+                    ? 'bg-red-100 text-red-800'
+                    : 'bg-gray-100 text-gray-800'
               }`}>
                 {claim.status}
               </span>

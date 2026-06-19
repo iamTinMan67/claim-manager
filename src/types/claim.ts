@@ -1,3 +1,8 @@
+export const CREATE_CLAIM_STATUSES = ['Pending', 'Active', 'Appealing'] as const;
+export const EDIT_CLAIM_STATUSES = ['Pending', 'Active', 'Appealing', 'Closed'] as const;
+
+export type ClaimStatus = (typeof EDIT_CLAIM_STATUSES)[number];
+
 export interface Claim {
   claim_id: string; // Internal UUID primary key
   case_number: string; // Human-readable identifier
@@ -14,7 +19,7 @@ export interface Claim {
   /** Claimant contact number */
   claimant_contact_number: string | null;
   description: string | null;
-  status: 'Active' | 'Pending' | 'Closed';
+  status: ClaimStatus;
   color?: string | null;
   user_id: string;
   created_at: string;

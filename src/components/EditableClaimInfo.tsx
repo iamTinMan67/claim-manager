@@ -91,8 +91,9 @@ export const EditableClaimInfo = ({ claim, onUpdate }: Props) => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Active">Active</SelectItem>
                 <SelectItem value="Pending">Pending</SelectItem>
+                <SelectItem value="Active">Active</SelectItem>
+                <SelectItem value="Appealing">Appealing</SelectItem>
                 <SelectItem value="Closed">Closed</SelectItem>
               </SelectContent>
             </Select>
