@@ -112,6 +112,18 @@ export const useCollaboration = (claimId?: string) => {
     }
   };
 
+  const leaveShare = async (targetClaimId: string) => {
+    try {
+      await CollaborationService.leaveShare(targetClaimId);
+      await fetchSharedWithMe();
+      handleSuccess('Left shared claim successfully');
+      return true;
+    } catch (error) {
+      handleError(error, 'leave shared claim');
+      return false;
+    }
+  };
+
   const searchUsers = async (query: string): Promise<UserProfile[]> => {
     try {
       return await CollaborationService.searchUsers(query);
@@ -135,6 +147,7 @@ export const useCollaboration = (claimId?: string) => {
     shareClaimWithUser,
     updateSharePermissions,
     removeShare,
+    leaveShare,
     searchUsers,
     fetchShares,
     fetchSharedWithMe,

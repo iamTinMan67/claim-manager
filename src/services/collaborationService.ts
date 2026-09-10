@@ -484,12 +484,39 @@ export class CollaborationService {
     if (error) throw error;
   }
 
-  // Remove a share
+  // Remove a share (host revokes guest access)
   static async removeShare(shareId: string): Promise<void> {
     const { error } = await supabase
       .from('claim_shares')
       .delete()
       .eq('id', shareId);
+
+    if (error) throw error;
+  }
+
+  // Guest leaves a shared claim (removes their own share row)
+  static async leaveShare(claimId: string): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    let claimIdUuid: string;
+
+    if (uuidPattern.test(claimId)) {
+      claimIdUuid = claimId;
+    } else {
+      const resolvedClaimId = await getClaimIdFromCaseNumber(claimId);
+      if (!resolvedClaimId) {
+        throw new Error('Claim not found');
+      }
+      claimIdUuid = resolvedClaimId;
+    }
+
+    const { error } = await supabase
+      .from('claim_shares')
+      .delete()
+      .eq('claim_id', claimIdUuid)
+      .eq('shared_with_id', user.id);
 
     if (error) throw error;
   }
