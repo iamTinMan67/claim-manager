@@ -8,6 +8,7 @@ import {
   CLAIM_FIELD_LABELS,
   EVIDENCE_FIELD_LABELS 
 } from '@/types/pdfConfig';
+import { CommunicationLog, formatDirection } from '@/types/communicationLog';
 
 // Define column width percentages for different field types
 const FIELD_WIDTH_MAPPING = {
@@ -555,19 +556,6 @@ export const generateToDoListPDF = (
   return pdf;
 };
 
-interface CommunicationLog {
-  id: string;
-  claim_id: string;
-  date: string;
-  name: string;
-  company: string | null;
-  notes: string | null;
-  type: 'Call' | 'Mail' | 'Text' | 'Email' | 'Visit';
-  created_at: string;
-  updated_at: string;
-  user_id: string;
-}
-
 export const generateCommunicationLogPDF = (
   claim: Claim,
   logs: CommunicationLog[]
@@ -620,19 +608,22 @@ export const generateCommunicationLogPDF = (
   pdf.setFont('helvetica', 'bold');
   
   const colWidths = {
-    date: 40,
-    type: 30,
-    notes: pageWidth - 2 * margin - 40 - 30 - 10, // Remaining width (name column removed; plaintiff at top)
+    date: 38,
+    direction: 24,
+    type: 22,
+    notes: pageWidth - 2 * margin - 38 - 24 - 22 - 10,
   };
 
   const colCenters = {
     date: margin + colWidths.date / 2,
-    type: margin + colWidths.date + colWidths.type / 2,
+    direction: margin + colWidths.date + colWidths.direction / 2,
+    type: margin + colWidths.date + colWidths.direction + colWidths.type / 2,
   };
-  const notesColLeft = margin + colWidths.date + colWidths.type + 2;
+  const notesColLeft = margin + colWidths.date + colWidths.direction + colWidths.type + 2;
 
   const centerOpt = { align: 'center' as const };
   pdf.text('Date & Time', colCenters.date, yPosition, centerOpt);
+  pdf.text('Direction', colCenters.direction, yPosition, centerOpt);
   pdf.text('Type', colCenters.type, yPosition, centerOpt);
   pdf.text('Notes', notesColLeft, yPosition);
 
@@ -677,6 +668,12 @@ export const generateCommunicationLogPDF = (
       dateY += lineHeight;
     });
     rowHeight = Math.max(rowHeight, dateLines.length * lineHeight);
+
+    // Direction: centred in column
+    const directionLabel = formatDirection(log.direction ?? 'outbound');
+    const directionW = pdf.getTextWidth(directionLabel);
+    pdf.text(directionLabel, colCenters.direction - directionW / 2, yPosition);
+    rowHeight = Math.max(rowHeight, lineHeight);
 
     // Type: centred in column
     const typeW = pdf.getTextWidth(log.type);

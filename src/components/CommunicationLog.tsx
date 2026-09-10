@@ -8,22 +8,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, Plus, Trash2, Edit, Calendar, FileText, Phone, Mail, MessageSquare, Home, Upload } from 'lucide-react';
+import { X, Trash2, Edit, Calendar, FileText, Phone, Mail, MessageSquare, Home, Upload, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { EvidenceService } from '@/services/evidenceService';
-
-interface CommunicationLog {
-  id: string;
-  claim_id: string;
-  date: string;
-  name: string;
-  company: string | null;
-  notes: string | null;
-  type: 'Call' | 'Mail' | 'Text' | 'Email' | 'Visit';
-  created_at: string;
-  updated_at: string;
-  user_id: string;
-}
+import { Badge } from '@/components/ui/badge';
+import {
+  CommunicationLog,
+  CommunicationDirection,
+  CommunicationType,
+  formatDirection,
+} from '@/types/communicationLog';
 
 interface Props {
   open: boolean;
@@ -103,13 +97,16 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle, plai
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState('');
   const [pages, setPages] = useState('');
-  const [formData, setFormData] = useState({
-    date: new Date().toISOString().slice(0, 16), // Format for datetime-local input
+  const defaultFormData = () => ({
+    date: new Date().toISOString().slice(0, 16),
     name: '',
-    company: '', // kept for DB; not shown in UI – plaintiff name used via default for name
+    company: '',
     notes: '',
-    type: 'Call' as 'Call' | 'Mail' | 'Text' | 'Email' | 'Visit',
+    type: 'Call' as CommunicationType,
+    direction: 'outbound' as CommunicationDirection,
   });
+
+  const [formData, setFormData] = useState(defaultFormData);
 
   // When opening Add form (not edit), default name to plaintiff name for the active claim
   useEffect(() => {
@@ -130,7 +127,10 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle, plai
         .order('date', { ascending: true });
       
       if (error) throw error;
-      return data as CommunicationLog[];
+      return (data as CommunicationLog[]).map((log) => ({
+        ...log,
+        direction: log.direction ?? 'outbound',
+      }));
     },
     enabled: !!claimId && open,
   });
@@ -220,13 +220,7 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle, plai
       setSelectedFile(null);
       setFileName('');
       setPages('');
-      setFormData({
-        date: new Date().toISOString().slice(0, 16),
-        name: '',
-        company: '',
-        notes: '',
-        type: 'Call',
-      });
+      setFormData(defaultFormData());
       toast({
         title: editingLog ? 'Log updated' : 'Log added',
         description: 'Communication log saved successfully.',
@@ -275,7 +269,14 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle, plai
       company: log.company || '',
       notes: log.notes || '',
       type: log.type,
+      direction: log.direction ?? 'outbound',
     });
+    setShowAddForm(true);
+  };
+
+  const openAddForm = (direction: CommunicationDirection) => {
+    setEditingLog(null);
+    setFormData({ ...defaultFormData(), direction });
     setShowAddForm(true);
   };
 
@@ -300,13 +301,7 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle, plai
     setSelectedFile(null);
     setFileName('');
     setPages('');
-    setFormData({
-      date: new Date().toISOString().slice(0, 16),
-      name: '',
-      company: '',
-      notes: '',
-      type: 'Call',
-    });
+    setFormData(defaultFormData());
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -337,14 +332,24 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle, plai
             <span>Communication Log - {claimTitle || 'Claim'}</span>
             <div className="flex items-center gap-2">
               {!showAddForm && (
-                <Button
-                  onClick={() => setShowAddForm(true)}
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                  size="sm"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Log
-                </Button>
+                <>
+                  <Button
+                    onClick={() => openAddForm('inbound')}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    size="sm"
+                  >
+                    <ArrowDownLeft className="w-4 h-4 mr-2" />
+                    Log Inbound
+                  </Button>
+                  <Button
+                    onClick={() => openAddForm('outbound')}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    size="sm"
+                  >
+                    <ArrowUpRight className="w-4 h-4 mr-2" />
+                    Log Outbound
+                  </Button>
+                </>
               )}
               <Button
                 onClick={() => onOpenChange(false)}
@@ -358,13 +363,13 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle, plai
             </div>
           </DialogTitle>
           <DialogDescription id="communication-log-description" className="sr-only">
-            View and add communication logs for this claim. Logs include date, type, and notes. Plaintiff is shown at the top of the report.
+            View and add inbound and outbound communication logs for this claim. Logs include date, direction, type, and notes.
           </DialogDescription>
         </DialogHeader>
 
         {showAddForm ? (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="date">Date & Time</Label>
                 <Input
@@ -376,10 +381,27 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle, plai
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="direction">Direction</Label>
+                <Select
+                  value={formData.direction}
+                  onValueChange={(value: CommunicationDirection) =>
+                    setFormData({ ...formData, direction: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="inbound">Inbound (received)</SelectItem>
+                    <SelectItem value="outbound">Outbound (sent)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="type">Type</Label>
                 <Select
                   value={formData.type}
-                  onValueChange={(value: 'Call' | 'Mail' | 'Text' | 'Email' | 'Visit') =>
+                  onValueChange={(value: CommunicationType) =>
                     setFormData({ ...formData, type: value })
                   }
                 >
@@ -493,7 +515,7 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle, plai
               <div className="text-center py-8">Loading logs...</div>
             ) : logs.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                No communication logs yet. Click "Add Log" to create one.
+                No communication logs yet. Use &quot;Log Inbound&quot; or &quot;Log Outbound&quot; to create one.
               </div>
             ) : (
               <div className="space-y-3">
@@ -505,6 +527,21 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle, plai
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex-1 flex flex-col items-center justify-center text-center min-w-0">
                         <div className="flex items-center justify-center flex-wrap gap-x-3 gap-y-1 mb-2">
+                          <Badge
+                            variant="outline"
+                            className={
+                              (log.direction ?? 'outbound') === 'inbound'
+                                ? 'border-blue-300 bg-blue-50 text-blue-700'
+                                : 'border-green-300 bg-green-50 text-green-700'
+                            }
+                          >
+                            {(log.direction ?? 'outbound') === 'inbound' ? (
+                              <ArrowDownLeft className="w-3 h-3 mr-1" />
+                            ) : (
+                              <ArrowUpRight className="w-3 h-3 mr-1" />
+                            )}
+                            {formatDirection(log.direction ?? 'outbound')}
+                          </Badge>
                           <div className="flex items-center space-x-2 text-gray-600">
                             {getTypeIcon(log.type)}
                             <span className="font-semibold">{log.type}</span>

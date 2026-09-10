@@ -606,13 +606,15 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
             }
           } else {
             // CSV export for communication logs (name column removed; plaintiff at top of report)
-            const headers = ['Date & Time', 'Type', 'Notes']
+            const headers = ['Date & Time', 'Direction', 'Type', 'Notes']
             const csvContent = [
               headers.join(','),
               ...communicationLogs.map((log: any) => {
                 const date = new Date(log.date).toLocaleString('en-GB')
+                const direction = log.direction === 'inbound' ? 'Inbound' : 'Outbound'
                 return [
                   `"${date}"`,
+                  `"${direction}"`,
                   `"${log.type}"`,
                   `"${(log.notes || '').replace(/"/g, '""')}"`
                 ].join(',')

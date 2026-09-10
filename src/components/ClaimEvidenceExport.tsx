@@ -15,25 +15,13 @@ import {
 } from "@/types/pdfConfig";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { CommunicationLog } from '@/types/communicationLog';
 
 interface Props {
   claim: Claim;
   evidenceList: Evidence[];
   allClaims: Claim[];
   allEvidence: Evidence[];
-}
-
-interface CommunicationLog {
-  id: string;
-  claim_id: string;
-  date: string;
-  name: string;
-  company: string | null;
-  notes: string | null;
-  type: 'Call' | 'Mail' | 'Text' | 'Email' | 'Visit';
-  created_at: string;
-  updated_at: string;
-  user_id: string;
 }
 
 export const ClaimEvidenceExport = ({ claim, evidenceList, allClaims, allEvidence }: Props) => {
