@@ -306,6 +306,20 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
             !guestOnlyClaimIds.includes(claim.claim_id)
           )
         }
+
+        // Private Closed Cases should contain only unshared private claims.
+        // Claims with either an outgoing or incoming share belong in the shared view.
+        if (statusFilter === 'Closed') {
+          const [ownedShares, incomingShares] = await Promise.all([
+            supabase.from('claim_shares').select('claim_id').eq('owner_id', user.id),
+            supabase.from('claim_shares').select('claim_id').eq('shared_with_id', user.id),
+          ])
+          const sharedClaimIds = new Set([
+            ...(ownedShares.data || []).map((share: any) => share.claim_id),
+            ...(incomingShares.data || []).map((share: any) => share.claim_id),
+          ].filter(Boolean))
+          filteredData = filteredData.filter((claim: Claim) => !sharedClaimIds.has(claim.claim_id))
+        }
       }
       
       if (isGuest && !statusFilter) {

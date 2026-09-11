@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { Bell, CalendarClock, CheckSquare } from 'lucide-react'
+import { Bell, CalendarClock, CheckSquare, ClipboardCheck } from 'lucide-react'
 import { useAlertsSummary, type AlertsTodoItem, type AlertsCalendarEventItem } from '@/hooks/useAlertsSummary'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -60,7 +60,7 @@ export function AlertsSummaryCard({ scope }: { scope: 'private' | 'shared' }) {
 
   // When host views (private scope), merge private + shared lists so guest-created shared todos
   // are included in both the count and the list; dedupe by id to avoid double-counting.
-  const { todos, events, total, todoAlerts, calendarAlerts, myTodoAlerts, othersTodoAlerts, overdueTodoAlerts } = useMemo(() => {
+  const { todos, events, total, todoAlerts, calendarAlerts, evidenceToDoAlerts, myTodoAlerts, othersTodoAlerts, overdueTodoAlerts } = useMemo(() => {
     if (!isPrivateScope) {
       return {
         todos: (sharedData?.todos ?? []) as AlertsTodoItem[],
@@ -68,6 +68,7 @@ export function AlertsSummaryCard({ scope }: { scope: 'private' | 'shared' }) {
         total: sharedTotals.total,
         todoAlerts: sharedTotals.todoAlerts,
         calendarAlerts: sharedTotals.calendarAlerts,
+        evidenceToDoAlerts: sharedTotals.evidenceToDoAlerts,
         myTodoAlerts: sharedTotals.myTodoAlerts,
         othersTodoAlerts: sharedTotals.othersTodoAlerts,
         overdueTodoAlerts: sharedTotals.overdueTodoAlerts,
@@ -106,6 +107,7 @@ export function AlertsSummaryCard({ scope }: { scope: 'private' | 'shared' }) {
       total: mergedTodos.length + mergedEvents.length + privEvidence + sharedEvidence,
       todoAlerts: mergedTodos.length,
       calendarAlerts: mergedEvents.length,
+      evidenceToDoAlerts: privEvidence + sharedEvidence,
       myTodoAlerts: my,
       othersTodoAlerts: others,
       overdueTodoAlerts: overdue,
@@ -114,8 +116,10 @@ export function AlertsSummaryCard({ scope }: { scope: 'private' | 'shared' }) {
     isPrivateScope,
     privateData?.todos,
     privateData?.events,
+    privateData?.evidenceToDoAlerts,
     sharedData?.todos,
     sharedData?.events,
+    sharedData?.evidenceToDoAlerts,
     user?.id,
     privateTotals.myTodoAlerts,
     privateTotals.othersTodoAlerts,
@@ -154,7 +158,7 @@ export function AlertsSummaryCard({ scope }: { scope: 'private' | 'shared' }) {
   return (
     // Start from the previous 47.5% width and reduce it by 5% for a slightly narrower card.
     <div className="card-enhanced p-4 mb-4 mx-auto w-[45.125%]">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <Bell className="w-6 h-6 text-yellow-500" />
@@ -207,7 +211,7 @@ export function AlertsSummaryCard({ scope }: { scope: 'private' | 'shared' }) {
           )}
         </div>
 
-        <div className="flex items-center gap-6 text-sm text-gray-700">
+        <div className="flex items-center justify-end gap-6 text-sm text-gray-700 w-full">
           <button
             type="button"
             onClick={openTasks}
@@ -247,6 +251,17 @@ export function AlertsSummaryCard({ scope }: { scope: 'private' | 'shared' }) {
             </span>
             <span className="text-gray-600">reminders</span>
           </button>
+
+          <div
+            className={`flex items-center gap-2 rounded px-2 py-1 ${
+              evidenceToDoAlerts > 0 ? 'text-red-500' : 'opacity-60'
+            }`}
+            title={`${evidenceToDoAlerts} evidence items marked To-Do`}
+          >
+            <ClipboardCheck className="w-6 h-6 text-orange-600" />
+            <span className="text-lg font-semibold">{evidenceToDoAlerts}</span>
+            <span className="text-gray-600">evidence</span>
+          </div>
         </div>
       </div>
 

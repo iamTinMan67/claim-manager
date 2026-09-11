@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { useNavigation } from '@/contexts/NavigationContext'
 import CollaborationHub from './CollaborationHub'
 import EvidenceManager from './EvidenceManager'
-import { Users, Edit, Trash2, UserPlus, CheckSquare, CalendarClock } from 'lucide-react'
+import { Users, Edit, Trash2, UserPlus, CheckSquare, CalendarClock, Lock } from 'lucide-react'
 import { AlertsSummaryCard } from './AlertsSummaryCard'
 import { useAlertsSummary } from '@/hooks/useAlertsSummary'
 
@@ -25,6 +25,8 @@ const SharedClaims = ({
 }: SharedClaimsProps) => {
   const { navigateBack, navigateTo } = useNavigation()
   const [showCollaboration, setShowCollaboration] = useState(false)
+  const [claimView, setClaimView] = useState<'active' | 'closed'>('active')
+  const queryClient = useQueryClient()
 
   // Shared-scope alerts give us per-claim counters for tasks and calendar reminders
   const { data: sharedAlerts } = useAlertsSummary('shared')
@@ -115,12 +117,11 @@ const SharedClaims = ({
         }
       }
 
-      // Filter out closed claims from shared view; closed claims become private-only
-      // Check status case-insensitively and also filter out shares where claim data is missing
+      // Keep closed shared claims available for the Shared Closed Cases view.
+      // Shares with missing claim data cannot be rendered safely.
       sharesOrdered = sharesOrdered.filter((s: any) => {
         const status = s.claims?.status
-        if (!status || !s.claims) return false // Filter out shares with missing claim data
-        return status.toString().toLowerCase() !== 'closed'
+        return Boolean(status && s.claims)
       })
 
       // Fetch display profiles (nickname/email) for owners and guests
@@ -148,10 +149,24 @@ const SharedClaims = ({
     return <div className="flex justify-center p-8">Loading shared claims...</div>
   }
 
+  const shares = ((sharedClaimsResult as any)?.shares || []) as any[]
+  const visibleShares = shares.filter((share) => {
+    const isClosed = share.claims?.status?.toString().toLowerCase() === 'closed'
+    return claimView === 'closed' ? isClosed : !isClosed
+  })
 
   return (
     <div>
       <AlertsSummaryCard scope="shared" />
+      {claimView === 'closed' && (
+        <button
+          type="button"
+          onClick={() => setClaimView('active')}
+          className="mb-4 bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg"
+        >
+          Back to Shared Claims
+        </button>
+      )}
       {/* Collaboration Section */}
       {showCollaboration && selectedClaim && (
         <div className="card-enhanced rounded-lg shadow border-l-4 relative z-30 w-full" style={{ borderLeftColor: claimColor }}>
@@ -170,8 +185,8 @@ const SharedClaims = ({
       
       {/* Claims List */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {sharedClaimsResult && (sharedClaimsResult as any).shares && (sharedClaimsResult as any).shares.length > 0 ? (
-          (sharedClaimsResult as any).shares.map((share: any, index: number) => (
+        {visibleShares.length > 0 ? (
+          visibleShares.map((share: any) => (
             <div 
               key={share.id} 
               className="card-enhanced p-4 cursor-pointer hover:shadow-lg transition-shadow max-w-2xl"
@@ -305,6 +320,35 @@ const SharedClaims = ({
                         </button>
                       </>
                     )}
+                    {currentUserId && share.owner_id !== currentUserId && (
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation()
+                          if (!share.claim_id) return
+                          const ok = window.confirm(
+                            'Remove this shared claim? This will revoke all host and guest access to the claim.'
+                          )
+                          if (!ok) return
+
+                          const { error } = await supabase.rpc(
+                            'remove_shared_claim_for_guest' as any,
+                            { p_claim_id: share.claim_id }
+                          )
+                          if (error) {
+                            console.error('Failed to remove shared claim:', error)
+                            window.alert('Unable to remove this shared claim.')
+                            return
+                          }
+
+                          await queryClient.invalidateQueries({ queryKey: ['shared-claims'] })
+                          await queryClient.invalidateQueries({ queryKey: ['alerts-summary', 'shared'] })
+                        }}
+                        className="p-1 rounded hover:bg-red-100 transition-colors"
+                        title="Remove shared claim and revoke all access"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -365,13 +409,37 @@ const SharedClaims = ({
           ))
         ) : (
           <div className="text-center py-8 text-gray-500">
-            <p>No shared claims found</p>
-            <p className="text-sm mt-2">Claims you share or that are shared with you will appear here</p>
+            <p>{claimView === 'closed' ? 'No shared closed cases found' : 'No shared claims found'}</p>
+            <p className="text-sm mt-2">
+              {claimView === 'closed'
+                ? 'Closed claims shared with you will appear here'
+                : 'Claims you share or that are shared with you will appear here'}
+            </p>
+          </div>
+        )}
+
+        {claimView === 'active' && (
+          <div
+            key="shared-closed-cases-card"
+            className="card-enhanced p-4 cursor-pointer hover:shadow-lg transition-shadow max-w-2xl flex flex-col items-center justify-center text-center"
+            style={{ minWidth: '200px', width: '100%', display: 'block' }}
+            onClick={() => setClaimView('closed')}
+          >
+            <div className="flex items-center space-x-2 mb-3">
+              <div className="w-4 h-4 rounded-full bg-red-500" />
+              <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400">Closed Cases</h3>
+            </div>
+            <div className="flex justify-center mb-2">
+              <Lock className="w-10 h-10 text-red-500" />
+            </div>
+            <div className="text-sm text-gray-500 dark:text-gray-500">
+              View Closed Shared Claims.
+            </div>
           </div>
         )}
 
         {/* "Share a Claim" card on shared page – navigates to private claims to create/share */}
-        {true && (
+        {claimView === 'active' && (
           <div
             className="card-enhanced p-4 cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-dashed border-gray-300 hover:border-gray-400 flex flex-col items-center justify-center text-center"
             onClick={() => {

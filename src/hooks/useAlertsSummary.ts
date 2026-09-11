@@ -86,6 +86,7 @@ export function useAlertsSummary(scope: AlertsScope) {
             sharedClaimsMeta = []
             sharedCaseNumbers = []
           }
+
         }
 
         // Claim IDs for this scope (for evidence To-Do count): private = my claims, shared = shared claims
