@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -97,6 +97,7 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle, plai
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState('');
   const [pages, setPages] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState<'all' | 'inbound' | 'outbound'>('all');
   const defaultFormData = () => ({
     date: new Date().toISOString().slice(0, 16),
     name: '',
@@ -324,12 +325,31 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle, plai
     });
   };
 
+  const filteredLogs = useMemo(() => {
+    const ordered = [...logs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    if (selectedFilter === 'all') return ordered;
+    return ordered.filter((log) => (log.direction ?? 'outbound') === selectedFilter);
+  }, [logs, selectedFilter]);
+
+  const getSummaryText = (notes: string | null | undefined) => {
+    if (!notes) return 'No summary provided.';
+    return notes.length > 120 ? `${notes.slice(0, 117)}...` : notes;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="communication-log-description">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>Communication Log - {claimTitle || 'Claim'}</span>
+          <DialogTitle className="flex items-center justify-between gap-4">
+            <div className="flex flex-col">
+              <span>Communication Log</span>
+              {claimTitle && (
+                <span className="text-sm font-normal text-muted-foreground mt-1">
+                  {claimTitle}
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               {!showAddForm && (
                 <>
@@ -513,73 +533,96 @@ export const CommunicationLog = ({ open, onOpenChange, claimId, claimTitle, plai
           <div className="space-y-4">
             {isLoading ? (
               <div className="text-center py-8">Loading logs...</div>
-            ) : logs.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                No communication logs yet. Use &quot;Log Inbound&quot; or &quot;Log Outbound&quot; to create one.
-              </div>
             ) : (
-              <div className="space-y-3">
-                {logs.map((log) => (
-                  <div
-                    key={log.id}
-                    className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex-1 flex flex-col items-center justify-center text-center min-w-0">
-                        <div className="flex items-center justify-center flex-wrap gap-x-3 gap-y-1 mb-2">
-                          <Badge
-                            variant="outline"
-                            className={
-                              (log.direction ?? 'outbound') === 'inbound'
-                                ? 'border-blue-300 bg-blue-50 text-blue-700'
-                                : 'border-green-300 bg-green-50 text-green-700'
-                            }
-                          >
-                            {(log.direction ?? 'outbound') === 'inbound' ? (
-                              <ArrowDownLeft className="w-3 h-3 mr-1" />
-                            ) : (
-                              <ArrowUpRight className="w-3 h-3 mr-1" />
-                            )}
-                            {formatDirection(log.direction ?? 'outbound')}
-                          </Badge>
-                          <div className="flex items-center space-x-2 text-gray-600">
-                            {getTypeIcon(log.type)}
-                            <span className="font-semibold">{log.type}</span>
-                          </div>
-                          <span className="text-sm text-gray-500">
-                            <Calendar className="w-4 h-4 inline mr-1" />
-                            {formatDate(log.date)}
-                          </span>
-                        </div>
-                        {log.notes && (
-                          <div className="mt-2 text-sm text-gray-700">
-                            <FileText className="w-4 h-4 inline mr-1 text-gray-500" />
-                            {log.notes}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex space-x-2 shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(log)}
-                          className="text-blue-600 hover:text-blue-700"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(log.id)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
+              <>
+                <div className="flex flex-wrap gap-2 border-b pb-3">
+                  {[
+                    { key: 'all', label: 'All entries', count: logs.length },
+                    { key: 'inbound', label: 'Inbound only', count: logs.filter((log) => (log.direction ?? 'outbound') === 'inbound').length },
+                    { key: 'outbound', label: 'Outbound only', count: logs.filter((log) => (log.direction ?? 'outbound') === 'outbound').length },
+                  ].map((option) => (
+                    <Button
+                      key={option.key}
+                      type="button"
+                      variant={selectedFilter === option.key ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSelectedFilter(option.key as 'all' | 'inbound' | 'outbound')}
+                      className={selectedFilter === option.key ? '' : 'bg-white text-gray-700'}
+                    >
+                      {option.label} ({option.count})
+                    </Button>
+                  ))}
+                </div>
+
+                {filteredLogs.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    No {selectedFilter === 'all' ? 'communication logs' : `${selectedFilter} communication logs`} yet. Use &quot;Log Inbound&quot; or &quot;Log Outbound&quot; to create one.
                   </div>
-                ))}
-              </div>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredLogs.map((log) => (
+                      <div
+                        key={log.id}
+                        className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mb-2">
+                              <Badge
+                                variant="outline"
+                                className={
+                                  (log.direction ?? 'outbound') === 'inbound'
+                                    ? 'border-blue-300 bg-blue-50 text-blue-700'
+                                    : 'border-green-300 bg-green-50 text-green-700'
+                                }
+                              >
+                                {(log.direction ?? 'outbound') === 'inbound' ? (
+                                  <ArrowDownLeft className="w-3 h-3 mr-1" />
+                                ) : (
+                                  <ArrowUpRight className="w-3 h-3 mr-1" />
+                                )}
+                                {formatDirection(log.direction ?? 'outbound')}
+                              </Badge>
+                              <div className="flex items-center space-x-2 text-gray-600">
+                                {getTypeIcon(log.type)}
+                                <span className="font-semibold">{log.type}</span>
+                              </div>
+                              <span className="text-sm text-gray-500">
+                                <Calendar className="w-4 h-4 inline mr-1" />
+                                {formatDate(log.date)}
+                              </span>
+                            </div>
+
+                            <div className="text-sm text-gray-700">
+                              <FileText className="w-4 h-4 inline mr-1 text-gray-500" />
+                              {getSummaryText(log.notes)}
+                            </div>
+                          </div>
+
+                          <div className="flex space-x-2 shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(log)}
+                              className="text-blue-600 hover:text-blue-700"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(log.id)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
