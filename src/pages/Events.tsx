@@ -16,7 +16,7 @@ const Events: React.FC<EventsProps> = ({
   isGuestFrozen = false, 
   currentUserId 
 }) => {
-  const [activeTab, setActiveTab] = useState<'todos' | 'calendar'>('todos')
+  const [activeTab, setActiveTab] = useState<'todos' | 'calendar'>('calendar')
 
   const tabs = [
     { id: 'todos', label: 'To-Do Lists', icon: CheckSquare },

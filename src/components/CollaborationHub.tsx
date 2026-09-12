@@ -615,9 +615,6 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
         {/* Todos Tab */}
         {activeTab === 'todos' && (
           <div className="p-4 overflow-hidden h-full">
-            <div className="text-xs text-gray-500 mb-2">
-              CollaborationHub Debug: isGuest={isGuest.toString()}, selectedClaim={selectedClaim}
-            </div>
             <TodoList 
               selectedClaim={selectedClaim} 
               claimColor={claimColor} 

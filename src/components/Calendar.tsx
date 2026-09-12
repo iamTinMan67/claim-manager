@@ -407,6 +407,10 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(currentDate)
   const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd })
+  const calendarDays: (Date | null)[] = [
+    ...Array.from({ length: monthStart.getDay() }, () => null),
+    ...monthDays,
+  ];
 
   const getEventsForDay = (date: Date) => {
     return events?.filter(event => isSameDay(new Date(event.start_time), date)) || []
@@ -547,7 +551,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       {!showNavigation && (
         <div className="mb-6">
           {/* Add New button and Calendar Controls in same row */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-4">
             {/* Left side - Add New button (aligned with todo list) */}
             <div className="flex items-center">
               <button
@@ -571,7 +575,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
               </button>
             </div>
             {/* Right side - Calendar Controls (centered over calendar) */}
-            <div className="flex justify-center items-center">
+            <div className="lg:col-span-2 flex justify-center items-center">
               <div className="flex items-center space-x-4">
                 <button
                   onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
@@ -765,10 +769,10 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
 
       {/* Daily View with To-Do List and Calendar - Hide when form is open */}
       {!showAddForm && (
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* To-Do List Section */}
         <div className="lg:col-span-1">
-          <div className="card-enhanced p-6 rounded-lg shadow border-l-4" style={{ borderLeftColor: claimColor, width: '433px' }}>
+          <div className="card-enhanced p-6 rounded-lg shadow border-l-4 w-full" style={{ borderLeftColor: claimColor }}>
             <h3 className="text-lg font-semibold mb-4" style={{ color: claimColor }}>
               Today's Tasks & Upcoming
             </h3>
@@ -898,23 +902,26 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
         </div>
 
         {/* Calendar Section */}
-        <div className="lg:col-span-1">
-          <div className="card-enhanced rounded-lg shadow" style={{ width: '605px' }}>
-            <div className="grid grid-cols-7 gap-px bg-yellow-400/20" style={{ height: '404px' }}>
+        <div className="lg:col-span-2">
+          <div className="card-enhanced rounded-lg shadow w-full">
+            <div className="grid w-full grid-cols-7 gap-px bg-yellow-400/20">
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                 <div key={day} className="bg-yellow-400/30 p-2 text-center text-sm font-medium text-gold">
                   {day}
                 </div>
               ))}
             </div>
-            <div className="grid grid-cols-7 gap-px bg-yellow-400/20" style={{ width: '450px' }}>
-              {monthDays.map(date => {
+            <div className="grid w-full grid-cols-7 gap-px bg-yellow-400/20">
+              {calendarDays.map((date, index) => {
+                if (!date) {
+                  return <div key={`empty-${index}`} className="min-h-[80px]" aria-hidden="true" />
+                }
                 const dayEvents = getEventsForDay(date)
                 return (
                   <div
                     key={date.toISOString()}
                     onClick={() => handleDateClick(date)}
-                    className={`card-enhanced p-2 min-h-[100px] cursor-pointer hover:bg-yellow-400/10 ${
+                    className={`card-enhanced p-2 min-h-[80px] text-center cursor-pointer hover:bg-yellow-400/10 ${
                       isToday(date) ? 'bg-yellow-400/20' : ''
                     }`}
                   >

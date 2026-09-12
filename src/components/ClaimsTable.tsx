@@ -105,6 +105,12 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
     return () => window.removeEventListener('toggleCollaboration', onToggle as EventListener)
   }, [])
 
+  React.useEffect(() => {
+    window.dispatchEvent(new CustomEvent('collaborationState', {
+      detail: { open: showCollaboration && !!selectedClaim },
+    }))
+  }, [showCollaboration, selectedClaim])
+
   // For private view, determine which of the user's claims are shared (to show Users icon)
   const { data: ownedSharedClaimIds } = useQuery({
     queryKey: ['owned-shared-claim-ids'],

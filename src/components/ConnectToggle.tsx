@@ -5,9 +5,12 @@ const ConnectToggle: React.FC = () => {
   const [connected, setConnected] = React.useState(false)
 
   React.useEffect(() => {
-    const onToggle = () => setConnected((v) => !v)
-    window.addEventListener('toggleCollaboration', onToggle as EventListener)
-    return () => window.removeEventListener('toggleCollaboration', onToggle as EventListener)
+    const onStateChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ open?: boolean }>).detail
+      setConnected(detail?.open === true)
+    }
+    window.addEventListener('collaborationState', onStateChange as EventListener)
+    return () => window.removeEventListener('collaborationState', onStateChange as EventListener)
   }, [])
 
   const handleClick = () => {

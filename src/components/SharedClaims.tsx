@@ -38,6 +38,12 @@ const SharedClaims = ({
     return () => window.removeEventListener('toggleCollaboration', onToggle as EventListener)
   }, [])
 
+  React.useEffect(() => {
+    window.dispatchEvent(new CustomEvent('collaborationState', {
+      detail: { open: showCollaboration && !!selectedClaim },
+    }))
+  }, [showCollaboration, selectedClaim])
+
   const { data: sharedClaimsResult, isLoading } = useQuery({
     queryKey: ['shared-claims'],
     queryFn: async () => {
