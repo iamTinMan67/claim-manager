@@ -6,19 +6,14 @@ Video conferencing has been fully integrated into the Claim Manager collaboratio
 
 ## 🚀 **Quick Setup**
 
-### 1. **Get Your Daily.co API Key**
+### 1. **Create Your Daily.co Account**
 1. Go to [https://dashboard.daily.co/](https://dashboard.daily.co/)
 2. Create a **free account** (no credit card required)
-3. Navigate to **Developers** section
-4. Copy your **API key**
+3. The browser joins claim-specific rooms directly; no Daily secret is stored in the frontend.
 
 ### 2. **Configure Environment**
-1. Open your `.env` file
-2. Add your Daily.co API key:
-   ```env
-   VITE_DAILY_API_KEY=your_actual_daily_api_key_here
-   ```
-3. Save the file and restart your development server
+1. Make sure your Supabase variables are configured in `.env`
+2. Save the file and restart your development server
 
 ### 3. **Test the Integration**
 1. Start your app: `npm run dev`
@@ -66,13 +61,9 @@ Video conferencing has been fully integrated into the Claim Manager collaboratio
 
 ### **Common Issues**
 
-#### **"Video Conferencing Setup Required"**
-- **Cause**: Daily.co API key not configured
-- **Solution**: Add `VITE_DAILY_API_KEY` to your `.env` file
-
 #### **"Failed to join video call"**
-- **Cause**: Network issues or invalid API key
-- **Solution**: Check internet connection and API key
+- **Cause**: Network issues or an unavailable Daily room
+- **Solution**: Check the internet connection and browser permissions
 
 #### **No video/audio**
 - **Cause**: Browser permissions not granted

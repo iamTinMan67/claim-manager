@@ -5,16 +5,13 @@ I've integrated Daily.co video conferencing into your Claim Manager collaboratio
 
 ## Setup Steps
 
-### 1. Get Daily.co API Key
+### 1. Create a Daily.co account
 1. Go to [https://dashboard.daily.co/](https://dashboard.daily.co/)
 2. Create a free account (no credit card required)
-3. Go to the "Developers" section
-4. Copy your API key
 
 ### 2. Update Environment Variables
 1. Copy `env-template.txt` to `.env` in your project root
-2. Replace `your_daily_api_key_here` with your actual Daily.co API key
-3. Make sure your Supabase keys are also set correctly
+2. Make sure your Supabase keys are set correctly
 
 ### 3. Test the Integration
 1. Start your development server: `npm run dev`
@@ -59,7 +56,7 @@ await daily.join({
 ## Troubleshooting
 
 ### Common Issues
-1. **"Failed to join call"**: Check your Daily.co API key
+1. **"Failed to join call"**: Check the Daily room URL and browser network permissions
 2. **No video/audio**: Check browser permissions
 3. **Room not found**: The room will be created automatically on first join
 

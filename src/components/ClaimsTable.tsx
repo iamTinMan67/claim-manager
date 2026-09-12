@@ -48,6 +48,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
   const [showCollaboration, setShowCollaboration] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
   const [showCommunicationLog, setShowCommunicationLog] = useState(false)
+  const [claimPendingDeletion, setClaimPendingDeletion] = useState<Claim | null>(null)
 
   const queryClient = useQueryClient()
 
@@ -706,6 +707,17 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
     }
   })
 
+  const requestClaimDeletion = (claim: Claim) => {
+    setClaimPendingDeletion(claim)
+  }
+
+  const exportBeforeDeleting = () => {
+    if (!claimPendingDeletion?.case_number) return
+    onClaimSelect(claimPendingDeletion.case_number)
+    setClaimPendingDeletion(null)
+    navigateTo('export')
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -934,7 +946,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
             currentUserId={currentUser?.id}
             isGuestFrozen={false}
             onEditClaim={() => setEditingClaim(claim)}
-            onDeleteClaim={() => deleteClaimMutation.mutate(claim.case_number)}
+            onDeleteClaim={() => requestClaimDeletion(claim)}
             onSetAmendMode={setAmendMode}
           />
         ) : (
@@ -977,6 +989,47 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
   // Show all claims in boxes
   return (
     <div className="space-y-6">
+      {claimPendingDeletion && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="card-enhanced w-full max-w-md p-6" role="dialog" aria-modal="true" aria-labelledby="delete-claim-title">
+            <h2 id="delete-claim-title" className="text-xl font-semibold text-gold">
+              Delete claim?
+            </h2>
+            <p className="mt-3 text-sm text-gray-300">
+              You are about to permanently delete “{claimPendingDeletion.title || claimPendingDeletion.case_number}”.
+              Would you like to export its data first?
+            </p>
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setClaimPendingDeletion(null)}
+                className="rounded-lg border border-gray-400 px-4 py-2 text-sm text-gray-200 hover:bg-white/10"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={exportBeforeDeleting}
+                className="rounded-lg border border-blue-400 px-4 py-2 text-sm text-blue-300 hover:bg-blue-400/10"
+              >
+                Export data first
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (claimPendingDeletion.case_number) {
+                    deleteClaimMutation.mutate(claimPendingDeletion.case_number)
+                  }
+                  setClaimPendingDeletion(null)
+                }}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
+              >
+                Delete permanently
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showAddForm && !isGuest && !statusFilter ? (
         // Form overlay - hide main content
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -1521,7 +1574,7 @@ const ClaimsTable = ({ onClaimSelect, selectedClaim, onClaimColorChange, isGuest
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        deleteClaimMutation.mutate(claim.case_number)
+                        requestClaimDeletion(claim)
                       }}
                       className="p-1 rounded hover:bg-red-100 transition-colors"
                       title="Delete"

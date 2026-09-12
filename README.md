@@ -72,7 +72,6 @@ Claim Manager is a powerful, feature-rich application that helps legal professio
    ```env
    VITE_SUPABASE_URL=your_supabase_url
    VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-   VITE_DAILY_API_KEY=your_daily_api_key
    VITE_STRIPE_PUBLISHABLE_KEY=your_stripe_key
    ```
 

@@ -156,36 +156,16 @@ export function AlertsSummaryCard({ scope }: { scope: 'private' | 'shared' }) {
   }
 
   return (
-    // Start from the previous 47.5% width and reduce it by 5% for a slightly narrower card.
-    <div className="card-enhanced p-4 mb-4 mx-auto w-[45.125%]">
+    <div className="card-enhanced p-4 mb-4 mx-auto w-fit max-w-full">
       <div className="flex flex-col gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <Bell className="w-6 h-6 text-yellow-500" />
-            <h3 className="text-base font-semibold text-gray-900 truncate">Alerts</h3>
-          </div>
-          <p
-            className={`text-sm mt-1 ${
-              !isLoading && total > 0 ? 'text-red-500' : 'text-gray-600'
-            }`}
-          >
-            {isLoading ? 'Loading…' : `${total} total outstanding`}
-          </p>
-          {!isLoading && (
-            <div className="flex items-center justify-between gap-4 text-xs text-gray-500 mt-1 w-full">
-              {isPrivateScope && (
-                <span className="whitespace-nowrap">
-                  Private:{' '}
-                  <span className={privateTotals.total > 0 ? 'text-red-500' : ''}>
-                    {privateTotals.total}
-                  </span>{' '}
-                  • Shared:{' '}
-                  <span className={sharedTotals.total > 0 ? 'text-red-500' : ''}>
-                    {sharedTotals.total}
-                  </span>
-                </span>
-              )}
-              <span className="whitespace-nowrap">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Bell className="w-6 h-6 text-yellow-500" />
+              <h3 className="text-base font-semibold text-gray-900 truncate">Alerts</h3>
+            </div>
+            {!isLoading && (
+              <span className="whitespace-nowrap text-xs text-gray-500">
                 Tasks:{' '}
                 <span
                   className={
@@ -207,62 +187,62 @@ export function AlertsSummaryCard({ scope }: { scope: 'private' | 'shared' }) {
                 to others
                 {overdueTodoAlerts > 0 && ` • ${overdueTodoAlerts} overdue`}
               </span>
+            )}
+          </div>
+          <div className="flex items-center justify-start gap-6 text-sm text-gray-700 w-full mt-1">
+            <button
+              type="button"
+              onClick={openTasks}
+              disabled={todoAlerts <= 0}
+              className={`flex items-center gap-2 rounded px-2 py-1 ${
+                todoAlerts > 0 ? 'hover:bg-white/10 cursor-pointer' : 'opacity-60 cursor-default'
+              }`}
+              title={todoAlerts > 1 ? 'View tasks' : todoAlerts === 1 ? 'Open task' : 'No task alerts'}
+            >
+              <CheckSquare className="w-6 h-6 text-blue-600" />
+              <span
+                className={`text-lg font-semibold ${
+                  todoAlerts > 0 ? 'text-red-500' : ''
+                }`}
+              >
+                {todoAlerts}
+              </span>
+              <span className="text-gray-600">tasks</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={openReminders}
+              disabled={calendarAlerts <= 0}
+              className={`flex items-center gap-2 rounded px-2 py-1 ${
+                calendarAlerts > 0 ? 'hover:bg-white/10 cursor-pointer' : 'opacity-60 cursor-default'
+              }`}
+              title={calendarAlerts > 1 ? 'View reminders' : calendarAlerts === 1 ? 'Open reminder' : 'No reminders'}
+            >
+              <CalendarClock className="w-6 h-6 text-green-600" />
+              <span
+                className={`text-lg font-semibold ${
+                  calendarAlerts > 0 ? 'text-red-500' : ''
+                }`}
+              >
+                {calendarAlerts}
+              </span>
+              <span className="text-gray-600">reminders</span>
+            </button>
+
+            <div
+              className={`flex items-center gap-2 rounded px-2 py-1 ${
+                evidenceToDoAlerts > 0 ? 'text-red-500' : 'opacity-60'
+              }`}
+              title={`${evidenceToDoAlerts} evidence items marked To-Do`}
+            >
+              <ClipboardCheck className="w-6 h-6 text-orange-600" />
+              <span className="text-lg font-semibold">{evidenceToDoAlerts}</span>
+              <span className="text-gray-600">evidence</span>
             </div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-end gap-6 text-sm text-gray-700 w-full">
-          <button
-            type="button"
-            onClick={openTasks}
-            disabled={todoAlerts <= 0}
-            className={`flex items-center gap-2 rounded px-2 py-1 ${
-              todoAlerts > 0 ? 'hover:bg-white/10 cursor-pointer' : 'opacity-60 cursor-default'
-            }`}
-            title={todoAlerts > 1 ? 'View tasks' : todoAlerts === 1 ? 'Open task' : 'No task alerts'}
-          >
-            <CheckSquare className="w-6 h-6 text-blue-600" />
-            <span
-              className={`text-lg font-semibold ${
-                todoAlerts > 0 ? 'text-red-500' : ''
-              }`}
-            >
-              {todoAlerts}
-            </span>
-            <span className="text-gray-600">tasks</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={openReminders}
-            disabled={calendarAlerts <= 0}
-            className={`flex items-center gap-2 rounded px-2 py-1 ${
-              calendarAlerts > 0 ? 'hover:bg-white/10 cursor-pointer' : 'opacity-60 cursor-default'
-            }`}
-            title={calendarAlerts > 1 ? 'View reminders' : calendarAlerts === 1 ? 'Open reminder' : 'No reminders'}
-          >
-            <CalendarClock className="w-6 h-6 text-green-600" />
-            <span
-              className={`text-lg font-semibold ${
-                calendarAlerts > 0 ? 'text-red-500' : ''
-              }`}
-            >
-              {calendarAlerts}
-            </span>
-            <span className="text-gray-600">reminders</span>
-          </button>
-
-          <div
-            className={`flex items-center gap-2 rounded px-2 py-1 ${
-              evidenceToDoAlerts > 0 ? 'text-red-500' : 'opacity-60'
-            }`}
-            title={`${evidenceToDoAlerts} evidence items marked To-Do`}
-          >
-            <ClipboardCheck className="w-6 h-6 text-orange-600" />
-            <span className="text-lg font-semibold">{evidenceToDoAlerts}</span>
-            <span className="text-gray-600">evidence</span>
           </div>
         </div>
+
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>

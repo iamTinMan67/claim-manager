@@ -26,6 +26,7 @@ const SharedClaims = ({
   const { navigateBack, navigateTo } = useNavigation()
   const [showCollaboration, setShowCollaboration] = useState(false)
   const [claimView, setClaimView] = useState<'active' | 'closed'>('active')
+  const [claimPendingDeletion, setClaimPendingDeletion] = useState<any | null>(null)
   const queryClient = useQueryClient()
 
   // Shared-scope alerts give us per-claim counters for tasks and calendar reminders
@@ -155,8 +156,70 @@ const SharedClaims = ({
     return claimView === 'closed' ? isClosed : !isClosed
   })
 
+  const exportBeforeDeleting = () => {
+    if (!claimPendingDeletion?.claims?.case_number) return
+    window.dispatchEvent(new CustomEvent('claimSelected', {
+      detail: {
+        claimId: claimPendingDeletion.claims.case_number,
+        claimColor: claimPendingDeletion.claims.color || '#3B82F6',
+      },
+    }))
+    setClaimPendingDeletion(null)
+    navigateTo('export')
+  }
+
   return (
     <div>
+      {claimPendingDeletion && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="card-enhanced w-full max-w-md p-6" role="dialog" aria-modal="true" aria-labelledby="delete-shared-claim-title">
+            <h2 id="delete-shared-claim-title" className="text-xl font-semibold text-gold">
+              Delete claim?
+            </h2>
+            <p className="mt-3 text-sm text-gray-300">
+              You are about to permanently delete “{claimPendingDeletion.claims?.title || claimPendingDeletion.claims?.case_number}”.
+              Would you like to export its data first?
+            </p>
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setClaimPendingDeletion(null)}
+                className="rounded-lg border border-gray-400 px-4 py-2 text-sm text-gray-200 hover:bg-white/10"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={exportBeforeDeleting}
+                className="rounded-lg border border-blue-400 px-4 py-2 text-sm text-blue-300 hover:bg-blue-400/10"
+              >
+                Export data first
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!claimPendingDeletion.claim_id) return
+                  const { error } = await supabase
+                    .from('claims')
+                    .delete()
+                    .eq('claim_id', claimPendingDeletion.claim_id)
+                  if (error) {
+                    console.error('Failed to delete shared claim:', error)
+                    window.alert('Unable to delete this claim.')
+                    return
+                  }
+                  setClaimPendingDeletion(null)
+                  await queryClient.invalidateQueries({ queryKey: ['shared-claims'] })
+                  await queryClient.invalidateQueries({ queryKey: ['claims'] })
+                }}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
+              >
+                Delete permanently
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <AlertsSummaryCard scope="shared" />
       {claimView === 'closed' && (
         <button
@@ -303,15 +366,7 @@ const SharedClaims = ({
                           onClick={async (e) => {
                             e.stopPropagation()
                             if (!share.claim_id) return
-                            const ok = window.confirm('Delete this claim? This cannot be undone.')
-                            if (!ok) return
-                            const { error } = await supabase
-                              .from('claims')
-                              .delete()
-                              .eq('claim_id', share.claim_id)
-                            if (!error) {
-                              try { (window as any).toast?.({ title: 'Deleted', description: 'Claim removed.' }) } catch {}
-                            }
+                            setClaimPendingDeletion(share)
                           }}
                           className="p-1 rounded hover:bg-red-100 transition-colors"
                           title="Delete"

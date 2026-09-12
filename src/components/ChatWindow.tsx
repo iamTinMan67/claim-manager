@@ -157,6 +157,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ claimId, isOpen, onToggl
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Type a message..."
+            maxLength={5000}
             disabled={sending}
             className="flex-1"
           />

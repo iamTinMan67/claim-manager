@@ -11,7 +11,7 @@
 
 ## 🚀 **Complete Host Setup Guide**
 
-### **Step 1: Get Your Daily.co API Key**
+### **Step 1: Create Your Daily.co Account**
 
 #### **For Hosts (Claim Owners)**
 1. **Visit Daily.co Dashboard**
@@ -23,20 +23,13 @@
    - Create a secure password
    - Verify your email address
 
-3. **Get Your API Key**
-   - Log into your Daily.co dashboard
-   - Navigate to **"Developers"** in the left sidebar
-   - Click **"API Keys"**
-   - Copy your **API Key** (starts with something like `da_...`)
+3. The browser joins claim-specific Daily rooms directly; no Daily secret is stored in the frontend.
 
 ### **Step 2: Configure Your Application**
 
 #### **Environment Setup**
 1. **Locate your `.env` file** in the project root
-2. **Add your Daily.co API key:**
-   ```env
-   VITE_DAILY_API_KEY=da_your_actual_api_key_here
-   ```
+2. **Make sure your Supabase variables are configured**
 3. **Save the file**
 
 #### **Restart Your Application**
@@ -103,14 +96,14 @@ npm run dev
 #### **Common Issues & Solutions**
 
 ##### **"Video Conferencing Setup Required"**
-- **Problem**: API key not configured
-- **Solution**: Add `VITE_DAILY_API_KEY` to your `.env` file and restart
+- **Problem**: This message is no longer expected; the browser does not require a Daily API key.
+- **Solution**: Restart the app and check the room URL configuration.
 
 ##### **"Failed to join video call"**
-- **Problem**: Network issues or invalid API key
+- **Problem**: Network issues or an unavailable Daily room
 - **Solution**: 
   - Check internet connection
-  - Verify API key is correct
+   - Verify browser camera and microphone permissions
   - Try refreshing the page
 
 ##### **No video/audio**

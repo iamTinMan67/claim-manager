@@ -1,6 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ChatMessage } from '@/types/chat';
 
+const MAX_CHAT_MESSAGE_LENGTH = 5000;
+
 export class ChatService {
   static async getMessages(claimId: string): Promise<ChatMessage[]> {
     const { data, error } = await supabase
@@ -30,6 +32,9 @@ export class ChatService {
   static async sendMessage(claimId: string, message: string): Promise<ChatMessage> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
+    if (!message.trim() || message.length > MAX_CHAT_MESSAGE_LENGTH) {
+      throw new Error(`Message must be between 1 and ${MAX_CHAT_MESSAGE_LENGTH} characters`);
+    }
 
     const { data, error } = await supabase
       .from('chat_messages')
@@ -65,7 +70,7 @@ export class ChatService {
 
   static subscribeToMessages(claimId: string, callback: (message: ChatMessage) => void) {
     return supabase
-      .channel('chat_messages')
+      .channel(`chat_messages:${claimId}`)
       .on(
         'postgres_changes',
         {

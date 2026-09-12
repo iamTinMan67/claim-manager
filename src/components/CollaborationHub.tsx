@@ -144,6 +144,9 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
     mutationFn: async (messageData: { message: string; message_type: string; file_url?: string; file_name?: string; file_size?: number }) => {
       const claimId = await resolveClaimId()
       if (!claimId || !currentUserId) throw new Error('Missing claim or user')
+      if (!messageData.message.trim() || messageData.message.length > 5000) {
+        throw new Error('Chat messages must be between 1 and 5000 characters')
+      }
       // Embed sender display in metadata to survive RLS on profiles
       let senderDisplay: string | null = null
       try {
@@ -507,6 +510,7 @@ const CollaborationHub = ({ selectedClaim, claimColor = '#3B82F6', isGuest = fal
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Type your message..."
+                maxLength={5000}
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={sendMessageMutation.isPending}
               />

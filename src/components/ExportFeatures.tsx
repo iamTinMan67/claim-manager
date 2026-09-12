@@ -17,13 +17,18 @@ interface ExportFeaturesProps {
   isGuestFrozen?: boolean
 }
 
-const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeaturesProps) => {
-  const { navigateBack, navigateTo } = useNavigation()
+const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false }: ExportFeaturesProps) => {
+  const { navigateTo } = useNavigation()
   const [exportType, setExportType] = useState<'evidence' | 'todos' | 'calendar' | 'communication'>('evidence')
   const [isExporting, setIsExporting] = useState(false)
   const [isDownloadingZip, setIsDownloadingZip] = useState(false)
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null)
   const [previewType, setPreviewType] = useState<'evidence' | 'todos' | 'calendar' | 'communication'>('evidence')
+
+  const navigateToClaimList = (page: 'claims' | 'shared' | 'closed-claims') => {
+    window.dispatchEvent(new CustomEvent('claimSelected', { detail: { claimId: null } }))
+    navigateTo(page)
+  }
 
   // Read column preferences from localStorage
   const columnPrefs = (() => {
@@ -820,14 +825,14 @@ const ExportFeatures = ({ selectedClaim, claimColor = '#3B82F6' }: ExportFeature
       <div className="flex justify-between items-center sticky top-0 z-40 backdrop-blur-md py-2 -mx-4 px-4 mb-4" style={{ backgroundColor: 'transparent' }}>
         <div className="flex items-center space-x-2">
           <button
-            onClick={navigateBack}
+            onClick={() => navigateToClaimList('closed-claims')}
             className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
           >
             <ChevronLeft className="w-4 h-4" />
             <span>Back</span>
           </button>
           <button
-            onClick={() => navigateTo('claims')}
+            onClick={() => navigateToClaimList(isGuest ? 'shared' : 'claims')}
             className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
           >
             <Home className="w-4 h-4" />

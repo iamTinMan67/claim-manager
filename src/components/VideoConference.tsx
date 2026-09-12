@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Video, VideoOff, Mic, MicOff, PhoneOff, Users, Settings, Copy } from 'lucide-react'
+import { Video, VideoOff, Mic, MicOff, PhoneOff, Users, Copy } from 'lucide-react'
 import { DailyProvider, useDaily, useParticipant, useParticipantIds, useLocalSessionId } from '@daily-co/daily-react'
 
 interface VideoConferenceProps {
@@ -286,59 +286,8 @@ const VideoConferenceRoom = ({ claimId, onClose }: VideoConferenceProps) => {
 
 // Main VideoConference component with DailyProvider
 const VideoConference = ({ claimId, onClose }: VideoConferenceProps) => {
-  const [dailyConfig, setDailyConfig] = useState<any>(null)
-
-  useEffect(() => {
-    const initDaily = async () => {
-      const dailyApiKey = import.meta.env.VITE_DAILY_API_KEY
-      
-      if (!dailyApiKey || dailyApiKey === 'your_daily_api_key_here') {
-        console.warn('Daily.co API key not configured. Video conferencing will not work.')
-        return
-      }
-
-      // Dynamically import Daily.co to avoid SSR issues
-      const { DailyProvider } = await import('@daily-co/daily-react')
-      
-      setDailyConfig({
-        dailyConfig: {
-          dailyConfig: {
-            apiKey: dailyApiKey,
-          },
-        },
-      })
-    }
-
-    initDaily()
-  }, [])
-
-  if (!dailyConfig) {
-    return (
-      <div className="card-enhanced rounded-lg overflow-hidden">
-        <div className="p-6 text-center">
-          <div className="text-yellow-400 mb-4">
-            <Settings className="w-16 h-16 mx-auto" />
-          </div>
-          <h3 className="text-xl font-semibold text-gold mb-2">Video Conferencing Setup Required</h3>
-          <p className="text-gold-light mb-4">
-            Please configure your Daily.co API key to enable video conferencing.
-          </p>
-          <div className="bg-gray-700/50 rounded-lg p-3 text-left text-sm">
-            <p className="text-yellow-300 mb-2">Setup steps:</p>
-            <ol className="text-gray-300 space-y-1">
-              <li>1. Go to <a href="https://dashboard.daily.co/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">dashboard.daily.co</a></li>
-              <li>2. Create a free account</li>
-              <li>3. Get your API key from the Developers section</li>
-              <li>4. Add VITE_DAILY_API_KEY to your .env file</li>
-            </ol>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <DailyProvider {...dailyConfig}>
+    <DailyProvider>
       <VideoConferenceRoom claimId={claimId} onClose={onClose} />
     </DailyProvider>
   )
