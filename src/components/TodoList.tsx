@@ -160,6 +160,11 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
     }
   })
 
+  useEffect(() => {
+    if (!showAddForm || newTodo.case_number || !claims?.length) return
+    setNewTodo(prev => ({ ...prev, case_number: selectedClaim || claims[0].case_number }))
+  }, [showAddForm, selectedClaim, claims, newTodo.case_number])
+
   // Get all participants (host + guests) for responsible user dropdown (only in shared view)
   const { data: sharedUsers } = useQuery({
     queryKey: ['shared-users', selectedClaim],
@@ -644,7 +649,6 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                   onChange={(e) => setNewTodo({ ...newTodo, case_number: e.target.value })}
                   className="w-2/3 h-12 text-base border border-yellow-400/30 rounded-md px-4 py-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
                 >
-                  <option value="">No specific claim</option>
                   {claims?.map((claim) => (
                     <option key={claim.case_number} value={claim.case_number}>
                       {claim.title}

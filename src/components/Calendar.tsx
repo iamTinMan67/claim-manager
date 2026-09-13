@@ -273,6 +273,11 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
 
   // Check for due alarms (must be after todayTodos declaration)
   useEffect(() => {
+    if (!showAddForm || newEvent.claim_id || !claims?.length) return
+    setNewEvent(prev => ({ ...prev, claim_id: selectedClaim || claims[0].case_number }))
+  }, [showAddForm, selectedClaim, claims, newEvent.claim_id])
+
+  useEffect(() => {
     const checkAlarms = () => {
       if (!currentUser) return;
       const now = new Date();
@@ -659,7 +664,6 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                   className="h-[27px] text-sm border border-yellow-400/30 rounded-md px-2 bg-white/10 text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
                   style={{ width: timeFieldWidth }}
                 >
-                  <option value="">Select A Claim</option>
                   {claims?.filter((c: any) => c.status !== 'Closed').map((claim) => (
                     <option key={claim.case_number} value={claim.case_number}>
                       {claim.court || '—'}

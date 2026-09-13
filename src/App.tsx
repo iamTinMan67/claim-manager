@@ -20,7 +20,7 @@ import ExportFeatures from './components/ExportFeatures'
 import SubscriptionManager from './components/SubscriptionManager'
 import PrivilegesStatus from './components/PrivilegesStatus'
 import Admin from './pages/Admin'
-import { Crown, ArrowLeft, Home } from 'lucide-react'
+import { Crown, ArrowLeft } from 'lucide-react'
 import AccessControl from './components/AccessControl'
 import { Toaster } from '@/components/ui/toaster'
 
@@ -309,22 +309,8 @@ function LoggedInContent({
                 <ArrowLeft className="w-4 h-4" />
                 <span>Back</span>
               </button>
-              <button
-                onClick={() => {
-                  sessionStorage.setItem('welcome_seen_session', '1')
-                  // Navigate to opposite context
-                  if (isInSharedContext) {
-                    setActiveTab('claims')
-                  } else {
-                    setActiveTab('shared')
-                  }
-                }}
-                className="bg-white/10 border border-green-400 text-green-400 px-3 py-1 rounded-lg flex items-center space-x-2"
-              >
-                <Home className="w-4 h-4" />
-                <span>{isInSharedContext ? 'Private Claims' : 'Home'}</span>
-              </button>
             </div>
+            <h2 className="text-2xl font-bold text-gold text-center flex-1 shrink-0 min-w-0 mx-2">Events</h2>
             <div className="flex items-center space-x-2" />
           </div>
         )}
