@@ -666,7 +666,7 @@ const Calendar = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                 >
                   {claims?.filter((c: any) => c.status !== 'Closed').map((claim) => (
                     <option key={claim.case_number} value={claim.case_number}>
-                      {claim.court || '—'}
+                      {claim.title || claim.court || '—'}{claim.defendant_name ? ` - ${claim.defendant_name}` : ''}
                     </option>
                   ))}
                 </select>

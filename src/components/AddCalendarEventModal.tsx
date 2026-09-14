@@ -211,7 +211,7 @@ export const AddCalendarEventModal = ({ isOpen, onClose, onAdd, selectedDate, cl
                   <SelectItem value="">No claim</SelectItem>
                   {claims.map((claim) => (
                     <SelectItem key={claim.case_number} value={claim.case_number}>
-                      {claim.title}
+                      {claim.title}{claim.defendant_name ? ` - ${claim.defendant_name}` : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>

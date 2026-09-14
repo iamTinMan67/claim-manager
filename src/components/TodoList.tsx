@@ -27,6 +27,12 @@ interface TodoListProps {
   showNavigation?: boolean
 }
 
+const getDefaultDueDate = () => {
+  const dueDate = new Date(Date.now() + 60 * 60 * 1000)
+  const offset = dueDate.getTimezoneOffset() * 60000
+  return new Date(dueDate.getTime() - offset).toISOString().slice(0, 16)
+}
+
 const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, showGuestContent = false, isGuestFrozen = false, showNavigation = true }: TodoListProps) => {
   const { navigateBack, navigateTo } = useNavigation()
   const [showAddForm, setShowAddForm] = useState(false)
@@ -35,7 +41,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
   const [newTodo, setNewTodo] = useState({
     title: '',
     description: '',
-    due_date: '',
+    due_date: getDefaultDueDate(),
     priority: 'medium' as const,
     alarm_enabled: false,
     alarm_time: '',
@@ -152,7 +158,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
     queryFn: async () => {
       const { data, error } = await supabase
         .from('claims')
-        .select('case_number, title, court, status')
+        .select('case_number, title, defendant_name, court, status')
         .neq('status', 'Closed')
         .order('title')
       if (error) throw error
@@ -329,7 +335,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
       setNewTodo({
         title: '',
         description: '',
-        due_date: '',
+        due_date: getDefaultDueDate(),
         priority: 'medium',
         alarm_enabled: false,
         alarm_time: '',
@@ -530,8 +536,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
           <div className="p-6 rounded-[16px] shadow max-w-2xl w-full max-h-[95vh] overflow-y-auto relative z-[10000]"
             style={{ backgroundColor: 'rgba(30, 58, 138, 0.9)', border: '2px solid #fbbf24', zIndex: 10000 }} onClick={(e) => e.stopPropagation()}>
             {console.log('Modal is rendering - showAddForm is true')}
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Add New Todo</h3>
+            <div className="flex justify-end items-center mb-4">
               <button
                 onClick={() => setShowAddForm(false)}
                 className="bg-white/10 border border-red-400 text-red-400 px-2 py-1 rounded flex items-center space-x-2"
@@ -541,8 +546,9 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
               </button>
             </div>
           <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-2 gap-4 items-start">
             <div>
-              <label className="block text-base font-medium mb-1">Title *</label>
+              <label className="block text-base font-medium mb-1">To-Do Title *</label>
               <input
                 type="text"
                 value={newTodo.title}
@@ -575,6 +581,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                 className="w-full text-base border border-yellow-400/30 rounded-md px-4 py-3 bg-white/10 text-yellow-300 placeholder-yellow-300/70 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400"
                 rows={3}
               />
+            </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -651,7 +658,7 @@ const TodoList = ({ selectedClaim, claimColor = '#3B82F6', isGuest = false, show
                 >
                   {claims?.map((claim) => (
                     <option key={claim.case_number} value={claim.case_number}>
-                      {claim.title}
+                      {claim.title}{claim.defendant_name ? ` - ${claim.defendant_name}` : ''}
                     </option>
                   ))}
                 </select>

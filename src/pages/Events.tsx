@@ -72,8 +72,8 @@ const Events: React.FC<EventsProps> = ({
           </div>
           <div className="min-h-[400px]">
             {activeTab === 'todos' && (
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
-                <div className="xl:col-span-2 min-w-0">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                <div className="min-w-0">
                   <TodoList 
                   selectedClaim={selectedClaim}
                   claimColor="#3B82F6"
@@ -83,7 +83,7 @@ const Events: React.FC<EventsProps> = ({
                   showNavigation={false}
                   />
                 </div>
-                <aside className="card-enhanced p-4 border-l-4 border-blue-400">
+                <aside className="card-enhanced p-4 border-l-4 border-blue-400 min-w-0">
                   <div className="flex items-center gap-2 mb-4">
                     <Calendar className="w-5 h-5 text-blue-400" />
                     <h3 className="text-lg font-semibold">Upcoming Calendar Events</h3>
